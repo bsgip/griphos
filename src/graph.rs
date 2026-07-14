@@ -1,0 +1,263 @@
+use petgraph::dot::{Config, Dot}; // Useful for debugging
+use petgraph::graph::{UnGraph, NodeIndex, EdgeIndex, GraphIndex};
+use petgraph::visit::{EdgeRef, GraphProp, IntoEdgeReferences, IntoNodeReferences, NodeIndexable, NodeRef};
+use std::collections::{HashMap, HashSet, VecDeque};
+
+// Computes a fundamental cycle basis for an undirected graph using a BFS spanning tree.
+/// Returns a vector of cycles, where each cycle is a vector of edge indices with orientation +-1.
+pub fn fundamental_cycle_basis<N, E>(
+    graph: &UnGraph<N, E>,
+    start_node: Option<NodeIndex>
+) -> Vec<Vec<(EdgeIndex, i32)>> {
+    let mut visited = HashSet::new();
+    let mut tree_edges = HashSet::new();
+    let mut parent: HashMap<NodeIndex, (NodeIndex, EdgeIndex)> = HashMap::new();
+
+    // Build spanning tree.
+    let start = start_node.or_else(|| graph.node_indices().next());
+    if let Some(start) = start {
+        bfs_spanning_tree(graph, start, &mut visited, &mut tree_edges, &mut parent);
+        // dfs_spanning_tree(graph, start, &mut visited, &mut tree_edges, &mut parent);
+    }
+
+    // For each non-tree edge (chord), create its fundamental cycle
+    let mut basis = Vec::new();
+
+    for edge_ref in graph.edge_references() {
+        let edge_idx = edge_ref.id();
+
+        if !tree_edges.contains(&edge_idx) {
+            let (u, v) = graph.edge_endpoints(edge_idx).unwrap();
+            let cycle = build_fundamental_cycle(u, v, edge_idx, &parent);
+            let cycle = oriented_cycle(graph, &cycle);
+            basis.push(cycle);
+        }
+    }
+
+    basis
+}
+
+/// BFS to build a spanning tree
+#[allow(unused)]
+fn bfs_spanning_tree<N, E>(
+    graph: &UnGraph<N, E>,
+    start: NodeIndex,
+    visited: &mut HashSet<NodeIndex>,
+    tree_edges: &mut HashSet<EdgeIndex>,
+    parent: &mut HashMap<NodeIndex, (NodeIndex, EdgeIndex)>,
+) {
+    let mut queue = VecDeque::new();
+    visited.insert(start);
+    queue.push_back(start);
+
+    while let Some(node) = queue.pop_front() {
+        for edge_ref in graph.edges(node) {
+            let neighbor = edge_ref.target();
+            let edge_idx = edge_ref.id();
+            // For undirected graphs, edges() can return the current node as target;
+            // resolve the actual neighbor on either end.
+            let neighbor = if neighbor == node {
+                edge_ref.source()
+            } else {
+                neighbor
+            };
+
+            if !visited.contains(&neighbor) {
+                visited.insert(neighbor);
+                tree_edges.insert(edge_idx);
+                parent.insert(neighbor, (node, edge_idx));
+                queue.push_back(neighbor);
+            }
+        }
+    }
+}
+
+/// DFS to build a spanning tree
+#[allow(unused)]
+fn dfs_spanning_tree<N, E>(
+    graph: &UnGraph<N, E>,
+    node: NodeIndex,
+    visited: &mut HashSet<NodeIndex>,
+    tree_edges: &mut HashSet<EdgeIndex>,
+    parent: &mut HashMap<NodeIndex, (NodeIndex, EdgeIndex)>,
+) {
+    visited.insert(node);
+
+    for edge_ref in graph.edges(node) {
+        let neighbor = edge_ref.target();
+        let edge_idx = edge_ref.id();
+
+        if !visited.contains(&neighbor) {
+            tree_edges.insert(edge_idx);
+            parent.insert(neighbor, (node, edge_idx));
+            dfs_spanning_tree(graph, neighbor, visited, tree_edges, parent);
+        }
+    }
+}
+
+/// Build a fundamental cycle by finding the tree path between u and v,
+/// then adding the chord edge
+fn build_fundamental_cycle(
+    u: NodeIndex, v: NodeIndex, chord: EdgeIndex, parent: &HashMap<NodeIndex, (NodeIndex, EdgeIndex)>,
+) -> Vec<EdgeIndex> {
+    let get_path_to_root = |start: NodeIndex| -> Vec<(NodeIndex, EdgeIndex)> {
+        // Find path from u to root
+        let mut path = Vec::<(NodeIndex, EdgeIndex)>::new();
+        let mut curr = start;
+        while let Some(&(p, edge)) = parent.get(&curr) {
+            path.push((curr, edge));
+            curr = p;
+        }
+        path
+    };
+
+    let mut path_u = get_path_to_root(u);
+    let mut path_v = get_path_to_root(v);
+
+    while !path_u.is_empty() && !path_v.is_empty() {
+        if path_u.last().unwrap() == path_v.last().unwrap() {
+            path_u.pop();
+            path_v.pop();
+        } else {
+            break;
+        }
+    }
+
+    // Build cycle: chord + path from u to LCA + path from LCA to v
+    let mut cycle = vec![chord];
+    cycle.extend(path_u.into_iter().map(|x| x.1));
+    cycle.extend(path_v.into_iter().rev().map(|x| x.1));
+
+    cycle
+}
+
+fn oriented_cycle<N, E>(
+    graph: &UnGraph<N, E>,
+    edges: &[EdgeIndex],
+) -> Vec<(EdgeIndex, i32)> {
+    if edges.is_empty() {
+        return Vec::new();
+    }
+
+    let mut ordered_edges: Vec<(EdgeIndex, NodeIndex, NodeIndex)> = Vec::new();
+    let (a, b) = graph.edge_endpoints(edges[0]).unwrap();
+
+    // Maybe reverse so b always connects to edges[1].
+    let (a, b) = if edges.len() < 2 {
+        (a, b)
+    } else {
+        let (u2, v2) = graph.edge_endpoints(edges[1]).unwrap();
+        if a == u2 || a == v2 { (b, a) } else { (a, b) }
+    };
+
+    ordered_edges.push((edges[0], a, b));
+    let mut curr = b;
+
+    for &edge_idx in &edges[1..] {
+        let (u, v) = graph.edge_endpoints(edge_idx).unwrap();
+        let (from, to) = if u == curr { (u, v) } else { (v, u) };
+        ordered_edges.push((edge_idx, from, to));
+        curr = to;
+    }
+
+    let mut oriented: Vec<(EdgeIndex, i32)> = ordered_edges
+        .into_iter()
+        .map(|(edge_idx, from, _to)| {
+            let (canonical_src, _) = graph.edge_endpoints(edge_idx).unwrap();
+            let orientation = if from == canonical_src { 1 } else { -1 };
+            (edge_idx, orientation)
+        })
+        .collect();
+
+    // Normalise: prefer the direction with a positive orientation sum.
+    let orientation_sum: i32 = oriented.iter().map(|x| x.1).sum();
+    if orientation_sum < 0 {
+        for x in oriented.iter_mut() {
+            x.1 *= -1;
+        }
+    }
+
+    oriented
+}
+
+pub fn dfs<N, E, F>(
+    graph: &UnGraph<N, E>,
+    start: NodeIndex,
+    mut f: F,
+)
+where
+    F: FnMut(NodeIndex, Option<(NodeIndex, EdgeIndex)>) -> bool,
+{
+    let mut stack: Vec<(NodeIndex, Option<(NodeIndex, EdgeIndex)>)> = vec![(start, None)];
+    let mut visited = HashSet::new();
+
+    while let Some((node, incoming)) = stack.pop() {
+        if visited.contains(&node) {
+            continue;
+        }
+        visited.insert(node);
+
+        if !f(node, incoming) {
+            continue;
+        }
+
+        for edge in graph.edges(node) {
+            let (src, tgt) = (edge.source(), edge.target());
+            let next = if src == node { tgt } else { src };
+            if !visited.contains(&next) {
+                stack.push((next, Some((node, edge.id()))));
+            }
+        }
+    }
+}
+
+pub fn graph_dot<G>(g: G) -> String
+where
+    G: IntoEdgeReferences + IntoNodeReferences + NodeIndexable + GraphProp + Copy,
+    G::EdgeWeight: std::fmt::Debug, G::NodeWeight: std::fmt::Debug, G::EdgeId: petgraph::graph::GraphIndex,
+{
+    format!("{:?}", Dot::with_attr_getters(
+        g,
+        &[Config::EdgeNoLabel, Config::NodeNoLabel],
+        &|_, edge_ref| format!("label=\"{}:{:?}\"", edge_ref.id().index(), edge_ref.weight()),
+        &|g, node_ref| format!("label=\"{}:{:?}\"", g.to_index(node_ref.id()), node_ref.weight()),
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use petgraph::dot::{Dot, Config};
+    use super::*;
+
+    #[test]
+    fn test_graph() {
+        let mut graph = UnGraph::<usize, (usize, usize)>::new_undirected();
+        let nodes: Vec<_> = (0..4).map(|i| graph.add_node(i)).collect();
+
+        // Complete graph on 4 vertices
+        graph.add_edge(nodes[0], nodes[1], (0,1));
+        graph.add_edge(nodes[2], nodes[0], (2, 0));
+        graph.add_edge(nodes[0], nodes[3], (0, 3));
+        graph.add_edge(nodes[1], nodes[2], (1, 2));
+        graph.add_edge(nodes[3], nodes[1], (3, 1));
+        graph.add_edge(nodes[2], nodes[3], (2, 3));
+
+        println!("{:?}", Dot::with_attr_getters(
+            &graph,
+            &[Config::EdgeNoLabel, Config::NodeNoLabel],
+            &|_, eref| format!("label = \"{}:{},{}\"", eref.id().index(), eref.source().index(), eref.target().index()),
+            &|_, nref| format!("label = \"{}\"", nref.0.index()),
+        ));
+
+        let basis = fundamental_cycle_basis(&graph, None);
+        for cyc in basis.iter() {
+            println!("CYCLE");
+            for (ei, orient) in cyc.iter() {
+                println!("{:?} {:?} {:?}", ei, orient, graph.edge_endpoints(*ei).unwrap());
+            }
+        }
+
+        // Cycle space dimension: E - V + 1 = 6 - 4 + 1 = 3
+        assert_eq!(basis.len(), 3);
+    }
+}

@@ -1,0 +1,35 @@
+[package]
+name = "griphos"
+version = "0.1.0"
+edition = "2024"
+
+[package.metadata.e_json_schema]
+url = "https://raw.githubusercontent.com/bsgip/epyjson/refs/heads/main/src/epyjson/e-json-schema.json"
+
+[dependencies]
+indexmap = {version = "*"}
+nalgebra = {version = "*", features = ["macros", "serde-serialize"]}
+num-traits = "*"
+serde = {version = "*", features = ["derive"]}
+serde_json = "*"
+serde_yml = "0.0.12" # TODO: deprecated/unmaintaned.
+sprs = "0.11"
+petgraph = {version = "0.8", features = ["serde-1"]}
+klu_sys = "*"
+log = "0.4.29"
+env_logger = "0.11.9"
+rand = "0.10.0"
+itertools = "0.15.0"
+clap = { version = "4.6.1", features = ["derive"] }
+regress = "0.11.1"
+regex = "1.12.3"
+
+[build-dependencies]
+serde_json = "*"
+toml = "1.1"
+typify = "0.7.0"
+ureq = "3.3.*"
+
+[[bin]]
+name = "test_griphos"
+path = "test_data/test_griphos.rs"

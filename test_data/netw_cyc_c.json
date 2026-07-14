@@ -1,0 +1,99 @@
+{
+    "voltage_type": "ll",
+    "components": [
+        {
+            "id": "in1a",
+            "type": "Infeeder",
+            "cons": [{
+                "node": "nd1a",
+                "phs": ["A", "B"]
+            }],
+            "v_setpoint": 11000
+        },
+        {
+            "id": "nd1a",
+            "type": "Node",
+            "phs": ["A", "B"],
+            "v_base": 11000
+        },
+        {
+            "id": "nd2a",
+            "type": "Node",
+            "phs": ["A", "B"],
+            "v_base": 11000
+        },
+        {
+            "id": "ln1_2a",
+            "type": "Line",
+            "cons": [{
+                "node": "nd1a",
+                "phs": ["A", "B"]
+            }, {
+                "node": "nd2a",
+                "phs": ["A", "B"]
+            }],
+            "length": 1,
+            "z": [1, 0],
+            "z0": [1, 0],
+            "in_service": true
+        },
+        {
+            "id": "ld2a",
+            "type": "Load",
+            "cons": [{
+                "node": "nd2a",
+                "phs": ["A", "B"]
+            }],
+            "in_service": true,
+            "wiring": "wye",
+            "s_nom": [[1, 0]]
+        },
+        {
+            "id": "in1b",
+            "type": "Infeeder",
+            "cons": [{
+                "node": "nd1b",
+                "phs": ["A", "B"]
+            }],
+            "v_setpoint": 11000
+        },
+        {
+            "id": "nd1b",
+            "type": "Node",
+            "phs": ["A", "B"],
+            "v_base": 11000
+        },
+        {
+            "id": "nd2b",
+            "type": "Node",
+            "phs": ["A", "B"],
+            "v_base": 11000
+        },
+        {
+            "id": "ln1_2b",
+            "type": "Line",
+            "cons": [{
+                "node": "nd1b",
+                "phs": ["A", "B"]
+            }, {
+                "node": "nd2b",
+                "phs": ["A", "B"]
+            }],
+            "length": 1,
+            "z": [1, 0],
+            "z0": [1, 0],
+            "in_service": true
+        },
+        {
+            "id": "ld2b",
+            "type": "Load",
+            "cons": [{
+                "node": "nd2b",
+                "phs": ["A", "B"]
+            }],
+            "in_service": true,
+            "wiring": "wye",
+            "s_nom": [[1, 0]]
+        }
+    ]
+}
