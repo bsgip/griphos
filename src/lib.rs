@@ -32,3 +32,10 @@ pub use load::*;
 pub use test_networks::*;
 pub use transformer::*;
 pub use e_json::*;
+
+#[cfg(has_griphos_extras)]
+#[path = "griphos_extras/mod.rs"]
+pub mod griphos_extras;
+
+#[cfg(has_griphos_extras)]
+pub use griphos_extras::*;

@@ -1,5 +1,6 @@
 use std::fs;
 use std::io::Write;
+use std::path::Path;
 use typify::{TypeSpace, TypeSpaceSettings};
 
 fn main() {
@@ -8,12 +9,12 @@ fn main() {
         .expect("Failed to read Cargo.toml");
     let cargo: toml::Value = toml::from_str(&cargo_toml)
         .expect("Failed to parse Cargo.toml");
-    
+
     // Get the e-JSON schema URL
     let e_json_schema_url = cargo["package"]["metadata"]["e_json_schema"]["url"]
         .as_str()
         .expect("Missing schema URL in Cargo.toml");
-   
+
     // Fetch the schema
     let e_json_schema = ureq::get(e_json_schema_url)
         .call()
@@ -30,13 +31,23 @@ fn main() {
     let mut type_space = TypeSpace::new(&TypeSpaceSettings::default());
     type_space.add_root_schema(serde_json::from_str(&e_json_schema).unwrap())
         .expect("Failed to process schema");
-    
+
     // Write to file
     let mut file = fs::File::create("src/e_json_generated_types.rs")
         .expect("Failed to create file");
     write!(file, "{}", type_space.to_stream())
         .expect("Failed to write generated types");
-    
+
     println!("cargo:rerun-if-changed=Cargo.toml");
     println!("cargo:rerun-if-changed=build.rs");
+
+    // register the cfg so it doesn't warn under unexpected_cfg lint
+    println!("cargo:rustc-check-cfg=cfg(has_griphos_extras)");
+
+    // existing detection
+    let dir_path = Path::new("src/griphos_extras");
+    if dir_path.is_dir() {
+        println!("cargo:rustc-cfg=has_griphos_extras");
+        println!("cargo:rerun-if-changed=src/griphos_extras");
+    }
 }
