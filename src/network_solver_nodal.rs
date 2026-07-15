@@ -919,8 +919,8 @@ impl NodalRectSolver {
     /// Return (delta_jac, delta_rhs, error)
     pub fn test_jac_against_rhs_ij(&mut self, i: usize, j: usize) -> (f64, f64, bool, f64) {
 
-        let dxj = 1e-10;
-        let max_allowed_err = dxj * 2e-4;
+        let dxj = 1e-8;
+        let max_allowed_err = dxj * 1e-4;
 
         let x0: Vec<f64> = self.vars.clone();
         let reset_x = |vars: &mut [f64]| {for (xi, x0i) in vars.iter_mut().zip(x0.iter()) {*xi = *x0i;}};
