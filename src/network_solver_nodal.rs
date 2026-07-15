@@ -1127,6 +1127,26 @@ mod tests {
         }
     }
 
+    #[test] fn test_jac_against_rhs_y() {
+        configure_logging();
+        test_jac_against_rhs(netw_y(c!(0.658, 0.0)));
+    }
+
+    #[test] fn test_jac_against_rhs_y_cplx() {
+        configure_logging();
+        test_jac_against_rhs(netw_y(c!(0.658, 0.123)));
+    }
+
+    #[test] fn test_jac_against_rhs_s() {
+        configure_logging();
+        test_jac_against_rhs(netw_s(c!(0.5, 0.0)));
+    }
+
+    #[test] fn test_jac_against_rhs_s_cplx() {
+        configure_logging();
+        test_jac_against_rhs(netw_s(c!(0.5, 0.4)));
+    }
+
     #[test] fn test_jac_against_rhs_yy() {
         configure_logging();
         test_jac_against_rhs(netw_yy(c!(0.658, 0.0)));
