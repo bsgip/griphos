@@ -6,7 +6,7 @@ use serde::de::{DeserializeSeed, Deserializer};
 use std::collections::HashMap;
 
 use crate::connector::*;
-use crate::e_json_generated_types::{self as ejt, TwoPositiveNumberArray};
+use crate::e_json_generated_types::{self as ejt, TwoNumberArray, TwoPositiveNumberArray, TapSide};
 use crate::foundation::*;
 use crate::generator::*;
 use crate::grounding::*;
@@ -314,17 +314,26 @@ fn handle_transformer(
     netw: &mut Network, ejson_phase_map: &HashMap<String, Phase>,
     transformer: &ejt::Transformer
 ) -> Result<(), String> {
-    let (id, bts, vector_group, n_winding_pairs, nom_turns_ratio, z0_p, z0_s, user_data) = match transformer {
-        ejt::Transformer::Variant0{id, cons, vector_group, n_winding_pairs, nom_turns_ratio, z0_p, z0_s, user_data, ..} => {
+    let (
+        id, bts, vector_group, n_winding_pairs, nom_turns_ratio, z0_p, z0_s, tap_side, tap_factor, tap_range, taps,
+        user_data
+    ) = match transformer {
+        ejt::Transformer::Variant0 {
+            id, cons, vector_group, n_winding_pairs, nom_turns_ratio, z0_p, z0_s, user_data,
+            tap_side, tap_factor, tap_range, taps, ..
+        } => {
             (
                 id, get_bts(&cons.0, ejson_phase_map), vector_group, n_winding_pairs, nom_turns_ratio, z0_p, z0_s,
-                user_data.as_ref().unwrap()
+                tap_side, tap_factor, tap_range, taps, user_data.as_ref().unwrap(),
             )
         },
-        ejt::Transformer::Variant1{id, cons, vector_group, n_winding_pairs, nom_turns_ratio, z0_p, z0_s, user_data, ..} => {
+        ejt::Transformer::Variant1 {
+            id, cons, vector_group, n_winding_pairs, nom_turns_ratio, z0_p, z0_s, user_data,
+            tap_side, tap_factor, tap_range, taps, ..
+        } => {
             (
                 id, get_bts(&cons.0, ejson_phase_map), vector_group, n_winding_pairs, nom_turns_ratio, z0_p, z0_s,
-                user_data.as_ref().unwrap()
+                tap_side, tap_factor, tap_range, taps, user_data.as_ref().unwrap()
             )
         },
     };
@@ -348,7 +357,19 @@ fn handle_transformer(
 
     let y_series = 1.0 / z_s;
 
-    netw.add_element(Transformer::new(&winding_pairs, turns_ratio, y_series, y_shunt)
+    let tx_taps = if let Some(tap_side) = tap_side && let Some(factor) = tap_factor && let Some(tap_range) = tap_range {
+        let side = match tap_side {
+            TapSide::Primary => TransformerSide::P,
+            TapSide::Secondary => TransformerSide::S,
+        };
+        let min_tap = tap_range[0];
+        let max_tap = tap_range[1];
+        Some(TransformerTaps::new(side, *factor, min_tap as i32, max_tap as i32, taps.len()))
+    } else {
+        None
+    };
+
+    netw.add_element(Transformer::new(&winding_pairs, turns_ratio, y_series, y_shunt, tx_taps)
         .element(id, mod_bts[0].as_ref(), mod_bts[1].as_ref())).unwrap();
 
     Ok(())

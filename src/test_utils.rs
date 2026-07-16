@@ -68,6 +68,7 @@ pub fn add_tx(netw: &mut Network, ij_p: (usize, usize), ij_s: (usize, usize), ra
             vec![ratio],
             c!(1000.0, 0.0),
             c!(0.0, 0.0),
+            None
         ).element(
             &elem_id_4(ij_p.0, ij_p.1, ij_s.0, ij_s.1, "t"),
             &[bt!(&bus_id(ij_p.0), pip), bt!(bus_id(ij_p.1), pjp)],
