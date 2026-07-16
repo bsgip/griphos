@@ -1,10 +1,8 @@
 use clap::Parser;
 use log::{debug, info};
+use griphos::*;
 
-use crate::configure_logging;
-use griphos::{network_solver_nodal::NodalRectSolver, *};
-
-fn run_network(mut netw: Network) {
+fn run_network(mut netw: Network, solver_name: &str) {
     let master = NetworkModel::new_master(&netw).unwrap();
 
     debug!("Nodes:");
@@ -18,7 +16,7 @@ fn run_network(mut netw: Network) {
     info!("There are {} islands", islands.len());
     for nmod in islands.into_iter() {
         info!("Island:");
-        let mut solver = NodalRectSolver::new(nmod);
+        let mut solver = make_solver(solver_name, nmod);
         solver.solve();
         solver.propagate_to_network(&mut netw);
     }
@@ -42,5 +40,5 @@ fn main() {
     let netw = parse_ejson_file(
         args.infile.as_str(),
         &ejson_phase_map_abcng()).expect("Error parsing ejson file {netw_fname}");
-    run_network(netw)
+    run_network(netw, &args.solver)
 }

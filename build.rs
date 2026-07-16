@@ -41,13 +41,18 @@ fn main() {
     println!("cargo:rerun-if-changed=Cargo.toml");
     println!("cargo:rerun-if-changed=build.rs");
 
-    // register the cfg so it doesn't warn under unexpected_cfg lint
-    println!("cargo:rustc-check-cfg=cfg(has_griphos_extras)");
-
     // existing detection
     let dir_path = Path::new("src/griphos_extras");
     if dir_path.is_dir() {
         println!("cargo:rustc-cfg=has_griphos_extras");
         println!("cargo:rerun-if-changed=src/griphos_extras");
     }
+
+    println!("cargo:rerun-if-changed=src/griphos_extras");
+    let mod_path = Path::new("src/griphos_extras/mod.rs");
+    if mod_path.is_file() {
+        println!("cargo:rustc-cfg=has_griphos_extras");
+    }
+    println!("cargo:rustc-check-cfg=cfg(has_griphos_extras)");
+
 }

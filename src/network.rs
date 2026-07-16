@@ -936,6 +936,22 @@ pub trait NetworkSolver {
     fn propagate_to_network(&self, netw: &mut Network);
 }
 
+pub struct SolverPlugin {
+    pub name: &'static str,
+    pub constructor: fn(NetworkModel) -> Box<dyn NetworkSolver>,
+}
+
+inventory::collect!(SolverPlugin);
+
+pub fn make_solver(name: &str, nmod: NetworkModel) -> Box<dyn NetworkSolver> {
+    for entry in inventory::iter::<SolverPlugin> {
+        if entry.name == name {
+            return (entry.constructor)(nmod);
+        }
+    }
+    panic!("Unknown solver: {name}");
+}
+
 fn v_phase(p: &Phase) -> c64 {
     match p {
         Phase::A => {p!(1.0, 0.0)},

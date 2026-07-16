@@ -1,24 +1,16 @@
 use clap::Parser;
 use log::{info};
 
-use griphos::configure_logging;
-use griphos::c;
-use griphos::foundation::*;
-use griphos::network::*;
-use griphos::network_solver_nodal::*;
-use griphos::test_networks::*;
+use griphos::*;
 
-fn run_network(mut netw: Network, solver: &str) {
+fn run_network(mut netw: Network, solver_name: &str) {
     let master = NetworkModel::new_master(&netw).unwrap();
     let islands = master.islands().unwrap();
 
     info!("There are {} islands", islands.len());
     for nmod in islands.into_iter() {
         info!("Island:");
-        let mut solver: Box<dyn NetworkSolver> = {
-            if solver == "nodal" {Box::new(NodalRectSolver::new(nmod))}
-            else {panic!()}
-        };
+        let mut solver: Box<dyn NetworkSolver> = make_solver(solver_name, nmod);
         solver.solve();
         solver.propagate_to_network(&mut netw);
     }
@@ -60,5 +52,5 @@ fn main() {
     } else {
         panic!("Bad network name");
     };
-    run_network(netw, args.solver.as_str())
+    run_network(netw, &args.solver)
 }

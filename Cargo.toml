@@ -9,6 +9,7 @@ url = "https://raw.githubusercontent.com/bsgip/epyjson/refs/heads/main/src/epyjs
 
 [dependencies]
 indexmap = {version = "*"}
+inventory = {version = "*"}
 nalgebra = {version = "*", features = ["macros", "serde-serialize"]}
 num-traits = "*"
 serde = {version = "*", features = ["derive"]}

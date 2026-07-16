@@ -6,6 +6,7 @@ use crate::foundation::*;
 use crate::klu::solve_klu;
 use crate::network::*;
 use crate::solver_utils::SolveStatus;
+use crate::SolverPlugin;
 
 fn name_maybe_idx(idx: Option<usize>) -> String {
     match idx {Some(i) => format!("{i}"), None => "*".to_string()}
@@ -1003,6 +1004,13 @@ impl NetworkSolver for NodalRectSolver {
 
     fn propagate_to_network(&self, netw: &mut Network) {
         self.nmod.propagate_to_network(netw);
+    }
+}
+
+inventory::submit! {
+    SolverPlugin {
+        name: "nodal",
+        constructor: |nmod| Box::new(NodalRectSolver::new(nmod)),
     }
 }
 
