@@ -1069,12 +1069,12 @@ mod tests {
 
     #[test] fn test_solver_ys() {
         configure_logging();
-        test_network(netw_ys(c!(3.15, 0.0), c!(1.23, 0.0)));
+        test_network(netw_ys(c!(1.0, 0.0), c!(0.1, 0.0)));
     }
 
     #[test] fn test_solver_ys_cplx() {
         configure_logging();
-        test_network(netw_ys(c!(3.15, 1.0), c!(1.23, 1.1)));
+        test_network(netw_ys(c!(3.15, 1.0), c!(0.123, 0.11)));
     }
 
     #[test] fn test_solver_tx() {
@@ -1106,12 +1106,8 @@ mod tests {
             let mut solver = NodalRectSolver::new(nmod);
             solver.init_vars();
 
-            for var_info in solver.var_infos.iter() {
-                match var_info.kind {
-                    VarKind::Vr {nd_idx: i} | VarKind::Vi {nd_idx: i} | VarKind::PgNd {nd_idx: i}
-                    | VarKind::QgNd {nd_idx: i} | VarKind::PgBr {br_idx: i} | VarKind::QgBr {br_idx: i}
-                    => solver.vars[i] = rng.random_range(-0.1..0.1),
-                }
+            for (var, var_info) in solver.vars.iter_mut().zip(solver.var_infos.iter()) {
+                *var = var_info.x0 + rng.random_range(-0.1..0.1);
             }
 
             solver.debug_vars();
