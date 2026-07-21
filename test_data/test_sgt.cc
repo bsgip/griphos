@@ -32,9 +32,9 @@ int main(int argc, char** argv)
     {
         solverOptions = json::parse(args["solver_opts"].as<string>());
     }
-    
+
     bool warmStart = args.count("warm_start") > 0;
-    
+
     bool debug = args.count("debug") > 0;
 
     if (debug)
@@ -61,7 +61,7 @@ int main(int argc, char** argv)
         }
     }
 
-    Network netw;
+    Network netw(1.0, Sgt::VAWOhmUnits);
     parseEJsonFile(netw, inputName);
 
     if (solver == "nr_rect")
@@ -92,7 +92,7 @@ int main(int argc, char** argv)
     auto outfile = ofstream(outputName);
     for (const auto& b : netw.buses())
     {
-        for (unsigned i = 0; i < b->phases().size(); ++i) 
+        for (unsigned i = 0; i < b->phases().size(); ++i)
         {
             outfile << b->id() << ":" << b->phases()[i] << ", " << abs(b->V()[i])/b->VBase() << std::endl;
         };
