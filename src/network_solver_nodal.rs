@@ -99,7 +99,7 @@ pub struct NodeInfo {
     ieqn_kcl_im: Option<usize>,
 }
 
-/// Additional info for SL generators at branches.
+/// Additional info for PV or SL generators at branches.
 #[derive(Clone, Debug, Default)]
 pub struct BranchGenInfo {
     pg: Vc,
@@ -109,10 +109,9 @@ pub struct BranchGenInfo {
     ieqn_vm_c: Option<usize>,
 }
 
-/// Additional info for PV generators at nodes or branches.
+/// Additional info for PV generators at nodes.
 #[derive(Clone, Debug, Default)]
 pub struct NodeGenInfo {
-    pg: Vc,
     qg: Vc,
     ieqn_vm_c: Option<usize>,
 }
@@ -263,8 +262,17 @@ impl NodalRectSolver {
         let n_nd_pv = nd_gen_info.iter().filter(|[vmc, vac]| vmc.is_some() && vac.is_none()).count();
         let n_br_sl = br_gen_info.iter().filter(|[vmc, vac]| vmc.is_some() && vac.is_some()).count();
         let n_br_pv = br_gen_info.iter().filter(|[vmc, vac]| vmc.is_some() && vac.is_none()).count();
-        let n_not_ground = self.nmod.nodes.len() - n_ground;
-        let ndim = 2 * n_not_ground + n_nd_pv + 2 * n_br_sl + n_br_pv;
+        let n_not_const = self.nmod.nodes.len() - n_ground - n_nd_sl;
+        let ndim = 2 * n_not_const + n_nd_pv + 2 * n_br_sl + n_br_pv;
+
+        debug!("Nodal Solver");
+        debug!("n_ground = {n_ground}");
+        debug!("nd_nd_sl = {n_nd_sl}");
+        debug!("nd_nd_pv = {n_nd_pv}");
+        debug!("nd_br_sl = {n_br_sl}");
+        debug!("nd_br_pv = {n_br_pv}");
+        debug!("n_not_const = {n_not_const}");
+        debug!("ndim = {ndim}");
 
         self.node_infos.clear(); self.node_infos.reserve(self.nmod.nodes.len());
 
@@ -292,23 +300,10 @@ impl NodalRectSolver {
                             NodeInfo {
                                 vr: Vc::Const {x: vmcr},
                                 vi: Vc::Const {x: vmci},
-                                ieqn_kcl_re: Some(idim),
-                                ieqn_kcl_im: Some(idim + 1),
+                                ieqn_kcl_re: None,
+                                ieqn_kcl_im: None,
                             }
                         );
-
-                        self.node_gen_infos.insert(
-                            i_nd,
-                            NodeGenInfo {pg: Vc::Var{i: idim}, qg: Vc::Var{i: idim + 1}, ieqn_vm_c: None}
-                        );
-
-                        self.var_infos.push(VarInfo {kind: VarKind::PgNd {nd_idx: i_nd}, x0: 0.0});
-                        self.var_infos.push(VarInfo {kind: VarKind::QgNd {nd_idx: i_nd}, x0: 0.0});
-
-                        self.eqn_kinds.push(EqnKind::KclRe {nd_idx: i_nd});
-                        self.eqn_kinds.push(EqnKind::KclIm {nd_idx: i_nd});
-
-                        idim += 2;
                     },
                     [Some(vmc), None] => {
                         // PV node
@@ -324,8 +319,9 @@ impl NodalRectSolver {
 
                         self.node_gen_infos.insert(
                             i_nd,
-                            NodeGenInfo {qg: Vc::Var {i: idim + 2}, ieqn_vm_c: Some(idim + 2), ..Default::default()}
+                            NodeGenInfo {qg: Vc::Var {i: idim + 2}, ieqn_vm_c: Some(idim + 2)}
                         );
+                        // TODO
 
                         self.var_infos.push(VarInfo {kind:VarKind::Vr {nd_idx: i_nd}, x0: x0.re});
                         self.var_infos.push(VarInfo {kind: VarKind::Vi {nd_idx: i_nd}, x0: x0.im});
@@ -411,7 +407,7 @@ impl NodalRectSolver {
 
         assert!(idim == ndim);
         assert!(self.node_infos.len() == self.nmod.nodes.len());
-        assert!(self.node_gen_infos.len() == n_nd_sl + n_nd_pv);
+        assert!(self.node_gen_infos.len() == n_nd_pv);
         assert!(self.branch_gen_infos.len() == n_br_sl + n_br_pv);
         assert!(self.var_infos.len() == ndim);
         assert!(self.eqn_kinds.len() == ndim);
@@ -628,47 +624,38 @@ impl NodalRectSolver {
             let v2_i_diff = vr_i_2 - vi_i_2;
             let vm_i_n4 = vm_i_2.powi(-2);
 
-            let pg = ngi_i.pg.val(&self.vars);
             let qg = ngi_i.qg.val(&self.vars);
 
             if let Some(ieqn) = nd_info_i.ieqn_kcl_re {
-                self.rhs[ieqn] += (-pg * vr_i - qg * vi_i) / vm_i_2;
-
-                if let Vc::Var{i: ivar} = ngi_i.pg {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, -vr_i / vm_i_2);
-                }
+                self.rhs[ieqn] += -qg * vi_i / vm_i_2;
 
                 if let Vc::Var{i: ivar} = ngi_i.qg {
                     jac_target.add(&mut self.jac_csc, ieqn, ivar, -vi_i / vm_i_2);
                 }
 
                 if let Vc::Var {i: ivar} = nd_info_i.vr {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, (pg * v2_i_diff + 2.0 * qg * vi_i * vr_i) * vm_i_n4);
+                    jac_target.add(&mut self.jac_csc, ieqn, ivar, 2.0 * qg * vi_i * vr_i * vm_i_n4);
                 }
 
                 if let Vc::Var {i: ivar} = nd_info_i.vi {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, (-qg * v2_i_diff + 2.0 * pg * vi_i * vr_i) * vm_i_n4);
+                    jac_target.add(&mut self.jac_csc, ieqn, ivar, -qg * v2_i_diff * vm_i_n4);
                 }
 
             }
 
             if let Some(ieqn) = nd_info_i.ieqn_kcl_im {
-                self.rhs[ieqn] += (qg * vr_i - pg * vi_i) / vm_i_2;
-
-                if let Vc::Var{i: ivar} = ngi_i.pg {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, -vi_i / vm_i_2);
-                }
+                self.rhs[ieqn] += qg * vr_i / vm_i_2;
 
                 if let Vc::Var{i: ivar} = ngi_i.qg {
                     jac_target.add(&mut self.jac_csc, ieqn, ivar, vr_i / vm_i_2);
                 }
 
                 if let Vc::Var {i: ivar} = nd_info_i.vr {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, (-qg * v2_i_diff + 2.0 * pg * vi_i * vr_i) * vm_i_n4);
+                    jac_target.add(&mut self.jac_csc, ieqn, ivar, -qg * v2_i_diff * vm_i_n4);
                 }
 
                 if let Vc::Var {i: ivar} = nd_info_i.vi {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, (-pg * v2_i_diff - 2.0 * qg * vi_i * vr_i) * vm_i_n4);
+                    jac_target.add(&mut self.jac_csc, ieqn, ivar, -2.0 * qg * vi_i * vr_i * vm_i_n4);
                 }
             }
 
@@ -853,8 +840,7 @@ impl NodalRectSolver {
         log(format_args!("Node Gens:"));
         for (i_ng, (i_nd, ng_info)) in self.node_gen_infos.iter().enumerate() {
             log(format_args!(
-                "    {: <4}: nd = {: <4} pg = {: <24} qg = {: <24}",
-                i_ng, i_nd, format!("{:?}", ng_info.pg), format!("{:?}", ng_info.qg)
+                "    {: <4}: nd = {: <4} qg = {: <24}", i_ng, i_nd, format!("{:?}", ng_info.qg)
             ));
         }
     }
