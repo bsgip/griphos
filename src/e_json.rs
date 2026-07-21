@@ -225,8 +225,8 @@ fn handle_infeeder(
     let bus_id: &str = &con.node;
     let phs = convert_phases(&con.phs, ejson_phase_map);
     let mut bts: Vec<BusTermId> = Vec::with_capacity(phs.len() + 1);
-    bts.push(bt!("G".to_string(), Phase::N));
     phs.iter().for_each(|p| bts.push(bt!(bus_id, *p)));
+    bts.push(bt!("G".to_string(), Phase::N));
     let in_service = convert_in_service(in_service);
     let vmag = v_setpoint.0 * V_FACTOR;
     let elem = netw.add_element(
