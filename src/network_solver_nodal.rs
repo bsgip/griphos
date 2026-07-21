@@ -943,37 +943,40 @@ impl NetworkSolver for NodalRectSolver {
         self.init_vars();
 
         let mut iteration_errs: Vec<f64> = Vec::with_capacity(self.params.max_iter as usize);
-        let mut converged: bool = false;
-        for i in 0..self.params.max_iter {
-            info!("Iteration {i}");
-            self.prepare_for_iter();
-            self.debug_node_infos();
-            self.debug_node_gen_infos();
-            self.debug_branch_gen_infos();
-            self.debug_vars();
-            self.debug_eqns();
+        let mut converged: bool = self.ndim() == 0; // It's possible to set up problems with no vars and eqs.
 
-            let (i_err, err) = self.rhs
-                .iter().copied().map(f64::abs).enumerate().max_by(|(_, a), (_, b)| a.total_cmp(b)).unwrap();
-            info!("err = {} @ {}", err, i_err);
+        if !converged {
+            for i in 0..self.params.max_iter {
+                info!("Iteration {i}");
+                self.prepare_for_iter();
+                self.debug_node_infos();
+                self.debug_node_gen_infos();
+                self.debug_branch_gen_infos();
+                self.debug_vars();
+                self.debug_eqns();
 
-            iteration_errs.push(err);
+                let (i_err, err) = self.rhs
+                    .iter().copied().map(f64::abs).enumerate().max_by(|(_, a), (_, b)| a.total_cmp(b)).unwrap();
+                info!("err = {} @ {}", err, i_err);
 
-            if err < self.params.tol {
-                converged = true;
-                break;
+                iteration_errs.push(err);
+
+                if err < self.params.tol {
+                    converged = true;
+                    break;
+                }
+
+                info!("solve_klu");
+                if solve_klu(&mut self.jac_csc, &mut self.rhs).is_err() {
+                    info!("Failed to solve linear system.");
+                    return SolveStatus::LinearSolverFailed;
+                }
+
+                self.update_vars_after_solve();
+
+                debug!("Updated vars:");
+                self.debug_vars();
             }
-
-            info!("solve_klu");
-            if solve_klu(&mut self.jac_csc, &mut self.rhs).is_err() {
-                info!("Failed to solve linear system.");
-                return SolveStatus::LinearSolverFailed;
-            }
-
-            self.update_vars_after_solve();
-
-            debug!("Updated vars:");
-            self.debug_vars();
         }
 
         info!("Converged = {:?}", converged);
