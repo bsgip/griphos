@@ -23,9 +23,9 @@ impl Line {
         }
     }
 
-    pub fn element(self, id: &str, bus_phases_0: Vec<BusTermId>, bus_phases_1: Vec<BusTermId>) -> Element {
+    pub fn element(self, uid: &str, bus_phases_0: Vec<BusTermId>, bus_phases_1: Vec<BusTermId>) -> Element {
         assert!(bus_phases_0.len() == bus_phases_1.len(), "Lines must have the same number of phases at each end");
-        self.element_generic(id, bus_phases_0.into_iter().chain(bus_phases_1.into_iter()).collect())
+        self.element_generic(uid, bus_phases_0.into_iter().chain(bus_phases_1).collect())
     }
 }
 

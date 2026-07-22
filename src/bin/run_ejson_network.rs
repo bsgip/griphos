@@ -21,9 +21,7 @@ fn run_network(mut netw: Network, solver_name: &str) {
         solver.propagate_to_network(&mut netw);
     }
 
-    for b in netw.buses() {
-        println!("v {} = {:?}", b.uid, b.vs().map(|x| x.norm()).collect::<Vec<f64>>());
-    }
+    netw.foreach_bus(|b| {println!("v {} = {:?}", b.uid, b.vs().map(|x| x.norm()).collect::<Vec<f64>>());});
 }
 
 #[derive(Parser)]

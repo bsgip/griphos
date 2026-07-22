@@ -1,8 +1,10 @@
+use std::rc::Rc;
 use std::cell::{RefCell, Ref, RefMut};
+// use std::sync::Arc;
+// use parking_lot::{Mutex, MutexGuard};
 use std::collections::HashMap;
 use std::fmt;
 use std::ops::{Add};
-use std::rc::Rc;
 use std::sync::LazyLock;
 use std::vec::Vec;
 
@@ -16,9 +18,8 @@ use serde::{Serialize, Serializer};
 use serde::ser::{SerializeMap, SerializeSeq, SerializeTuple};
 
 // -----------------------------------------------------------------------------
-// Shared data
+// Shared thread safe data
 // -----------------------------------------------------------------------------
-//
 
 pub type Shared<T> = Rc<RefCell<T>>;
 pub type Borrowed<'a, T> = Ref<'a, T>;
@@ -28,7 +29,7 @@ pub trait SharedExt<T> {
     fn new_shared(x: T) -> Shared<T>;
 }
 
-impl<T> SharedExt<T> for Shared<T> {
+impl<T> SharedExt<T> for T {
     fn new_shared(x: T) -> Shared<T> {
         Rc::new(RefCell::new(x))
     }

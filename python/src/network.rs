@@ -1,0 +1,208 @@
+use pyo3::prelude::*;
+use ::griphos as gr;
+use gr::{c64, HasUid, Shared, SharedExt};
+use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods, gen_stub_pyclass_enum};
+use crate::py_struct;
+
+#[gen_stub_pyclass_enum]
+#[pyclass(module = "griphos", eq, eq_int, from_py_object)]
+#[derive(Clone, PartialEq)]
+pub enum Phase {
+    A,
+    B,
+    C,
+    N,
+}
+
+impl From<gr::Phase> for Phase {
+    fn from(p: gr::Phase) -> Self {
+        match p {
+            gr::Phase::A => Phase::A,
+            gr::Phase::B => Phase::B,
+            gr::Phase::C => Phase::C,
+            gr::Phase::N => Phase::N,
+        }
+    }
+}
+
+impl From<Phase> for gr::Phase {
+    fn from(p: Phase) -> Self {
+        match p {
+            Phase::A => gr::Phase::A,
+            Phase::B => gr::Phase::B,
+            Phase::C => gr::Phase::C,
+            Phase::N => gr::Phase::N,
+        }
+    }
+}
+
+#[gen_stub_pyclass]
+#[pyclass(module = "griphos", unsendable)]
+pub struct Bus {
+    pub(crate) inner: Shared<gr::Bus>,
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl Bus {
+    #[new]
+    fn new(uid: &str, phases: Vec<Phase>, v_base: f64) -> Bus {
+        Bus {
+            inner: gr::Bus::new_shared(gr::Bus::new(uid, phases.into_iter().map(|x| x.into()).collect(), v_base))
+        }
+    }
+
+    #[getter]
+    fn uid(&self) -> String {
+        self.inner.borrow().uid()
+    }
+
+    #[getter]
+    fn v_base(&self) -> f64 {
+        self.inner.borrow().v_base
+    }
+
+    #[getter]
+    fn phases(&self) -> Vec<Phase> {
+        self.inner.borrow().terms.iter().map(|t| Phase::from(t.phase)).collect()
+    }
+
+    #[getter]
+    fn vs(&self) -> Vec<c64> {
+        self.inner.borrow().terms.iter().map(|t| t.v).collect()
+    }
+
+    #[setter]
+    fn set_vs(&self, vs: Vec<c64>) {
+        for (term, v) in self.inner.borrow_mut().terms.iter_mut().zip(vs) {
+            term.v = v;
+        }
+    }
+
+    fn __str__(&self) -> String {
+        format!("{:?}", &self.inner.borrow())
+    }
+}
+
+py_struct!(BusTermId, gr::BusTermId { pub b: String, pub p: Phase });
+
+#[gen_stub_pyclass]
+#[pyclass(module = "griphos", unsendable)]
+pub struct Element {
+    pub(crate) inner: Shared<gr::Element>,
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl Element {
+    #[getter]
+    fn uid(&self) -> String {
+        self.inner.borrow().uid()
+    }
+
+    #[getter]
+    fn element_type(&self) -> String {
+        self.inner.borrow().element_type().to_string()
+    }
+
+    #[getter]
+    pub fn n_terms(&self) -> usize {
+        self.inner.borrow().n_terms()
+    }
+
+    #[getter]
+    pub fn n_branches(&self) -> usize {
+        self.inner.borrow().n_branches()
+    }
+
+    #[getter]
+    pub fn branch_wiring(&self) -> Vec<(usize, usize)> {
+        self.inner.borrow().branch_wiring()
+    }
+
+    #[getter]
+    pub fn is_live(&self) -> bool {
+        self.inner.borrow().is_live()
+    }
+
+    #[getter]
+    pub fn y_const(&self) -> Vec<((usize, usize), c64)> {
+        self.inner.borrow().y_const()
+    }
+
+    #[getter]
+    pub fn i_const(&self) -> Vec<(usize, c64)> {
+        self.inner.borrow().i_const()
+    }
+
+    #[getter]
+    pub fn s_const(&self) -> Vec<(usize, c64)> {
+        self.inner.borrow().s_const()
+    }
+
+    #[getter]
+    pub fn vmag_const(&self) -> Vec<(usize, f64)> {
+        self.inner.borrow().vmag_const()
+    }
+
+    #[getter]
+    pub fn vang_const(&self) -> Vec<(usize, f64)> {
+        self.inner.borrow().vang_const()
+    }
+
+    #[getter]
+    pub fn copper_plate(&self) -> Vec<Vec<usize>> {
+        self.inner.borrow().copper_plate()
+    }
+
+    #[getter]
+    pub fn grounding(&self) -> Vec<usize> {
+        self.inner.borrow().grounding()
+    }
+}
+
+#[gen_stub_pyclass]
+#[pyclass(module = "griphos", unsendable)]
+pub struct Network {
+    pub(crate) inner: Shared<gr::Network>,
+}
+
+impl Network {
+    pub(crate) fn new_with_inner(inner: gr::Network) -> Network {
+        Network { inner: gr::Network::new_shared(inner) }
+    }
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl Network {
+    #[new]
+    pub fn new() -> Network {
+        Network::new_with_inner(gr::Network::new())
+    }
+
+    #[getter]
+    fn n_buses(&self) -> usize {
+        self.inner.borrow().n_buses()
+    }
+
+    #[getter]
+    fn bus_ids(&self) -> Vec<String> {
+        self.inner.borrow().buses().map(|b| b.borrow().uid()).collect()
+    }
+
+    fn bus(&self, uid: &str) -> Option<Bus> {
+        self.inner.borrow().bus(uid)
+            .map(|inner| Bus { inner: inner.clone() })
+    }
+
+    fn bus_i(&self, i: usize) -> Option<Bus> {
+        self.inner.borrow().bus_i(i)
+            .map(|inner| Bus { inner: inner.clone() })
+    }
+
+    #[getter]
+    fn n_elements(&self) -> usize {
+        self.inner.borrow().n_elements()
+    }
+}

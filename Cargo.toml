@@ -1,3 +1,6 @@
+[workspace]
+members = [".", "python"]
+
 [package]
 name = "griphos"
 version = "0.1.0"
@@ -8,29 +11,30 @@ exclude = ["src/griphos_extras/"]
 url = "https://raw.githubusercontent.com/bsgip/epyjson/refs/heads/main/src/epyjson/e-json-schema.json"
 
 [dependencies]
-indexmap = {version = "*"}
-inventory = {version = "*"}
-nalgebra = {version = "*", features = ["macros", "serde-serialize"]}
-num-traits = "*"
-serde = {version = "*", features = ["derive"]}
-serde_json = "*"
+indexmap = {version = "2.14"}
+inventory = {version = "0.3"}
+nalgebra = {version = "0.35", features = ["macros", "serde-serialize"]}
+num-traits = "0.2"
+parking_lot = "0.12"
+serde = {version = "1.0", features = ["derive"]}
+serde_json = "1.0"
 serde_yml = "0.0.12" # TODO: deprecated/unmaintaned.
 sprs = "0.11"
 petgraph = {version = "0.8", features = ["serde-1"]}
-klu_sys = "*"
-log = "0.4.29"
-env_logger = "0.11.9"
-rand = "0.10.0"
-itertools = "0.15.0"
-clap = { version = "4.6.1", features = ["derive"] }
-regress = "0.11.1"
-regex = "1.12.3"
+klu_sys = "0.2"
+log = "0.4"
+env_logger = "0.11"
+rand = "0.10"
+itertools = "0.15"
+clap = { version = "4.6", features = ["derive"] }
+regress = "0.11"
+regex = "1.12"
 
 [build-dependencies]
-serde_json = "*"
+serde_json = "1.0"
 toml = "1.1"
-typify = "0.7.0"
-ureq = "3.3.*"
+typify = "0.7"
+ureq = "3.3"
 
 [[bin]]
 name = "test_griphos"

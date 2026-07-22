@@ -57,6 +57,7 @@ fn main() {
 }
     if all_converged {
         for b in netw.buses() {
+            let b = b.borrow();
             for t in b.terms.iter() {
                 writeln!(outfile, "{}:{}, {}", b.uid, t.phase, t.v.norm()/b.v_base).unwrap();
             }

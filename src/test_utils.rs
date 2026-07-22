@@ -21,8 +21,8 @@ pub fn add_ground(netw: &mut Network, i: usize) {
 }
 
 pub fn add_y_const(netw: &mut Network, i: usize, j: usize, y: c64) {
-    let pi = netw.bus_i(i).unwrap().terms[0].phase;
-    let pj = netw.bus_i(j).unwrap().terms[0].phase;
+    let pi = netw.bus_i(i).unwrap().borrow().terms[0].phase;
+    let pj = netw.bus_i(j).unwrap().borrow().terms[0].phase;
     netw.add_element(
         (GenericElement {
             n_terms: 2,
@@ -33,8 +33,8 @@ pub fn add_y_const(netw: &mut Network, i: usize, j: usize, y: c64) {
 }
 
 pub fn add_s_const(netw: &mut Network, i: usize, j: usize, s: c64) {
-    let pi = netw.bus_i(i).unwrap().terms[0].phase;
-    let pj = netw.bus_i(j).unwrap().terms[0].phase;
+    let pi = netw.bus_i(i).unwrap().borrow().terms[0].phase;
+    let pj = netw.bus_i(j).unwrap().borrow().terms[0].phase;
     netw.add_element(
         (GenericElement {
             n_terms: 2,
@@ -45,8 +45,8 @@ pub fn add_s_const(netw: &mut Network, i: usize, j: usize, s: c64) {
 }
 
 pub fn add_v_const(netw: &mut Network, i: usize, j: usize, vmag: f64) {
-    let pi = netw.bus_i(i).unwrap().terms[0].phase;
-    let pj = netw.bus_i(j).unwrap().terms[0].phase;
+    let pi = netw.bus_i(i).unwrap().borrow().terms[0].phase;
+    let pj = netw.bus_i(j).unwrap().borrow().terms[0].phase;
     netw.add_element(
         (GenericElement {
             n_terms: 2,
@@ -58,10 +58,10 @@ pub fn add_v_const(netw: &mut Network, i: usize, j: usize, vmag: f64) {
 }
 
 pub fn add_tx(netw: &mut Network, ij_p: (usize, usize), ij_s: (usize, usize), ratio: c64) {
-    let pip = netw.bus_i(ij_p.0).unwrap().terms[0].phase;
-    let pjp = netw.bus_i(ij_p.1).unwrap().terms[0].phase;
-    let pis = netw.bus_i(ij_s.0).unwrap().terms[0].phase;
-    let pjs = netw.bus_i(ij_s.1).unwrap().terms[0].phase;
+    let pip = netw.bus_i(ij_p.0).unwrap().borrow().terms[0].phase;
+    let pjp = netw.bus_i(ij_p.1).unwrap().borrow().terms[0].phase;
+    let pis = netw.bus_i(ij_s.0).unwrap().borrow().terms[0].phase;
+    let pjs = netw.bus_i(ij_s.1).unwrap().borrow().terms[0].phase;
     netw.add_element(
         Transformer::new(
             &[WindingPair {p: (1, 0), s: (1, 0)}],

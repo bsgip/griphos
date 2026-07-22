@@ -102,7 +102,7 @@ impl_g_ser_disp!(BusTerm);
 impl_disp_from_wrap!(BusTerm);
 
 /// A bus is a collection of one or more nodes, each distinguished by a different phase.
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Bus {
     /// Unique ID
     pub uid: String,
@@ -262,7 +262,7 @@ impl_disp_from_wrap!(Element);
 impl_dbg_from_wrap!(Element);
 
 /// An element_spec collects together electrical connections of various types such as constant y or constant s.
-pub trait ElementSpec: Any {
+pub trait ElementSpec: Any + Send + Sync {
     fn element_generic(self, uid: &str, bus_term_ids: Vec<BusTermId>) -> Element where Self: Sized + 'static {
         Element::new(uid, bus_term_ids, self)
     }
@@ -369,11 +369,11 @@ impl dyn ElementSpec {
 pub struct Network {
     /// Master list of buses.
     #[serde(serialize_with="serialize_with_wrap")]
-    buses: IndexMap<String, Bus>,
+    buses: IndexMap<String, Shared<Bus>>,
 
     /// Master list of elements.
     #[serde(serialize_with="serialize_with_wrap")]
-    elements: IndexMap<String, Element>,
+    elements: IndexMap<String, Shared<Element>>,
 }
 
 impl Network {
@@ -384,45 +384,79 @@ impl Network {
         }
     }
 
-    pub fn n_buses(&self) -> usize {self.buses.len()}
-    pub fn buses(&self) -> impl Iterator<Item = &Bus> {self.buses.values()}
-    pub fn buses_mut(&mut self) -> impl Iterator<Item = &mut Bus> {self.buses.values_mut()}
-    pub fn bus(&self, bus_id: &str) -> Option<&Bus> {self.buses.get(&bus_id.to_string())}
-    pub fn bus_mut(&mut self, bus_id: &str) -> Option<&mut Bus> {self.buses.get_mut(&bus_id.to_string())}
-    pub fn bus_i(&self, bus_idx: usize) -> Option<&Bus> {self.buses.get_index(bus_idx).map(|(_, v)| v)}
-    pub fn bus_i_mut(&mut self, bus_idx: usize) -> Option<&mut Bus> {self.buses.get_index_mut(bus_idx).map(|(_, v)| v)}
-
-    pub fn n_elements(&self) -> usize {self.elements.len()}
-    pub fn elements(&self) -> impl Iterator<Item = &Element> {self.elements.values()}
-    pub fn elements_mut(&mut self) -> impl Iterator<Item = &mut Element> {self.elements.values_mut()}
-    pub fn element(&self, elem_id: &str) -> Option<&Element> {self.elements.get(&elem_id.to_string())}
-    pub fn element_mut(&mut self, elem_id: &str) -> Option<&mut Element> {self.elements.get_mut(&elem_id.to_string())}
-    pub fn elements_of_type<T: ElementSpec + 'static>(&self) -> impl Iterator<Item = (&Element, &T)> {
-        self.elements().filter_map(|elem| {elem.as_type::<T>().map(|t| (elem, t))})
+    pub fn n_buses(&self) -> usize {
+        self.buses.len()
+    }
+    pub fn buses(&self) -> impl Iterator<Item = &Shared<Bus>> {
+        self.buses.values()
+    }
+    pub fn foreach_bus<F>(&self, mut f: F) where F: FnMut(&Bus) {
+        for b in self.buses.values() {f(&b.borrow());}
+    }
+    pub fn foreach_bus_mut<F>(&self, mut f: F) where F: FnMut(&mut Bus) {
+        for b in self.buses.values() {f(&mut b.borrow_mut());}
+    }
+    pub fn bus(&self, bus_id: &str) -> Option<&Shared<Bus>> {
+        self.buses.get(&bus_id.to_string())
+    }
+    pub fn bus_i(&self, bus_idx: usize) -> Option<&Shared<Bus>> {
+        self.buses.get_index(bus_idx).map(|x| x.1)
     }
 
-    pub fn add_bus(&mut self, bus: Bus) -> Result<&mut Bus, String> {
+    pub fn n_elements(&self) -> usize {
+        self.elements.len()
+    }
+    pub fn elements(&self) -> impl Iterator<Item = &Shared<Element>> {
+        self.elements.values()
+    }
+    pub fn elements_filtered<T: ElementSpec + 'static>(&self) -> impl Iterator<Item = &Shared<Element>> + '_ {
+        self.elements().filter(|elem| elem.borrow().as_type::<T>().is_some())
+    }
+    pub fn foreach_element<F>(&self, mut f: F) where F: FnMut(&Element) {
+        for e in self.elements.values() {f(&e.borrow());}
+    }
+    pub fn foreach_element_mut<F>(&self, mut f: F) where F: FnMut(&mut Element) {
+        for e in self.elements.values() {f(&mut e.borrow_mut());}
+    }
+    pub fn foreach_element_of_type<F, T>(&self, mut f: F) where F: FnMut(&Element), T: ElementSpec {
+        for e in self.elements.values().filter(|e| e.borrow().as_type::<T>().is_some()) {
+            f(&e.borrow());
+        }
+    }
+    pub fn foreach_element_of_type_mut<F, T>(&self, mut f: F) where F: FnMut(&mut Element), T: ElementSpec {
+        for e in self.elements.values().filter(|e| e.borrow().as_type::<T>().is_some()) {
+            f(&mut e.borrow_mut());
+        }
+    }
+    pub fn element(&self, elem_id: &str) -> Option<&Shared<Element>> {
+        self.elements.get(&elem_id.to_string())
+    }
+    pub fn element_i(&self, elem_idx: usize) -> Option<&Shared<Element>> {
+        self.elements.get_index(elem_idx).map(|x| x.1)
+    }
+
+    pub fn add_bus(&mut self, bus: Bus) -> Result<Shared<Bus>, String> {
         let existing = self.buses.entry(bus.uid.to_string());
         match existing {
             Entry::Occupied(_entry) => {
                 Err(format!("Bus {} already exists", bus.uid))
             },
             Entry::Vacant(entry) => {
-                let bus = entry.insert(bus);
-                Ok(bus)
+                let bus = entry.insert(Bus::new_shared(bus));
+                Ok(bus.clone())
             }
         }
     }
 
-    pub fn add_element(&mut self, element: Element) -> Result<&mut Element, String> {
+    pub fn add_element(&mut self, element: Element) -> Result<Shared<Element>, String> {
         let existing = self.elements.entry(element.uid.to_string());
         match existing {
             Entry::Occupied(_entry) => {
                 Err(format!("Element {} already exists", element.uid))
             },
             Entry::Vacant(entry) => {
-                let element = entry.insert(element);
-                Ok(element)
+                let element = entry.insert(Element::new_shared(element));
+                Ok(element.clone())
             }
         }
     }
@@ -543,11 +577,11 @@ impl NetworkModel {
         nmod.make_branches(netw)?;
         nmod.make_structure_graph()?;
 
-        nmod.y_const = nmod.elem_sparse_mat(netw.elements(), |x| x.y_const()).unwrap();
-        nmod.i_const = nmod.elem_sparse_vec(netw.elements(), |x| x.i_const()).unwrap();
-        nmod.s_const = nmod.elem_sparse_vec(netw.elements(), |x| x.s_const()).unwrap();
-        nmod.vmag_const = nmod.elem_sparse_vec(netw.elements(), |x| x.vmag_const()).unwrap();
-        nmod.vang_const = nmod.elem_sparse_vec(netw.elements(), |x| x.vang_const()).unwrap();
+        nmod.y_const = nmod.elem_sparse_mat(netw, |x| x.y_const())?;
+        nmod.i_const = nmod.elem_sparse_vec(netw, |x| x.i_const())?;
+        nmod.s_const = nmod.elem_sparse_vec(netw, |x| x.s_const())?;
+        nmod.vmag_const = nmod.elem_sparse_vec(netw, |x| x.vmag_const())?;
+        nmod.vang_const = nmod.elem_sparse_vec(netw, |x| x.vang_const())?;
 
         Ok(nmod)
     }
@@ -670,6 +704,7 @@ impl NetworkModel {
         // node index.
         let mut bp_to_gnode = HashMap::<BusTermId, NodeIndex>::new();
         for (_, bus) in netw.buses.iter() {
+            let bus = bus.borrow();
             for t in bus.terms.iter() {
                 let bt = bt!(&bus.uid(), t.phase);
                 if !bp_to_gnode.contains_key(&bt) {
@@ -681,6 +716,7 @@ impl NetworkModel {
 
         // Insert copper plate connections as edges.
         for (_k, e) in netw.elements.iter() {
+            let e = e.borrow();
             let cps = e.copper_plate();
             for cp in cps {
                 let gnodei = bp_to_gnode[&e.bus_term_ids[cp[0]]];
@@ -695,6 +731,7 @@ impl NetworkModel {
         // effect that there is a single ground node.
         let mut first_ground: Option<NodeIndex> = None;
         for (_k, e) in netw.elements.iter() {
+            let e = e.borrow();
             let gnd = e.grounding();
             for i in gnd {
                 let gnodei = bp_to_gnode[&e.bus_term_ids[i]];
@@ -718,7 +755,7 @@ impl NetworkModel {
             for cc in ccs.iter() {
                 // Get v_base by looking at the first bus that has this node.
                 let BusTermId {b: b0, p: p0} = &copper.node_weight(cc[0]).unwrap();
-                let v_base = netw.buses[b0].v_base;
+                let v_base = netw.buses[b0].borrow().v_base;
                 let v_nom = v_base * v_phase(p0);
 
                 // Create a shared node for this set of copperplated nodes.
@@ -727,18 +764,18 @@ impl NetworkModel {
 
                 for &cc_i in cc.iter() {
                     // TODO: Think about what happens if two nodes with different v_base are copperplated.
-                    let bt = copper.node_weight(cc_i).unwrap().clone();
+                    let bt = copper.node_weight(cc_i).clone().unwrap();
                     assert!(bt.p == *p0, "Can't copperplate two bus/phase pairs with different phases");
                     node.bus_term_ids.push(bt.clone());
-                    bp_to_nd_idx.insert(bt, *nd_idx);
+                    bp_to_nd_idx.insert(bt.clone(), *nd_idx);
                 }
                 node.bus_term_ids.sort();
             }
 
             // Set grounding flag
             for (_eid, e) in netw.elements.iter() {
-                for i in e.grounding() {
-                    let nd = &mut nodes[bp_to_nd_idx[&e.bus_term_ids[i]]];
+                for i in e.borrow().grounding() {
+                    let nd = &mut nodes[bp_to_nd_idx[&e.borrow().bus_term_ids[i]]];
                     nd.1.is_grounded = true;
                     nd.1.v = Some(c!(0.0, 0.0));
                 }
@@ -748,8 +785,8 @@ impl NetworkModel {
             let mut seen = HashSet::<usize>::new();
             let mut i = 0usize;
             for b in netw.buses.values() {
-                for t in b.terms.iter() {
-                    let bt = bt!(b.uid, t.phase);
+                for t in b.borrow().terms.iter() {
+                    let bt = bt!(b.borrow().uid, t.phase);
                     let (nd_idx, _) = &mut nodes[bp_to_nd_idx[&bt]];
                     if seen.insert(*nd_idx) {
                         *nd_idx = i;
@@ -777,6 +814,7 @@ impl NetworkModel {
         netw: &Network,
     ) -> Result<(), String> {
         for (_, elem) in netw.elements.iter() {
+            let elem = elem.borrow();
             for (ibr, (i, j)) in elem.branch_wiring().iter().enumerate() {
                 let indi = self.bp_to_nd_idx[&elem.bus_term_ids[*i]];
                 let indj = self.bp_to_nd_idx[&elem.bus_term_ids[*j]];
@@ -801,32 +839,32 @@ impl NetworkModel {
         Ok(())
     }
 
-    fn elem_sparse_vec<'a, F, T>(&self, elements: impl Iterator<Item = &'a Element>, f: F) -> Result<CsVec<T>, String>
+    fn elem_sparse_vec<'a, F, T>(&self, netw: &Network, f: F) -> Result<CsVec<T>, String>
     where
         F: Fn(&Element) -> Vec<(usize, T)>,
         T: GSerDisp + Clone + Add<Output = T> + MulAssign<f64> + std::fmt::Debug
     {
         let n_branches = self.branches.len();
         let mut entries: Vec<(usize, T)> = Vec::with_capacity(n_branches);
-        for elem in elements {
+        netw.foreach_element(|elem| {
             for (i, x) in f(elem) {
                 let eb = eb!(&elem.uid, i);
                 let idx_br = self.eb_to_br_idx[&eb];
                 entries.push((idx_br, x));
             }
-        }
+        });
         entries.sort_by_key(|(idx, _)| *idx);
         let (indices, data): (Vec<_>, Vec<_>) = entries.into_iter().unzip();
         let vec: CsVec<T> = CsVec::new(n_branches, indices, data);
         Ok(vec)
     }
 
-    fn elem_sparse_mat<'a, F, T>(&self, elements: impl Iterator<Item = &'a Element>, f: F) -> Result<CsMat<T>, String>
+    fn elem_sparse_mat<'a, F, T>(&self, netw: &Network, f: F) -> Result<CsMat<T>, String>
     where F: Fn(&Element) -> Vec<((usize, usize), T)>, T: GSerDisp + Clone + Add<Output = T> + std::fmt::Debug
     {
         let n_branches = self.branches.len();
         let mut tri = TriMat::<T>::new((n_branches, n_branches));
-        for elem in elements {
+        netw.foreach_element(|elem| {
             for ((i, j), x) in f(elem) {
                 let eb_i = eb!(&elem.uid, i);
                 let eb_j = eb!(&elem.uid, j);
@@ -834,7 +872,7 @@ impl NetworkModel {
                 let idx_br_j = self.eb_to_br_idx[&eb_j];
                 tri.add_triplet(idx_br_i, idx_br_j, x);
             }
-        }
+        });
         Ok(tri.to_csc())
     }
 
@@ -893,13 +931,15 @@ impl NetworkModel {
         for (bt, nd_idx) in self.bp_to_nd_idx.iter() {
             if let Some(nd_v) = self.nodes[*nd_idx].v {
                 let bus = netw.buses.get_mut(&bt.b).unwrap();
-                bus.term_p_mut(bt.p).unwrap().v = nd_v;
+                bus.borrow_mut().term_p_mut(bt.p).unwrap().v = nd_v;
             }
         }
 
         for (eb, br_idx) in self.eb_to_br_idx.iter() {
             let br = &self.branches[*br_idx];
-            let elem_br = &mut netw.element_mut(&eb.e).unwrap().branches[eb.b];
+            let elem_shared = netw.element(&eb.e).unwrap();
+            let mut elem = elem_shared.borrow_mut();
+            let elem_br = &mut elem.branches[eb.b];
             if let Some(v) = br.v_01 {
                 elem_br.v = v;
             }
@@ -1005,9 +1045,9 @@ mod tests {
 
         let mods = NetworkModels::new(&netw);
         assert!(mods.master.nodes.len() == 2);
-        assert!(netw.buses["bus_0"].terms.len() == 1);
-        assert!(netw.buses["bus_1"].terms.len() == 1);
-        assert!(netw.buses["bus_2"].terms.len() == 1);
+        assert!(netw.buses["bus_0"].borrow().terms.len() == 1);
+        assert!(netw.buses["bus_1"].borrow().terms.len() == 1);
+        assert!(netw.buses["bus_2"].borrow().terms.len() == 1);
     }
 
     // TODO: May have taken the teeth out of some of these tests, review.

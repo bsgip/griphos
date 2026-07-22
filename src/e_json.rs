@@ -211,7 +211,7 @@ fn handle_node(
     let phs = convert_phases(phs, ejson_phase_map);
     let bus = netw.add_bus(Bus::new(id, phs, v_base * V_FACTOR))?;
     if let Some(v) = maybe_v {
-        bus.set_vs(convert_complexes(v.iter(), V_FACTOR).into_iter());
+        bus.borrow_mut().set_vs(convert_complexes(v.iter(), V_FACTOR).into_iter());
     }
     Ok(())
 }
@@ -232,7 +232,7 @@ fn handle_infeeder(
     let elem = netw.add_element(
         Generator::new(bts.len(), (1..bts.len()).map(|i| (0, i)).collect(), GeneratorControl::SL{vmag, vang: 0.0})
             .element(id, bts)).unwrap();
-    elem.is_in_service = in_service;
+    elem.borrow_mut().is_in_service = in_service;
     Ok(())
 }
 
@@ -252,7 +252,7 @@ fn handle_line_variant_0(
         warn!("Unimplemented b_chg for e-JSON line. Ignoring.");
     }
     let elem = netw.add_element(Line::new_from_sym_seq(z, z0, n_phase).unwrap().element(id, bts0.clone(), bts1.clone())).unwrap();
-    elem.is_in_service = in_service;
+    elem.borrow_mut().is_in_service = in_service;
     Ok(())
 }
 
@@ -390,7 +390,7 @@ fn handle_connector(
         }
     } else {SwitchState::NoSwitch};
     let elem = netw.add_element(Connector::new(bts.len(), switch_state).element(id, bts_flat)).unwrap();
-    elem.is_in_service = convert_in_service(in_service);
+    elem.borrow_mut().is_in_service = convert_in_service(in_service);
     Ok(())
 }
 
