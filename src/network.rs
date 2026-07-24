@@ -395,7 +395,7 @@ impl Network {
     pub fn n_elements(&self) -> usize {self.elements.len()}
     pub fn elements(&self) -> impl Iterator<Item = &Element> {self.elements.values()}
     pub fn elements_mut(&mut self) -> impl Iterator<Item = &mut Element> {self.elements.values_mut()}
-    pub fn element(&self, elem_id: &str) -> Option<&Bus> {self.buses.get(&elem_id.to_string())}
+    pub fn element(&self, elem_id: &str) -> Option<&Element> {self.elements.get(&elem_id.to_string())}
     pub fn element_mut(&mut self, elem_id: &str) -> Option<&mut Element> {self.elements.get_mut(&elem_id.to_string())}
     pub fn elements_of_type<T: ElementSpec + 'static>(&self) -> impl Iterator<Item = (&Element, &T)> {
         self.elements().filter_map(|elem| {elem.as_type::<T>().map(|t| (elem, t))})
