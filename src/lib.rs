@@ -12,7 +12,7 @@ pub mod line;
 pub mod load;
 pub mod transformer;
 pub mod solver_utils;
-pub mod network_solver_nodal;
+pub mod nodal_rect_solver;
 #[allow(unused)]
 mod e_json_generated_types;
 #[allow(unused)]

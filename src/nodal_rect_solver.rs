@@ -1008,7 +1008,7 @@ mod tests {
     use rand::RngExt;
     use rand::SeedableRng;
     use rand::rngs::StdRng;
-    use crate::network_solver_nodal::*;
+    use crate::nodal_rect_solver::*;
     use crate::test_networks::*;
     use crate::graph::graph_dot;
 
