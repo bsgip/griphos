@@ -764,7 +764,7 @@ impl NetworkModel {
 
                 for &cc_i in cc.iter() {
                     // TODO: Think about what happens if two nodes with different v_base are copperplated.
-                    let bt = copper.node_weight(cc_i).clone().unwrap();
+                    let bt = copper.node_weight(cc_i).unwrap();
                     assert!(bt.p == *p0, "Can't copperplate two bus/phase pairs with different phases");
                     node.bus_term_ids.push(bt.clone());
                     bp_to_nd_idx.insert(bt.clone(), *nd_idx);
@@ -839,7 +839,7 @@ impl NetworkModel {
         Ok(())
     }
 
-    fn elem_sparse_vec<'a, F, T>(&self, netw: &Network, f: F) -> Result<CsVec<T>, String>
+    fn elem_sparse_vec<F, T>(&self, netw: &Network, f: F) -> Result<CsVec<T>, String>
     where
         F: Fn(&Element) -> Vec<(usize, T)>,
         T: GSerDisp + Clone + Add<Output = T> + MulAssign<f64> + std::fmt::Debug
@@ -859,7 +859,7 @@ impl NetworkModel {
         Ok(vec)
     }
 
-    fn elem_sparse_mat<'a, F, T>(&self, netw: &Network, f: F) -> Result<CsMat<T>, String>
+    fn elem_sparse_mat<F, T>(&self, netw: &Network, f: F) -> Result<CsMat<T>, String>
     where F: Fn(&Element) -> Vec<((usize, usize), T)>, T: GSerDisp + Clone + Add<Output = T> + std::fmt::Debug
     {
         let n_branches = self.branches.len();
