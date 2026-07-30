@@ -1,5 +1,14 @@
-e-json-schema.json
+# Rust lockfile
+Cargo.lock
+
+# Build artifacts
+/target/
+/src/target/
+
+# Generated source (build.rs)
 src/e_json_generated_types.rs
+
+# Latex auxilliary files
 background/generalized_power_flow.aux
 background/generalized_power_flow.fdb_latexmk
 background/generalized_power_flow.fls
