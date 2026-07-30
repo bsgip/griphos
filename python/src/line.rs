@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use ::griphos as gr;
-use griphos::{c64, Element, Shared, SharedExt};
+use gr::{c64, Element, Shared, SharedExt};
 use crate::network::BusTermId;
 
 #[pyclass(module = "griphos", unsendable)]
