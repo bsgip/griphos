@@ -11,7 +11,7 @@ pub(crate) mod klu;
 pub mod line;
 pub mod load;
 pub mod transformer;
-pub mod solver_utils;
+pub mod network_solvers;
 pub mod nodal_rect_solver;
 #[allow(unused)]
 mod e_json_generated_types;
@@ -29,7 +29,7 @@ pub use graph::*;
 pub use grounding::*;
 pub use line::*;
 pub use load::*;
-pub use solver_utils::*;
+pub use network_solvers::*;
 pub use test_networks::*;
 pub use transformer::*;
 pub use e_json::*;
