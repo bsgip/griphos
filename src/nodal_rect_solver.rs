@@ -5,8 +5,7 @@ use log::{debug, info};
 use crate::foundation::*;
 use crate::klu::solve_klu;
 use crate::network::*;
-use crate::solver_utils::SolveStatus;
-use crate::SolverPlugin;
+use crate::{NetworkSolver, SolverPlugin, SolveStatus};
 
 fn name_maybe_idx(idx: Option<usize>) -> String {
     match idx {Some(i) => format!("{i}"), None => "*".to_string()}
@@ -998,7 +997,7 @@ impl NetworkSolver for NodalRectSolver {
 
 inventory::submit! {
     SolverPlugin {
-        name: "nodal",
+        name: "nodal_rect",
         constructor: |nmod| Box::new(NodalRectSolver::new(nmod)),
     }
 }

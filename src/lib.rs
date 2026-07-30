@@ -29,6 +29,7 @@ pub use graph::*;
 pub use grounding::*;
 pub use line::*;
 pub use load::*;
+pub use solver_utils::*;
 pub use test_networks::*;
 pub use transformer::*;
 pub use e_json::*;

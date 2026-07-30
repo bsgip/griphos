@@ -32,7 +32,7 @@ impl Line {
         let gr_line = gr::Line::new(n_phase, y_const);
         let gr_bps_0 = bus_phases_0.into_iter().map(|x| x.into_inner()).collect();
         let gr_bps_1 = bus_phases_1.into_iter().map(|x| x.into_inner()).collect();
-        let elem = Element::new_shared(gr_line.element(uid, gr_bps_0,  gr_bps_1));
+        let elem = gr_line.element(uid, gr_bps_0,  gr_bps_1).into_shared();
         Line { elem }
     }
 }

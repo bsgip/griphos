@@ -1,26 +1,8 @@
 use clap::Parser;
-use log::{debug, info};
 use griphos::*;
 
 fn run_network(mut netw: Network, solver_name: &str) {
-    let master = NetworkModel::new_master(&netw).unwrap();
-
-    debug!("Nodes:");
-    for (i, n) in master.nodes.iter().enumerate() {
-        let nm = n.name();
-        debug!("{i:10}: {nm}");
-    }
-
-    let islands = master.islands().unwrap();
-
-    info!("There are {} islands", islands.len());
-    for nmod in islands.into_iter() {
-        info!("Island:");
-        let mut solver = make_solver(solver_name, nmod);
-        solver.solve();
-        solver.propagate_to_network(&mut netw);
-    }
-
+    solve_network(&mut netw, solver_name, None).unwrap();
     netw.foreach_bus(|b| {println!("v {} = {:?}", b.uid, b.vs().map(|x| x.norm()).collect::<Vec<f64>>());});
 }
 

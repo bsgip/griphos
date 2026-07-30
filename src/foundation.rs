@@ -26,12 +26,12 @@ pub type Borrowed<'a, T> = Ref<'a, T>;
 pub type BorrowedMut<'a, T> = RefMut<'a, T>;
 
 pub trait SharedExt<T> {
-    fn new_shared(x: T) -> Shared<T>;
+    fn into_shared(self) -> Shared<T>;
 }
 
 impl<T> SharedExt<T> for T {
-    fn new_shared(x: T) -> Shared<T> {
-        Rc::new(RefCell::new(x))
+    fn into_shared(self) -> Shared<T> {
+        Rc::new(RefCell::new(self))
     }
 }
 

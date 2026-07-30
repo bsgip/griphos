@@ -48,7 +48,7 @@ impl Bus {
     #[new]
     fn new(uid: &str, phases: Vec<Phase>, v_base: f64) -> Bus {
         Bus {
-            inner: gr::Bus::new_shared(gr::Bus::new(uid, phases.into_iter().map(|x| x.into()).collect(), v_base))
+            inner: gr::Bus::new(uid, phases.into_iter().map(|x| x.into()).collect(), v_base).into_shared()
         }
     }
 
@@ -169,7 +169,7 @@ pub struct Network {
 
 impl Network {
     pub(crate) fn new_with_inner(inner: gr::Network) -> Network {
-        Network { inner: gr::Network::new_shared(inner) }
+        Network { inner: inner.into_shared() }
     }
 }
 

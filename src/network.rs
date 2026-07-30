@@ -18,7 +18,6 @@ use serde::Serialize;
 
 use crate::foundation::*;
 use crate::graph::*;
-use crate::solver_utils::SolveStatus;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum SwitchState {
@@ -442,7 +441,7 @@ impl Network {
                 Err(format!("Bus {} already exists", bus.uid))
             },
             Entry::Vacant(entry) => {
-                let bus = entry.insert(Bus::new_shared(bus));
+                let bus = entry.insert(bus.into_shared());
                 Ok(bus.clone())
             }
         }
@@ -455,7 +454,7 @@ impl Network {
                 Err(format!("Element {} already exists", element.uid))
             },
             Entry::Vacant(entry) => {
-                let element = entry.insert(Element::new_shared(element));
+                let element = entry.insert(element.into_shared());
                 Ok(element.clone())
             }
         }
@@ -676,7 +675,7 @@ impl NetworkModel {
             let vmag_const = map_spvec(&self.vmag_const, n_branches, &br_map);
             let vang_const = map_spvec(&self.vang_const, n_branches, &br_map);
 
-            island_models.push(NetworkModel{
+            island_models.push(NetworkModel {
                 nodes: island_nodes,
                 branches: island_branches,
                 bp_to_nd_idx,
@@ -969,27 +968,6 @@ impl NetworkModels {
             island.propagate_to_network(netw)
         }
     }
-}
-
-pub trait NetworkSolver {
-    fn solve(&mut self) -> SolveStatus;
-    fn propagate_to_network(&self, netw: &mut Network);
-}
-
-pub struct SolverPlugin {
-    pub name: &'static str,
-    pub constructor: fn(NetworkModel) -> Box<dyn NetworkSolver>,
-}
-
-inventory::collect!(SolverPlugin);
-
-pub fn make_solver(name: &str, nmod: NetworkModel) -> Box<dyn NetworkSolver> {
-    for entry in inventory::iter::<SolverPlugin> {
-        if entry.name == name {
-            return (entry.constructor)(nmod);
-        }
-    }
-    panic!("Unknown solver: {name}");
 }
 
 fn v_phase(p: &Phase) -> c64 {
