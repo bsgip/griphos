@@ -187,8 +187,8 @@ impl Network {
     }
 
     #[getter]
-    fn bus_ids(&self) -> Vec<String> {
-        self.inner.borrow().buses().map(|b| b.borrow().uid()).collect()
+    fn buses(&self) -> Vec<Bus> {
+        self.inner.borrow().buses().map(|b| Bus {inner: b.clone()}).collect()
     }
 
     fn bus(&self, uid: &str) -> Option<Bus> {
@@ -204,5 +204,20 @@ impl Network {
     #[getter]
     fn n_elements(&self) -> usize {
         self.inner.borrow().n_elements()
+    }
+
+    #[getter]
+    fn elements(&self) -> Vec<Element> {
+        self.inner.borrow().elements().map(|e| Element {inner: e.clone()}).collect()
+    }
+
+    fn element(&self, uid: &str) -> Option<Element> {
+        self.inner.borrow().element(uid)
+            .map(|inner| Element { inner: inner.clone() })
+    }
+
+    fn element_i(&self, i: usize) -> Option<Element> {
+        self.inner.borrow().element_i(i)
+            .map(|inner| Element { inner: inner.clone() })
     }
 }
