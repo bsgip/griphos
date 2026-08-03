@@ -25,8 +25,16 @@ pub enum SwitchState {
     Closed,
     Open,
 }
+
 impl_g_ser_disp!(SwitchState);
-impl_disp_from_wrap!(SwitchState);
+
+impl fmt::Display for SwitchState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Remove quotation marks
+        let s = serde_json::to_string(self).map_err(|_| fmt::Error)?;
+        write!(f, "{}", &s[1..s.len()-1])
+    }
+}
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum Phase {
@@ -40,6 +48,7 @@ impl_g_ser_disp!(Phase);
 
 impl fmt::Display for Phase {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Remove quotation marks
         let s = serde_json::to_string(self).map_err(|_| fmt::Error)?;
         write!(f, "{}", &s[1..s.len()-1])
     }
