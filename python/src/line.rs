@@ -1,39 +1,44 @@
 use pyo3::prelude::*;
 use ::griphos as gr;
-use gr::{c64, Element, Shared, SharedExt};
-use crate::network::BusTermId;
+use gr::{c64, Shared, SharedExt};
+use crate::element_subclass;
+use crate::network::{BusTermId, Element};
 
-#[pyclass(module = "griphos", unsendable)]
-pub struct Line {
-    pub(crate) elem: Shared<Element>,
-}
+element_subclass!(Line, gr::Line);
 
 impl Line {
-    fn with_spec<R>(&self, f: impl FnOnce(&gr::Line) -> R) -> R {
-        let elem = self.elem.borrow();
-        let spec = elem.as_type::<gr::Line>().expect("type mismatch");
-        f(spec)
-    }
-
-    fn with_spec_mut<R>(&self, f: impl FnOnce(&mut gr::Line) -> R) -> R {
-        let mut elem = self.elem.borrow_mut();
-        let spec = elem.as_type_mut::<gr::Line>().expect("type mismatch");
-        f(spec)
+    // Plain-Rust constructor: no PyO3 involved, freely testable.
+    pub fn new_raw(
+        uid: &str,
+        bus_phases_0: Vec<BusTermId>,
+        bus_phases_1: Vec<BusTermId>,
+        y_const: Vec<((usize, usize), c64)>,
+    ) -> Self {
+        let n_phase = bus_phases_0.len() + bus_phases_1.len();
+        let gr_line = gr::Line::new(n_phase, y_const);
+        let gr_bps_0 = bus_phases_0.into_iter().map(|x| x.into_inner()).collect();
+        let gr_bps_1 = bus_phases_1.into_iter().map(|x| x.into_inner()).collect();
+        let elem = gr_line.element(uid, gr_bps_0, gr_bps_1).into_shared();
+        Line::from_elem(elem)
     }
 }
 
 #[pymethods]
 impl Line {
+
     #[new]
     pub fn new(
-        uid: &str, bus_phases_0: Vec<BusTermId>, bus_phases_1: Vec<BusTermId>, y_const: Vec<((usize, usize), c64)>
-    ) -> Line {
-        let n_phase = bus_phases_0.len() + bus_phases_1.len();
-        let gr_line = gr::Line::new(n_phase, y_const);
-        let gr_bps_0 = bus_phases_0.into_iter().map(|x| x.into_inner()).collect();
-        let gr_bps_1 = bus_phases_1.into_iter().map(|x| x.into_inner()).collect();
-        let elem = gr_line.element(uid, gr_bps_0,  gr_bps_1).into_shared();
-        Line { elem }
+        uid: &str,
+        bus_phases_0: Vec<BusTermId>,
+        bus_phases_1: Vec<BusTermId>,
+        y_const: Vec<((usize, usize), c64)>,
+    ) -> PyClassInitializer<Self> {
+        Self::new_raw(uid, bus_phases_0, bus_phases_1, y_const).into_initializer()
+    }
+
+    #[getter]
+    fn n_phase(self_: PyRef<'_, Self>) -> usize {
+        Self::with_spec(&self_, |s| s.n_phase)
     }
 }
 
@@ -48,8 +53,8 @@ mod tests {
         let bts0 = vec![BusTermId {b: "bus_1".to_string(), p: Phase::A}];
         let bts1 = vec![BusTermId {b: "bus_2".to_string(), p: Phase::A}];
         let y_const = vec![((0, 0), c!(1.0, 0.0))];
-        let line = Line::new("new_line", bts0, bts1, y_const.clone());
-        assert!(line.elem.borrow().uid == "new_line");
+        let line = Line::new_raw("new_line", bts0, bts1, y_const.clone());
+        assert!(line.uid() == "new_line");
         line.with_spec(|x| assert!(x.y_const == line.elem.borrow().y_const()));
         assert!(line.elem.borrow().i_const() == vec![]);
         assert!(line.elem.borrow().s_const() == vec![]);

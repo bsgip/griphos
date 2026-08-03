@@ -83,3 +83,41 @@ macro_rules! py_enum {
         }
     };
 }
+
+#[macro_export]
+macro_rules! element_subclass {
+    ($name:ident, $spec:ty) => {
+        #[pyclass(extends=Element, unsendable)]
+        pub struct $name {
+            // Convenience reference to the parent elem for the purpose of rust code.
+            elem: Shared<gr::Element>,
+        }
+
+        impl $name {
+            fn from_elem(elem: Shared<gr::Element>) -> Self {
+                Self { elem }
+            }
+
+            fn into_initializer(self) -> PyClassInitializer<Self> {
+                PyClassInitializer::from(Element { inner: self.elem.clone() })
+                    .add_subclass(self)
+            }
+
+            fn with_spec<R>(&self, f: impl FnOnce(&$spec) -> R) -> R {
+                let elem = self.elem.borrow();
+                let spec = elem.as_type::<$spec>().expect("type mismatch");
+                f(spec)
+            }
+
+            fn with_spec_mut<R>(&self, f: impl FnOnce(&mut $spec) -> R) -> R {
+                let mut elem = self.elem.borrow_mut();
+                let spec = elem.as_type_mut::<$spec>().expect("type mismatch");
+                f(spec)
+            }
+
+            fn uid(&self) -> String {
+                self.elem.borrow().uid.clone()
+            }
+        }
+    };
+}

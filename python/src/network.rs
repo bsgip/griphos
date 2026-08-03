@@ -7,6 +7,15 @@ use crate::py_struct;
 #[gen_stub_pyclass_enum]
 #[pyclass(module = "griphos", eq, eq_int, from_py_object)]
 #[derive(Clone, PartialEq)]
+pub enum SwitchState {
+    NoSwitch,
+    Closed,
+    Open,
+}
+
+#[gen_stub_pyclass_enum]
+#[pyclass(module = "griphos", eq, eq_int, from_py_object)]
+#[derive(Clone, PartialEq)]
 pub enum Phase {
     A,
     B,
@@ -35,6 +44,10 @@ impl From<Phase> for gr::Phase {
         }
     }
 }
+
+py_struct!(BusTermId, gr::BusTermId { pub b: String, pub p: Phase });
+
+py_struct!(ElemBranchId, gr::ElemBranchId { pub e: String, pub b: usize });
 
 #[gen_stub_pyclass]
 #[pyclass(module = "griphos", unsendable)]
@@ -84,10 +97,8 @@ impl Bus {
     }
 }
 
-py_struct!(BusTermId, gr::BusTermId { pub b: String, pub p: Phase });
-
 #[gen_stub_pyclass]
-#[pyclass(module = "griphos", unsendable)]
+#[pyclass(module = "griphos", subclass, unsendable)]
 pub struct Element {
     pub(crate) inner: Shared<gr::Element>,
 }

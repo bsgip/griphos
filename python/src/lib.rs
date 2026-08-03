@@ -1,27 +1,26 @@
 use pyo3::prelude::*;
+use pyo3_stub_gen::define_stub_info_gatherer;
 
-mod adaptors;
 mod e_json;
 mod line;
 mod network;
 mod network_solvers;
+mod plumbing;
+
+define_stub_info_gatherer!(stub_info);
 
 #[pymodule]
 mod griphos {
-    #[pymodule_export] use super::network::Bus;
-    #[pymodule_export] use super::network::Network;
-    #[pymodule_export] use super::network::Phase;
-    #[pymodule_export] use super::e_json::parse_ejson;
-    #[pymodule_export] use super::e_json::ejson_phase_map_abcng;
-    #[pymodule_export] use super::e_json::ejson_phase_map_rwbng;
-    #[pymodule_export] use super::network_solvers::SolveStatus;
-    #[pymodule_export] use super::network_solvers::SolveNetworkResult;
-    #[pymodule_export] use super::network_solvers::Converged;
-    #[pymodule_export] use super::network_solvers::NotConverged;
-    #[pymodule_export] use super::network_solvers::LinearSolverFailed;
-    #[pymodule_export] use super::network_solvers::NetworkSolver;
-    #[pymodule_export] use super::network_solvers::solve_network;
+    #[pymodule_export] use super::network::{
+        SwitchState, Phase, Bus, Element, Network
+    };
+    #[pymodule_export] use super::e_json::{
+        parse_ejson, ejson_phase_map_abcng, ejson_phase_map_rwbng
+    };
+    #[pymodule_export] use super::network_solvers::{
+        SolveStatus, SolveNetworkResult, Converged, NotConverged, LinearSolverFailed, NetworkSolver, solve_network,
+    };
+    #[pymodule_export] use super::line::{
+        Line,
+    };
 }
-
-use pyo3_stub_gen::define_stub_info_gatherer;
-define_stub_info_gatherer!(stub_info);

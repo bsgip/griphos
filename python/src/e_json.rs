@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
 
-use crate::adaptors::PyFileReader;
 use crate::network::{Network, Phase};
+use crate::plumbing::PyFileReader;
 
 /// Parse an e-JSON file like object into a Network.
 #[pyfunction]
