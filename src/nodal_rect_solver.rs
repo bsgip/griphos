@@ -43,7 +43,7 @@ fn name_eqn_kcl_im(idx: Option<usize>) -> String {
     format!("kcli_{}", name_maybe_idx(idx))
 }
 
-fn name_eqn_vmag_c_nd(idx: Option<usize>) -> String {
+fn name_eqn_vm_c_nd(idx: Option<usize>) -> String {
     format!("vmcn_{}", name_maybe_idx(idx))
 }
 
@@ -55,7 +55,7 @@ fn name_eqn_vi_c_br(idx: Option<usize>) -> String {
     format!("vicb_{}", name_maybe_idx(idx))
 }
 
-fn name_eqn_vmag_c_br(idx: Option<usize>) -> String {
+fn name_eqn_vm_c_br(idx: Option<usize>) -> String {
     format!("vmcb_{}", name_maybe_idx(idx))
 }
 
@@ -148,10 +148,10 @@ impl VarInfo {
 pub enum EqnKind {
     KclRe {nd_idx: usize},
     KclIm {nd_idx: usize},
-    VMagConstNd {nd_idx: usize, v_mag: f64},
-    VReConstBr {br_idx: usize, v_re: f64},
-    VImConstBr {br_idx: usize, v_im: f64},
-    VMagConstBr {br_idx: usize, v_mag: f64},
+    VmConstNd {nd_idx: usize, vm: f64},
+    VrConstBr {br_idx: usize, vr: f64},
+    ViConstBr {br_idx: usize, vi: f64},
+    VmConstBr {br_idx: usize, vm: f64},
 }
 
 impl EqnKind {
@@ -159,10 +159,10 @@ impl EqnKind {
         match self {
             EqnKind::KclRe {nd_idx} => {name_eqn_kcl_re(Some(*nd_idx))},
             EqnKind::KclIm {nd_idx} => {name_eqn_kcl_im(Some(*nd_idx))},
-            EqnKind::VMagConstNd {nd_idx, ..} => {name_eqn_vmag_c_nd(Some(*nd_idx))},
-            EqnKind::VReConstBr {br_idx, ..} => {name_eqn_vr_c_br(Some(*br_idx))},
-            EqnKind::VImConstBr {br_idx, ..} => {name_eqn_vi_c_br(Some(*br_idx))},
-            EqnKind::VMagConstBr {br_idx, ..} => {name_eqn_vmag_c_br(Some(*br_idx))},
+            EqnKind::VmConstNd {nd_idx, ..} => {name_eqn_vm_c_nd(Some(*nd_idx))},
+            EqnKind::VrConstBr {br_idx, ..} => {name_eqn_vr_c_br(Some(*br_idx))},
+            EqnKind::ViConstBr {br_idx, ..} => {name_eqn_vi_c_br(Some(*br_idx))},
+            EqnKind::VmConstBr {br_idx, ..} => {name_eqn_vm_c_br(Some(*br_idx))},
         }
     }
 }
@@ -294,11 +294,11 @@ impl NodalRectSolver {
                 match ngi {
                     [Some(vmc), Some(vac)] => {
                         // Slack node
-                        let c64 {re: vmcr, im: vmci} = p!(*vmc, *vac);
+                        let c64 {re: vrc, im: vic} = p!(*vmc, *vac);
                         self.node_infos.push(
                             NodeInfo {
-                                vr: Vc::Const {x: vmcr},
-                                vi: Vc::Const {x: vmci},
+                                vr: Vc::Const {x: vrc},
+                                vi: Vc::Const {x: vic},
                                 ieqn_kcl_re: None,
                                 ieqn_kcl_im: None,
                             }
@@ -328,7 +328,7 @@ impl NodalRectSolver {
 
                         self.eqn_kinds.push(EqnKind::KclRe {nd_idx: i_nd});
                         self.eqn_kinds.push(EqnKind::KclIm {nd_idx: i_nd});
-                        self.eqn_kinds.push(EqnKind::VMagConstNd {nd_idx: i_nd, v_mag: *vmc});
+                        self.eqn_kinds.push(EqnKind::VmConstNd {nd_idx: i_nd, vm: *vmc});
 
                         idim += 3;
                     },
@@ -360,7 +360,7 @@ impl NodalRectSolver {
             match bgi {
                 [Some(vmc), Some(vac)] => {
                     // Slack branch
-                    let c64 {re: v_re, im: v_im} = p!(*vmc, *vac);
+                    let c64 {re: vr, im: vi} = p!(*vmc, *vac);
                     self.branch_gen_infos.insert(
                         m_br,
                         BranchGenInfo {
@@ -375,8 +375,8 @@ impl NodalRectSolver {
                     self.var_infos.push(VarInfo {kind: VarKind::PgBr {br_idx: m_br}, x0: 0.0});
                     self.var_infos.push(VarInfo {kind: VarKind::QgBr {br_idx: m_br}, x0: 0.0});
 
-                    self.eqn_kinds.push(EqnKind::VReConstBr {br_idx: m_br, v_re});
-                    self.eqn_kinds.push(EqnKind::VImConstBr {br_idx: m_br, v_im});
+                    self.eqn_kinds.push(EqnKind::VrConstBr {br_idx: m_br, vr});
+                    self.eqn_kinds.push(EqnKind::ViConstBr {br_idx: m_br, vi});
 
                     idim += 2;
                 },
@@ -393,7 +393,7 @@ impl NodalRectSolver {
 
                     self.var_infos.push(VarInfo {kind: VarKind::QgBr {br_idx: m_br}, x0: 0.0});
 
-                    self.eqn_kinds.push(EqnKind::VMagConstBr {br_idx: m_br, v_mag: *vmc});
+                    self.eqn_kinds.push(EqnKind::VmConstBr {br_idx: m_br, vm: *vmc});
 
                     idim += 1;
                 },
@@ -658,8 +658,8 @@ impl NodalRectSolver {
                 }
             }
 
-            if let Some(ieqn) = ngi_i.ieqn_vm_c && let EqnKind::VMagConstNd{nd_idx: _, v_mag} = self.eqn_kinds[ieqn] {
-                self.rhs[ieqn] = vr_i.powi(2) + vi_i.powi(2) - v_mag.powi(2);
+            if let Some(ieqn) = ngi_i.ieqn_vm_c && let EqnKind::VmConstNd{nd_idx: _, vm} = self.eqn_kinds[ieqn] {
+                self.rhs[ieqn] = vr_i.powi(2) + vi_i.powi(2) - vm.powi(2);
 
                 if let Vc::Var {i: ivar} = nd_info_i.vr {
                     jac_target.add(&mut self.jac_csc, ieqn, ivar, 2.0 * vr_i);
@@ -746,8 +746,8 @@ impl NodalRectSolver {
                 }
             }
 
-            if let Some(ieqn) = bgi_m.ieqn_vr_c && let EqnKind::VReConstBr{br_idx: _, v_re} = self.eqn_kinds[ieqn] {
-                self.rhs[ieqn] = vr_m - v_re;
+            if let Some(ieqn) = bgi_m.ieqn_vr_c && let EqnKind::VrConstBr{br_idx: _, vr} = self.eqn_kinds[ieqn] {
+                self.rhs[ieqn] = vr_m - vr;
 
                 if let Vc::Var {i: ivar} = nd_info_im0.vr {
                     jac_target.add(&mut self.jac_csc, ieqn, ivar, 1.0);
@@ -758,8 +758,8 @@ impl NodalRectSolver {
                 }
             }
 
-            if let Some(ieqn) = bgi_m.ieqn_vi_c && let EqnKind::VImConstBr{br_idx: _, v_im} = self.eqn_kinds[ieqn] {
-                self.rhs[ieqn] = vi_m - v_im;
+            if let Some(ieqn) = bgi_m.ieqn_vi_c && let EqnKind::ViConstBr{br_idx: _, vi} = self.eqn_kinds[ieqn] {
+                self.rhs[ieqn] = vi_m - vi;
 
                 if let Vc::Var {i: ivar} = nd_info_im0.vi {
                     jac_target.add(&mut self.jac_csc, ieqn, ivar, 1.0);
@@ -770,8 +770,8 @@ impl NodalRectSolver {
                 }
             }
 
-            if let Some(ieqn) = bgi_m.ieqn_vm_c && let EqnKind::VMagConstBr{br_idx: _, v_mag} = self.eqn_kinds[ieqn] {
-                self.rhs[ieqn] = vm_m_2 - v_mag.powi(2);
+            if let Some(ieqn) = bgi_m.ieqn_vm_c && let EqnKind::VmConstBr{br_idx: _, vm} = self.eqn_kinds[ieqn] {
+                self.rhs[ieqn] = vm_m_2 - vm.powi(2);
 
                 if let Vc::Var {i: ivar} = nd_info_im0.vr {
                     jac_target.add(&mut self.jac_csc, ieqn, ivar, 2.0 * vr_m);
