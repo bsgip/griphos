@@ -42,14 +42,14 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
     // existing detection
-    let dir_path = Path::new("src/griphos_extras");
+    let dir_path = Path::new("griphos_extras/src");
     if dir_path.is_dir() {
         println!("cargo:rustc-cfg=has_griphos_extras");
-        println!("cargo:rerun-if-changed=src/griphos_extras");
+        println!("cargo:rerun-if-changed=griphos_extras/src");
     }
 
-    println!("cargo:rerun-if-changed=src/griphos_extras");
-    let mod_path = Path::new("src/griphos_extras/mod.rs");
+    println!("cargo:rerun-if-changed=griphos_extras/src");
+    let mod_path = Path::new("griphos_extras/src/mod.rs");
     if mod_path.is_file() {
         println!("cargo:rustc-cfg=has_griphos_extras");
     }

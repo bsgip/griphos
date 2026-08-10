@@ -5,7 +5,7 @@ members = [".", "python"]
 name = "griphos"
 version = "0.1.0"
 edition = "2024"
-exclude = ["src/griphos_extras/"]
+exclude = ["griphos_extras/src/"]
 
 [package.metadata.e_json_schema]
 url = "https://raw.githubusercontent.com/bsgip/epyjson/refs/heads/main/src/epyjson/e-json-schema.json"

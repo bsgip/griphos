@@ -35,7 +35,7 @@ pub use transformer::*;
 pub use e_json::*;
 
 #[cfg(has_griphos_extras)]
-#[path = "griphos_extras/mod.rs"]
+#[path = "../griphos_extras/src/mod.rs"]
 pub mod griphos_extras;
 
 #[cfg(has_griphos_extras)]
