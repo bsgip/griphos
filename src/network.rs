@@ -516,6 +516,9 @@ pub struct Branch {
     /// Node 1 index
     pub nd_1_idx: usize,
 
+    /// Nominal voltage, based on the nodes.
+    pub v_nom: c64,
+
     /// Voltage v_01 = v0 - v1
     pub v_01: Option<c64>,
 
@@ -524,8 +527,8 @@ pub struct Branch {
 }
 
 impl Branch {
-    fn new(nd_0_idx: usize, nd_1_idx: usize) -> Branch {
-        Branch {nd_0_idx, nd_1_idx, v_01: None, i_01: None}
+    fn new(nd_0_idx: usize, nd_1_idx: usize, v_nom: c64) -> Branch {
+        Branch {nd_0_idx, nd_1_idx, v_nom, v_01: None, i_01: None}
     }
 }
 
@@ -826,8 +829,9 @@ impl NetworkModel {
             for (ibr, (i, j)) in elem.branch_wiring().iter().enumerate() {
                 let indi = self.bp_to_nd_idx[&elem.bus_term_ids[*i]];
                 let indj = self.bp_to_nd_idx[&elem.bus_term_ids[*j]];
+                let v_nom = self.nodes[indi].v_nom - self.nodes[indj].v_nom;
                 self.eb_to_br_idx.insert(eb!(elem.uid, ibr), self.branches.len());
-                self.branches.push(Branch::new(indi, indj));
+                self.branches.push(Branch::new(indi, indj, v_nom));
             }
         }
         Ok(())
