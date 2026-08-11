@@ -974,13 +974,6 @@ impl NetworkModels {
         let islands = master.islands().unwrap();
         NetworkModels {master, islands}
     }
-
-    pub fn popagate(&mut self, netw: &mut Network) {
-        for island in self.islands.iter_mut() {
-            island.propagate_branch_voltages_to_nodes();
-            island.propagate_to_network(netw)
-        }
-    }
 }
 
 fn v_phase(p: &Phase) -> c64 {
