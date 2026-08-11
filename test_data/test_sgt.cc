@@ -61,7 +61,7 @@ int main(int argc, char** argv)
         }
     }
 
-    Network netw(1.0, Sgt::VAWOhmUnits);
+    Network netw(1.0, Sgt::kVkAMWOhmUnits);
     parseEJsonFile(netw, inputName);
 
     if (solver == "nr_rect")
