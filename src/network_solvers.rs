@@ -28,10 +28,12 @@ where
     IndStorage:  std::ops::Deref<Target = [I]>,
     DataStorage: std::ops::Deref<Target = [T]>,
 {
-    if let Some(mat_name) = mat_name {
-        log(format_args!("\n{}", mat_name));
-    }
-    log(format_args!("\n{}", PrettyPrint(mat, (row_names, col_names))));
+    let mat_name = if let Some(mat_name) = mat_name {
+        format!("{mat_name}:\n")
+    } else {
+        "\n".to_string()
+    };
+    log(format_args!("{mat_name}{}", PrettyPrint(mat, (row_names, col_names))));
 }
 
 #[allow(unused)]
