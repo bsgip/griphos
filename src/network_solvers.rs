@@ -14,10 +14,13 @@ pub enum SolveStatus {
 }
 
 #[allow(unused)]
-pub(crate) fn debug_print_csmat<T, I, IptrStorage, IndStorage, DataStorage>(
+pub(crate) fn log_csmat<T, I, IptrStorage, IndStorage, DataStorage>(
     mat: &CsMatBase<T, I, IptrStorage, IndStorage, DataStorage>,
+    mat_name: Option<&str>,
     row_names: Option<&[String]>,
-    col_names: Option<&[String]>)
+    col_names: Option<&[String]>,
+    log: impl Fn(std::fmt::Arguments),
+)
 where
     T: std::fmt::Display + std::fmt::Debug + Copy,
     I: sprs::SpIndex,
@@ -25,26 +28,52 @@ where
     IndStorage:  std::ops::Deref<Target = [I]>,
     DataStorage: std::ops::Deref<Target = [T]>,
 {
-    debug!("\n{}", PrettyPrint(mat, (row_names, col_names)));
+    if let Some(mat_name) = mat_name {
+        log(format_args!("\n{}", mat_name));
+    }
+    log(format_args!("\n{}", PrettyPrint(mat, (row_names, col_names))));
 }
 
 #[allow(unused)]
-pub(crate) fn info_print_csmat<T, IptrStorage, IndStorage, DataStorage>(
-    mat: &CsMatBase<T, usize, IptrStorage, IndStorage, DataStorage>,
-    row_names: Option<&[String]>, col_names: Option<&[String]>)
+pub(crate) fn debug_csmat<T, I, IptrStorage, IndStorage, DataStorage>(
+    mat: &CsMatBase<T, I, IptrStorage, IndStorage, DataStorage>,
+    mat_name: Option<&str>,
+    row_names: Option<&[String]>,
+    col_names: Option<&[String]>,
+)
 where
     T: std::fmt::Display + std::fmt::Debug + Copy,
-    IptrStorage: std::ops::Deref<Target = [usize]>,
-    IndStorage:  std::ops::Deref<Target = [usize]>,
+    I: sprs::SpIndex,
+    IptrStorage: std::ops::Deref<Target = [I]>,
+    IndStorage:  std::ops::Deref<Target = [I]>,
     DataStorage: std::ops::Deref<Target = [T]>,
 {
-    info!("\n{}", PrettyPrint(mat, (row_names, col_names)));
+        log_csmat(mat, mat_name, row_names, col_names, |args| debug!("{}", args));
 }
 
 #[allow(unused)]
-pub(crate) fn debug_print_csvec<T, IStorage, DStorage>(
-    vec: &CsVecBase<IStorage, DStorage, T>,
+pub(crate) fn info_csmat<T, I, IptrStorage, IndStorage, DataStorage>(
+    mat: &CsMatBase<T, I, IptrStorage, IndStorage, DataStorage>,
+    mat_name: Option<&str>,
     row_names: Option<&[String]>,
+    col_names: Option<&[String]>,
+)
+where
+    T: std::fmt::Display + std::fmt::Debug + Copy,
+    I: sprs::SpIndex,
+    IptrStorage: std::ops::Deref<Target = [I]>,
+    IndStorage:  std::ops::Deref<Target = [I]>,
+    DataStorage: std::ops::Deref<Target = [T]>,
+{
+        log_csmat(mat, mat_name, row_names, col_names, |args| info!("{}", args));
+}
+
+#[allow(unused)]
+pub(crate) fn log_csvec<T, IStorage, DStorage>(
+    vec: &CsVecBase<IStorage, DStorage, T>,
+    vec_name: Option<&str>,
+    row_names: Option<&[String]>,
+    log: impl Fn(std::fmt::Arguments),
 ) where
     T: std::fmt::Display + std::fmt::Debug + Copy,
     IStorage: Deref<Target = [usize]>,
@@ -56,25 +85,33 @@ pub(crate) fn debug_print_csvec<T, IStorage, DStorage>(
         vec.indices().to_vec(),
         vec.data().to_vec(),
     );
-    debug_print_csmat(&mat, row_names, None)
+    log_csmat(&mat, vec_name, row_names, None, log)
 }
 
 #[allow(unused)]
-pub(crate) fn info_print_csvec<T, IStorage, DStorage>(
+pub(crate) fn debug_csvec<T, IStorage, DStorage>(
     vec: &CsVecBase<IStorage, DStorage, T>,
+    vec_name: Option<&str>,
     row_names: Option<&[String]>,
 ) where
     T: std::fmt::Display + std::fmt::Debug + Copy,
     IStorage: Deref<Target = [usize]>,
     DStorage: Deref<Target = [T]>,
 {
-    let mat = CsMat::new(
-        (1, vec.dim()),
-        vec![0, vec.nnz()],
-        vec.indices().to_vec(),
-        vec.data().to_vec(),
-    );
-    info_print_csmat(&mat, row_names, None)
+        log_csvec(vec, vec_name, row_names, |args| debug!("{}", args));
+}
+
+#[allow(unused)]
+pub(crate) fn info_csvec<T, IStorage, DStorage>(
+    vec: &CsVecBase<IStorage, DStorage, T>,
+    vec_name: Option<&str>,
+    row_names: Option<&[String]>,
+) where
+    T: std::fmt::Display + std::fmt::Debug + Copy,
+    IStorage: Deref<Target = [usize]>,
+    DStorage: Deref<Target = [T]>,
+{
+        log_csvec(vec, vec_name, row_names, |args| info!("{}", args));
 }
 
 pub trait NetworkSolver {
