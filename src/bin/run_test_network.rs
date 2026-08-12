@@ -35,6 +35,10 @@ fn main() {
         netw_s(c!(0.23, 0.0))
     } else if args.netw_name == "cycles" {
         netw_cycles()
+    } else if args.netw_name == "netw_large_a" {
+        netw_large_a()
+    } else if args.netw_name == "netw_large_b" {
+        netw_large_b()
     } else {
         panic!("Bad network name");
     };
