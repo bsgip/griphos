@@ -36,6 +36,14 @@ toml = "1.1"
 typify = "0.7"
 ureq = "3.3"
 
+[dev-dependencies]
+criterion = "0.8"
+glob = "0.3"
+
 [[bin]]
 name = "test_griphos"
 path = "test_data/test_griphos.rs"
+
+[[bench]]
+name = "benchmarks"
+harness = false
