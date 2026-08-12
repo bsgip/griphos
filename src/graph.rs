@@ -5,40 +5,122 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 // Computes a fundamental cycle basis for an undirected graph using a BFS spanning tree.
 /// Returns a vector of cycles, where each cycle is a vector of edge indices with orientation +-1.
+///
+/// `start_node`, if given, is used as a seed: the actual spanning-tree root is chosen
+/// near the center of the seed's connected component (via double-sweep BFS) so that
+/// tree-paths — and therefore fundamental cycles — stay short. Pass `None` to seed
+/// from an arbitrary node.
+///
+/// Note: only the connected component containing the (seeded) root is covered. Chords
+/// in other components of a disconnected graph will not appear in the returned basis.
 pub fn fundamental_cycle_basis<N, E>(
     graph: &UnGraph<N, E>,
     start_node: Option<NodeIndex>
 ) -> Vec<Vec<(EdgeIndex, i32)>> {
-    let mut visited = HashSet::new();
-    let mut tree_edges = HashSet::new();
-    let mut parent: HashMap<NodeIndex, (NodeIndex, EdgeIndex)> = HashMap::new();
+    let (_, visited, tree_edges, parent) = build_spanning_tree(graph, start_node);
 
-    // Build spanning tree.
-    let start = start_node.or_else(|| graph.node_indices().next());
-    if let Some(start) = start {
-        bfs_spanning_tree(graph, start, &mut visited, &mut tree_edges, &mut parent);
-        // dfs_spanning_tree(graph, start, &mut visited, &mut tree_edges, &mut parent);
-    }
-
-    // For each non-tree edge (chord), create its fundamental cycle
+    // For each non-tree edge (chord) inside the handled component, create its
+    // fundamental cycle.
     let mut basis = Vec::new();
 
     for edge_ref in graph.edge_references() {
         let edge_idx = edge_ref.id();
-
-        if !tree_edges.contains(&edge_idx) {
-            let (u, v) = graph.edge_endpoints(edge_idx).unwrap();
-            let cycle = build_fundamental_cycle(u, v, edge_idx, &parent);
-            let cycle = oriented_cycle(graph, &cycle);
-            basis.push(cycle);
+        if tree_edges.contains(&edge_idx) {
+            continue;
         }
+
+        let (u, v) = graph.edge_endpoints(edge_idx).unwrap();
+        if !visited.contains(&u) || !visited.contains(&v) {
+            continue; // edge belongs to a different component; not covered
+        }
+
+        let cycle = build_fundamental_cycle(u, v, edge_idx, &parent);
+        let cycle = oriented_cycle(graph, &cycle);
+        basis.push(cycle);
     }
 
     basis
 }
 
+/// Builds the BFS spanning tree used by `fundamental_cycle_basis`: picks a
+/// low-eccentricity root near `start_node` (or an arbitrary node if `None`), then
+/// BFS-explores its connected component.
+fn build_spanning_tree<N, E>(
+    graph: &UnGraph<N, E>,
+    start_node: Option<NodeIndex>,
+) -> (
+    Option<NodeIndex>,
+    HashSet<NodeIndex>,
+    HashSet<EdgeIndex>,
+    HashMap<NodeIndex, (NodeIndex, EdgeIndex)>,
+) {
+    let mut visited = HashSet::new();
+    let mut tree_edges = HashSet::new();
+    let mut parent: HashMap<NodeIndex, (NodeIndex, EdgeIndex)> = HashMap::new();
+
+    let seed = start_node.or_else(|| graph.node_indices().next());
+    let start = seed.map(|s| pick_root(graph, s));
+    if let Some(start) = start {
+        bfs_spanning_tree(graph, start, &mut visited, &mut tree_edges, &mut parent);
+    }
+
+    (start, visited, tree_edges, parent)
+}
+
+/// BFS distances (and BFS-tree parents) from `start`, restricted to `start`'s
+/// connected component. Used by `pick_root` to locate a low-eccentricity root.
+fn bfs_distances<N, E>(
+    graph: &UnGraph<N, E>,
+    start: NodeIndex,
+) -> (HashMap<NodeIndex, u32>, HashMap<NodeIndex, NodeIndex>) {
+    let mut dist = HashMap::new();
+    let mut parent = HashMap::new();
+    let mut queue = VecDeque::new();
+
+    dist.insert(start, 0);
+    queue.push_back(start);
+
+    while let Some(node) = queue.pop_front() {
+        let d = dist[&node];
+        for edge_ref in graph.edges(node) {
+            let neighbor = if edge_ref.target() == node {
+                edge_ref.source()
+            } else {
+                edge_ref.target()
+            };
+
+            if !dist.contains_key(&neighbor) {
+                dist.insert(neighbor, d + 1);
+                parent.insert(neighbor, node);
+                queue.push_back(neighbor);
+            }
+        }
+    }
+
+    (dist, parent)
+}
+
+/// Approximate the center of the component containing `seed` via double-sweep BFS:
+/// find a farthest node `a` from `seed`, then a farthest node `b` from `a`, then walk
+/// halfway back along the `a`-`b` path. Rooting the spanning tree here keeps
+/// tree-paths — and therefore fundamental cycles — short, compared to rooting at an
+/// arbitrary (possibly peripheral) node.
+fn pick_root<N, E>(graph: &UnGraph<N, E>, seed: NodeIndex) -> NodeIndex {
+    let (dist_seed, _) = bfs_distances(graph, seed);
+    let a = *dist_seed.iter().max_by_key(|&(_, &d)| d).unwrap().0;
+
+    let (dist_a, parent_a) = bfs_distances(graph, a);
+    let b = *dist_a.iter().max_by_key(|&(_, &d)| d).unwrap().0;
+    let ecc = dist_a[&b];
+
+    let mut node = b;
+    for _ in 0..ecc / 2 {
+        node = parent_a[&node];
+    }
+    node
+}
+
 /// BFS to build a spanning tree
-#[allow(unused)]
 fn bfs_spanning_tree<N, E>(
     graph: &UnGraph<N, E>,
     start: NodeIndex,
@@ -68,29 +150,6 @@ fn bfs_spanning_tree<N, E>(
                 parent.insert(neighbor, (node, edge_idx));
                 queue.push_back(neighbor);
             }
-        }
-    }
-}
-
-/// DFS to build a spanning tree
-#[allow(unused)]
-fn dfs_spanning_tree<N, E>(
-    graph: &UnGraph<N, E>,
-    node: NodeIndex,
-    visited: &mut HashSet<NodeIndex>,
-    tree_edges: &mut HashSet<EdgeIndex>,
-    parent: &mut HashMap<NodeIndex, (NodeIndex, EdgeIndex)>,
-) {
-    visited.insert(node);
-
-    for edge_ref in graph.edges(node) {
-        let neighbor = edge_ref.target();
-        let edge_idx = edge_ref.id();
-
-        if !visited.contains(&neighbor) {
-            tree_edges.insert(edge_idx);
-            parent.insert(neighbor, (node, edge_idx));
-            dfs_spanning_tree(graph, neighbor, visited, tree_edges, parent);
         }
     }
 }
