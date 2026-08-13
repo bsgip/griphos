@@ -40,9 +40,13 @@ ureq = "3.3"
 criterion = "0.8"
 glob = "0.3"
 
-[[bin]]
+[[example]]
 name = "test_griphos"
-path = "test_data/test_griphos.rs"
+path = "performance_testing/test_griphos.rs"
+
+[[example]]
+name = "compare_solvers"
+path = "performance_testing/compare_solvers.rs"
 
 [[bench]]
 name = "benchmarks"

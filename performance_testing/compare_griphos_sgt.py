@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import subprocess
 import sys
 
@@ -5,9 +7,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 infile = sys.argv[1]
+solver = sys.argv[2]
 
 subprocess.run(f'./test_sgt -i {infile} -o sgt.csv'.split())
-subprocess.run(f'cargo run --bin test_griphos {infile} griphos.csv'.split())
+subprocess.run(f'cargo run --example test_griphos -- --solver {solver} {infile} griphos.csv'.split())
 
 dfs = pd.read_csv("sgt.csv", index_col=0)
 dfg = pd.read_csv("griphos.csv", index_col=0)
