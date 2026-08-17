@@ -4,6 +4,8 @@ Cargo.lock
 # Build artifacts
 /target/
 /src/target/
+/performance_testing/target/
+/performance_testing/test_sgt
 
 # Generated source (build.rs)
 src/e_json_generated_types.rs
