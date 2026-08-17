@@ -17,7 +17,7 @@
 use std::path::{Path, PathBuf};
 
 use clap::Parser;
-use griphos::{SolverPlugin, SolverStatusFlags, ejson_phase_map_abcng, parse_ejson_file, solve_network};
+use griphos::{configure_logging, SolverPlugin, SolverStatusFlags, ejson_phase_map_abcng, parse_ejson_file, solve_network};
 use regex::Regex;
 
 #[derive(Parser)]
@@ -61,6 +61,8 @@ fn all_solver_names() -> Vec<&'static str> {
 }
 
 fn main() {
+    configure_logging();
+
     let args = Args::parse();
 
     let network_regex = Regex::new(&args.networks)

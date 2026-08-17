@@ -970,6 +970,7 @@ impl NetworkSolver for NodalRectSolver {
                 iter_status.initial_residual = residual;
 
                 if residual < self.params.tol {
+                    info!("Converged, with residual = {} vs tolerance {}", residual, self.params.tol);
                     iter_status.flags |= SolverStatusFlags::SUCCESS;
                     converged = true;
                 } else {
@@ -988,10 +989,10 @@ impl NetworkSolver for NodalRectSolver {
 
                     let end_iter = Instant::now();
                     iter_status.total_time_s = (end_iter - start_iter).as_secs_f64();
+                }
 
-                    if converged {
-                        break;
-                    }
+                if converged {
+                    break;
                 }
             }
         }
