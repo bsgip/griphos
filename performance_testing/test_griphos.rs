@@ -27,7 +27,7 @@ fn main() {
     let mut outfile = File::create(&args.outfile).unwrap();
     let all_ok = result.statuses.iter().all(|x| x.status.flags.contains(SolverStatusFlags::SUCCESS));
     for (status_i, status) in result.statuses.iter().enumerate() {
-        println!("Island {}:\n{:?}", status_i, status);
+        println!("Island {}:\n{:?}", status_i, status.status);
     }
     if all_ok {
         for b in netw.buses() {

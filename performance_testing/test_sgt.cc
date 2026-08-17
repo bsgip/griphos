@@ -1,3 +1,4 @@
+#include "SgtCore/Stopwatch.h"
 #include <sgt-e-json/EJson.h>
 #include <SgtCore.h>
 
@@ -85,9 +86,13 @@ int main(int argc, char** argv)
 
     // cout << netw << endl;
 
+    Sgt::Stopwatch sw;
     netw.solver().setOptions(solverOptions);
 
+    sw.start();
     netw.solvePowerFlow(!warmStart);
+    sw.stop();
+    std::cout << "Total solve time (ms) = " << 1000.0 * sw.wallSeconds() << std::endl;
 
     auto outfile = ofstream(outputName);
     for (const auto& b : netw.buses())

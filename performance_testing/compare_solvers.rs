@@ -83,7 +83,9 @@ fn main() {
     );
     assert!(!solvers.is_empty(), "no solvers matched --solvers '{}'", args.solvers);
 
-    println!("{:<20} {:<20} {:<6} {:<6} {:>10}", "network", "solver", "ok", "iters", "walltime_ms");
+    println!(
+        "{:<20} {:<20} {:<6} {:<6} {:>10} {:>10}", "network", "solver", "ok", "iters", "lin_solv_time_ms", "tot_ms"
+    );
     println!("{}", "-".repeat(60));
 
     for network_path in &networks {
@@ -99,8 +101,11 @@ fn main() {
             let solve_result = solve_network(&mut netw, solver_name, None).unwrap();
             let all_ok = solve_result.statuses.iter().all(|x| x.status.flags.contains(SolverStatusFlags::SUCCESS));
             let n_iter: usize = solve_result.statuses.iter().map(|status| status.iteration_statuses.len()).sum();
+            let ls_time_ms: f64 = 1e3 * solve_result.statuses.iter().map(|x| x.status.linear_solver_time_s).sum::<f64>();
             let tot_time_ms: f64 = 1e3 * solve_result.statuses.iter().map(|x| x.status.total_time_s).sum::<f64>();
-            println!("{network_name:<20} {solver_name:<20} {all_ok:<6} {n_iter:<6} {tot_time_ms:>10.3?}");
+            println!(
+                "{network_name:<20} {solver_name:<20} {all_ok:<6} {n_iter:<6} {ls_time_ms:>10.3?} {tot_time_ms:>10.3?}"
+            );
         }
     }
 }
