@@ -5,7 +5,7 @@ use log::{debug, info};
 use crate::foundation::*;
 use crate::klu::solve_klu;
 use crate::network::*;
-use crate::{NetworkSolver, SolverPlugin, SolveStatus};
+use crate::{NetworkSolver, SolverPlugin, SolverStatus, SolverStatusFlags, SolverStatusItem};
 
 fn name_maybe_idx(idx: Option<usize>) -> String {
     match idx {Some(i) => format!("{i}"), None => "*".to_string()}
@@ -936,17 +936,22 @@ impl NodalRectSolver {
 }
 
 impl NetworkSolver for NodalRectSolver {
-    fn solve(&mut self) -> SolveStatus {
+    fn solve(&mut self) -> SolverStatus {
         debug!("solve");
+
+        let mut status = SolverStatus::default();
 
         self.init_vars();
 
-        let mut iteration_errs: Vec<f64> = Vec::with_capacity(self.params.max_iter as usize);
         let mut converged: bool = self.ndim() == 0; // It's possible to set up problems with no vars and eqs.
 
         if !converged {
             for i in 0..self.params.max_iter {
                 info!("Iteration {i}");
+
+                status.iteration_statuses.push(SolverStatusItem::default());
+                let iter_status = status.iteration_statuses.last_mut().unwrap();
+
                 self.prepare_for_iter();
                 self.debug_node_infos();
                 self.debug_node_gen_infos();
@@ -954,21 +959,26 @@ impl NetworkSolver for NodalRectSolver {
                 self.debug_vars();
                 self.debug_eqns();
 
-                let (i_err, err) = self.rhs
+                let (i_residual, residual) = self.rhs
                     .iter().copied().map(f64::abs).enumerate().max_by(|(_, a), (_, b)| a.total_cmp(b)).unwrap();
-                info!("err = {} @ {}", err, i_err);
+                info!("residual = {} @ {}", residual, i_residual);
+                iter_status.initial_residual = residual;
 
-                iteration_errs.push(err);
-
-                if err < self.params.tol {
+                if residual < self.params.tol {
                     converged = true;
+                    iter_status.flags |= SolverStatusFlags::SUCCESS;
                     break;
                 }
 
                 info!("solve_klu");
                 if solve_klu(&mut self.jac_csc, &mut self.rhs).is_err() {
                     info!("Failed to solve linear system.");
-                    return SolveStatus::LinearSolverFailed;
+                    iter_status.flags |= SolverStatusFlags::FAILURE;
+                    iter_status.flags |= SolverStatusFlags::LINEAR_SOLVER_FAILURE;
+                    return status.finalize(None);
+                } else {
+                    info!("solve_klu succeeded.");
+                    iter_status.flags |= SolverStatusFlags::SUCCESS;
                 }
 
                 self.update_vars_after_solve();
@@ -978,16 +988,26 @@ impl NetworkSolver for NodalRectSolver {
             }
         }
 
+        let combine_final_flags = if converged {
+            SolverStatusFlags::SUCCESS
+        } else {
+            SolverStatusFlags::FAILURE | SolverStatusFlags::MAX_ITER_EXCEEDED
+        };
+        status = status.finalize(Some(combine_final_flags));
+        let iteration_residuals: Vec<_> = status.iteration_statuses.first()
+            .map(|x| x.initial_residual)
+            .into_iter()
+            .chain(status.iteration_statuses.iter().map(|x| x.final_residual))
+            .collect();
+
         info!("Converged = {:?}", converged);
-        info!("iteration_errs = {:?}", iteration_errs);
+        info!("iteration_residuals = {:?}", iteration_residuals);
         debug!("Final vars:");
         self.debug_vars();
         if converged {
             self.propagate_to_model();
-            SolveStatus::Converged {iteration_errs}
-        } else {
-            SolveStatus::NotConverged {iteration_errs}
         }
+        status
     }
 
     fn propagate_to_network(&self, netw: &mut Network) {
@@ -1010,6 +1030,7 @@ mod tests {
     use crate::nodal_rect_solver::*;
     use crate::test_networks::*;
     use crate::graph::graph_dot;
+    use crate::{NetworkSolver, SolverStatusFlags};
 
     fn test_network(netw: Network) {
         let master = NetworkModel::new_master(&netw).unwrap();
@@ -1021,7 +1042,7 @@ mod tests {
             debug!("network:\n{:?}", &netw);
             let mut solver = NodalRectSolver::new(nmod);
             let result = solver.solve();
-            assert!(matches!(result, SolveStatus::Converged {..}));
+            assert!(result.status.flags.contains(SolverStatusFlags::SUCCESS));
         }
     }
 

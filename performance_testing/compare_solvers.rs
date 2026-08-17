@@ -15,16 +15,14 @@
 // Run with --release: debug-mode phase timings aren't representative.
 
 use std::path::{Path, PathBuf};
-use std::time::Instant;
 
 use clap::Parser;
-use griphos::timing::{clear_phases, take_phases};
-use griphos::{ejson_phase_map_abcng, parse_ejson_file, solve_network, SolverPlugin};
+use griphos::{SolverPlugin, SolverStatusFlags, ejson_phase_map_abcng, parse_ejson_file, solve_network};
 use regex::Regex;
 
 #[derive(Parser)]
 #[command(
-    about = "One-shot diagnostic report: total + per-phase timing and success/failure for every (network, solver) combination."
+    about = "Solver diagnostics run over all (network, solver) combinations."
 )]
 struct Args {
     /// Directory to look in for network files (not recursive). Defaults to CWD.
@@ -94,26 +92,13 @@ fn main() {
         let network_filename = network_path.to_str().expect("non-UTF8 path");
 
         for &solver_name in &solvers {
-            clear_phases();
-            let start = Instant::now();
+            let mut netw = parse_ejson_file(network_filename, &ejson_phase_map_abcng())
+                .expect("could not parse network {network_filename");
+            let solve_result = solve_network(&mut netw, solver_name, None).unwrap();
+            let all_ok = solve_result.statuses.iter().all(|x| x.status.flags.contains(SolverStatusFlags::SUCCESS));
+            let tot_time_s: f64 = solve_result.statuses.iter().map(|x| x.status.final_residual).sum();
 
-            let outcome = match parse_ejson_file(network_filename, &ejson_phase_map_abcng()) {
-                Ok(mut netw) => solve_network(&mut netw, solver_name, None)
-                    .map_err(|e| format!("solve error: {e:?}")),
-                Err(e) => Err(format!("parse error: {e:?}")),
-            };
-
-            let total = start.elapsed();
-            let phases = take_phases();
-            let status = if outcome.is_ok() { "ok" } else { "FAIL" };
-
-            println!("{network_name:<20} {solver_name:<15} {status:<6} {total:>10.3?}");
-            for (phase, dur) in &phases {
-                println!("{:<20} {:<15} {:<6} {dur:>10.3?}   ({phase})", "", "", "");
-            }
-            if let Err(msg) = &outcome {
-                println!("{:<20} {:<15} {:<6} {msg}", "", "", "");
-            }
+            println!("{network_name:<20} {solver_name:<15} {all_ok:<6} {tot_time_s:>10.3?}");
         }
     }
 }

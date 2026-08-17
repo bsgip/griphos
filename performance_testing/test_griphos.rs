@@ -25,25 +25,11 @@ fn main() {
     let result = solve_network(&mut netw, solver_name, None).unwrap();
 
     let mut outfile = File::create(&args.outfile).unwrap();
-    let mut all_converged = true;
-    for status in result.statuses {
-        match status {
-            SolveStatus::LinearSolverFailed => {
-                println!("Linear solver failed");
-                all_converged = false;
-            },
-            SolveStatus::NotConverged {iteration_errs}=> {
-                println!("Not converged");
-                println!("Iterations: {:?}", iteration_errs);
-                all_converged = false;
-            },
-            SolveStatus::Converged {iteration_errs}=> {
-                println!("Converged");
-                println!("Iterations: {:?}", iteration_errs);
-            },
-        }
-}
-    if all_converged {
+    let all_ok = result.statuses.iter().all(|x| x.status.flags.contains(SolverStatusFlags::SUCCESS));
+    for (status_i, status) in result.statuses.iter().enumerate() {
+        println!("Island {}:\n{:?}", status_i, status);
+    }
+    if all_ok {
         for b in netw.buses() {
             let b = b.borrow();
             for t in b.terms.iter() {
