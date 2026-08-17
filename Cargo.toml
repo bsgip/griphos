@@ -49,6 +49,10 @@ path = "performance_testing/test_griphos.rs"
 name = "compare_solvers"
 path = "performance_testing/compare_solvers.rs"
 
+[[example]]
+name = "profile"
+path = "performance_testing/profile.rs"
+
 [[bench]]
 name = "benchmarks"
 harness = false
