@@ -38,7 +38,7 @@ pub struct SolverStatusItem {
     pub initial_residual: f64,
     pub final_residual: f64,
     pub total_time_s: f64,
-    pub linear_solver_time: f64,
+    pub linear_solver_time_s: f64,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -53,6 +53,7 @@ impl SolverStatus {
             .iter()
             .map(|x| x.flags)
             .fold(SolverStatusFlags::SUCCESS, SolverStatusFlags::combine);
+        self.status.linear_solver_time_s = self.iteration_statuses.iter().map(|x| x.linear_solver_time_s).sum();
         if let Some(combine_final_flags) = maybe_combine_final_flags {
             self.status.flags = self.status.flags.combine(combine_final_flags);
         }

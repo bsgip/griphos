@@ -975,7 +975,11 @@ impl NetworkSolver for NodalRectSolver {
                     converged = true;
                 } else {
                     info!("solve_klu");
-                    if solve_klu(&mut self.jac_csc, &mut self.rhs).is_err() {
+                    let start_ls = Instant::now();
+                    let solve_klu_result = solve_klu(&mut self.jac_csc, &mut self.rhs);
+                    let end_ls = Instant::now();
+                    iter_status.linear_solver_time_s = (end_ls - start_ls).as_secs_f64();
+                    if solve_klu_result.is_err() {
                         info!("solve_klu failed.");
                         iter_status.flags |= SolverStatusFlags::FAILURE;
                         iter_status.flags |= SolverStatusFlags::LINEAR_SOLVER_FAILURE;
