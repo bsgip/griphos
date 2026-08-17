@@ -37,7 +37,7 @@ pub struct SolverStatusItem {
     pub flags: SolverStatusFlags,
     pub initial_residual: f64,
     pub final_residual: f64,
-    pub total_time: f64,
+    pub total_time_s: f64,
     pub linear_solver_time: f64,
 }
 

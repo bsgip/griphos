@@ -81,12 +81,12 @@ fn main() {
     );
     assert!(!solvers.is_empty(), "no solvers matched --solvers '{}'", args.solvers);
 
-    println!("{:<20} {:<15} {:<6} {:>10}", "network", "solver", "status", "total");
+    println!("{:<20} {:<20} {:<6} {:>10}", "network", "solver", "succeeded", "walltime_ms");
     println!("{}", "-".repeat(60));
 
     for network_path in &networks {
         let network_name = network_path
-            .file_stem()
+            .file_name()
             .and_then(|s| s.to_str())
             .unwrap_or("unknown");
         let network_filename = network_path.to_str().expect("non-UTF8 path");
@@ -96,9 +96,8 @@ fn main() {
                 .expect("could not parse network {network_filename");
             let solve_result = solve_network(&mut netw, solver_name, None).unwrap();
             let all_ok = solve_result.statuses.iter().all(|x| x.status.flags.contains(SolverStatusFlags::SUCCESS));
-            let tot_time_s: f64 = solve_result.statuses.iter().map(|x| x.status.final_residual).sum();
-
-            println!("{network_name:<20} {solver_name:<15} {all_ok:<6} {tot_time_s:>10.3?}");
+            let tot_time_ms: f64 = 1e3 * solve_result.statuses.iter().map(|x| x.status.total_time_s).sum::<f64>();
+            println!("{network_name:<20} {solver_name:<20} {all_ok:<6} {tot_time_ms:>10.3?}");
         }
     }
 }

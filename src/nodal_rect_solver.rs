@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::time::Instant;
 
 use log::{debug, info};
 
@@ -939,6 +940,8 @@ impl NetworkSolver for NodalRectSolver {
     fn solve(&mut self) -> SolverStatus {
         debug!("solve");
 
+        let start = Instant::now();
+
         let mut status = SolverStatus::default();
 
         self.init_vars();
@@ -948,6 +951,8 @@ impl NetworkSolver for NodalRectSolver {
         if !converged {
             for i in 0..self.params.max_iter {
                 info!("Iteration {i}");
+
+                let start_iter = Instant::now();
 
                 status.iteration_statuses.push(SolverStatusItem::default());
                 let iter_status = status.iteration_statuses.last_mut().unwrap();
@@ -965,26 +970,29 @@ impl NetworkSolver for NodalRectSolver {
                 iter_status.initial_residual = residual;
 
                 if residual < self.params.tol {
+                    iter_status.flags |= SolverStatusFlags::SUCCESS;
                     converged = true;
-                    iter_status.flags |= SolverStatusFlags::SUCCESS;
-                    break;
-                }
-
-                info!("solve_klu");
-                if solve_klu(&mut self.jac_csc, &mut self.rhs).is_err() {
-                    info!("Failed to solve linear system.");
-                    iter_status.flags |= SolverStatusFlags::FAILURE;
-                    iter_status.flags |= SolverStatusFlags::LINEAR_SOLVER_FAILURE;
-                    return status.finalize(None);
                 } else {
-                    info!("solve_klu succeeded.");
-                    iter_status.flags |= SolverStatusFlags::SUCCESS;
+                    info!("solve_klu");
+                    if solve_klu(&mut self.jac_csc, &mut self.rhs).is_err() {
+                        info!("solve_klu failed.");
+                        iter_status.flags |= SolverStatusFlags::FAILURE;
+                        iter_status.flags |= SolverStatusFlags::LINEAR_SOLVER_FAILURE;
+                    } else {
+                        info!("solve_klu succeeded.");
+                        iter_status.flags |= SolverStatusFlags::SUCCESS;
+                        self.update_vars_after_solve();
+                        debug!("Updated vars:");
+                        self.debug_vars();
+                    }
+
+                    let end_iter = Instant::now();
+                    iter_status.total_time_s = (end_iter - start_iter).as_secs_f64();
+
+                    if converged {
+                        break;
+                    }
                 }
-
-                self.update_vars_after_solve();
-
-                debug!("Updated vars:");
-                self.debug_vars();
             }
         }
 
@@ -1007,6 +1015,8 @@ impl NetworkSolver for NodalRectSolver {
         if converged {
             self.propagate_to_model();
         }
+        let end = Instant::now();
+        status.status.total_time_s = (end - start).as_secs_f64();
         status
     }
 
