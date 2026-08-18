@@ -202,6 +202,7 @@ pub struct NodalRectSolver {
     pub vars: Vec<f64>,
     pub rhs: Vec<f64>,
     pub jac_csc: CsMatI<f64, i32>, // i32 indexing for compatibility with KLU.
+    pub jac_csc_idxs: Vec<usize>,
 }
 
 impl NodalRectSolver {
@@ -217,6 +218,7 @@ impl NodalRectSolver {
             vars: vec![],
             rhs: vec![],
             jac_csc: CsMatI::empty(CompressedStorage::CSC, 0),
+            jac_csc_idxs: vec![],
         };
 
         solver.init();
@@ -404,6 +406,8 @@ impl NodalRectSolver {
 
         self.vars = vec![0.0; ndim];
         self.rhs = vec![0.0; ndim];
+        self.jac_csc = CsMatI::empty(CompressedStorage::CSC, 0);
+        self.jac_csc_idxs.clear();
 
         assert!(idim == ndim);
         assert!(self.node_infos.len() == self.nmod.nodes.len());
@@ -432,34 +436,62 @@ impl NodalRectSolver {
         }
 
         enum JacTarget {
-            Tri(TriMatI<f64, i32>),
-            Existing,
+            Tri {
+                tri: TriMatI<f64, i32>,
+                order: Vec<(usize, usize)>,
+            },
+            Existing {
+                pos: usize,
+            },
         }
 
         impl JacTarget {
-            fn add(&mut self, jac_csc: &mut CsMatI<f64, i32>, i: usize, j: usize, x: f64) {
+            fn add(&mut self, jac_csc: &mut CsMatI<f64, i32>, ordered_indices: &[usize], i: usize, j: usize, x: f64) {
                 match self {
-                    JacTarget::Tri(t) => t.add_triplet(i, j, x),
-                    JacTarget::Existing => {
-                        *jac_csc.get_mut(i, j).expect("pattern must already contain (i,j)") += x;
+                    JacTarget::Tri { tri, order } => {
+                        tri.add_triplet(i, j, x);
+                        order.push((i, j));
+                    }
+                    JacTarget::Existing { pos } => {
+                        let idx = ordered_indices[*pos];
+                        jac_csc.data_mut()[idx] += x;
+                        *pos += 1;
                     }
                 }
             }
 
-            fn finalize(self, jac_csc: &mut CsMatI<f64, i32>) {
-                if let JacTarget::Tri(tri) = &self {
-                    *jac_csc = tri.to_csc();
+            fn finalize(self, jac_csc: &mut CsMatI<f64, i32>, ordered_indices: &mut Vec<usize>) {
+                match self {
+                    JacTarget::Tri { tri, order } => {
+                        *jac_csc = tri.to_csc();
+                        ordered_indices.clear();
+                        ordered_indices.reserve(order.len());
+                        for (i, j) in order {
+                            let idx = jac_csc
+                                .nnz_index(i, j)
+                                .expect("triplet (i,j) must exist in the finalized pattern")
+                            .0;
+                            ordered_indices.push(idx);
+                        }
+                    }
+                    JacTarget::Existing { pos } => {
+                        debug_assert_eq!(
+                            pos,
+                            ordered_indices.len(),
+                            "call count changed between iterations — ordered_indices assumes a stable call order"
+                        );
+                    }
                 }
             }
         }
 
         let mut jac_target = if self.jac_csc.nnz() == 0 {
-            JacTarget::Tri(TriMatI::new((ndim, ndim)))
+            JacTarget::Tri { tri: TriMatI::new((ndim, ndim)), order: vec![] }
         } else {
             for x in self.jac_csc.data_mut() {
                 *x = 0.0;
             }
-            JacTarget::Existing
+            JacTarget::Existing { pos: 0 }
         };
 
         for (&c64 {re: gmn, im: bmn}, (m, n)) in self.nmod.y_const.iter() {
@@ -481,10 +513,10 @@ impl NodalRectSolver {
                     for (nd_info_in, sgn_n) in [(&nd_info_in0, 1.0), (&nd_info_in1, -1.0)] {
                         let sgn = sgn_im * sgn_n;
                         if let &Vc::Var {i: ivar} = &nd_info_in.vr {
-                            jac_target.add(&mut self.jac_csc, ieqn, ivar, sgn * gmn);
+                            jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, sgn * gmn);
                         }
                         if let &Vc::Var {i: ivar} = &nd_info_in.vi {
-                            jac_target.add(&mut self.jac_csc, ieqn, ivar, -sgn * bmn);
+                            jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -sgn * bmn);
                         }
                     }
                 }
@@ -495,10 +527,10 @@ impl NodalRectSolver {
                     for (nd_info_in, sgn_n) in [(&nd_info_in0, 1.0), (&nd_info_in1, -1.0)] {
                         let sgn = sgn_im * sgn_n;
                         if let &Vc::Var {i: ivar} = &nd_info_in.vr {
-                            jac_target.add(&mut self.jac_csc, ieqn, ivar, sgn * bmn);
+                            jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, sgn * bmn);
                         }
                         if let &Vc::Var {i: ivar} = &nd_info_in.vi {
-                            jac_target.add(&mut self.jac_csc, ieqn, ivar, sgn * gmn);
+                            jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, sgn * gmn);
                         }
                     }
                 }
@@ -533,11 +565,11 @@ impl NodalRectSolver {
                         let sgn = sgn_ima * sgn_imb;
 
                         if let &Vc::Var {i: ivar} = &nd_info_imb.vr {
-                            jac_target.add(&mut self.jac_csc, ieqn, ivar, sgn * d_kclr0_dvr0);
+                            jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, sgn * d_kclr0_dvr0);
                         }
 
                         if let &Vc::Var {i: ivar} = &nd_info_imb.vi {
-                            jac_target.add(&mut self.jac_csc, ieqn, ivar, sgn * d_kclr0_dvi0);
+                            jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, sgn * d_kclr0_dvi0);
                         }
                     }
                 }
@@ -547,11 +579,11 @@ impl NodalRectSolver {
                         let sgn = sgn_ima * sgn_imb;
 
                         if let &Vc::Var {i: ivar} = &nd_info_imb.vr {
-                            jac_target.add(&mut self.jac_csc, ieqn, ivar, sgn * d_kcli0_dvr0);
+                            jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, sgn * d_kcli0_dvr0);
                         }
 
                         if let &Vc::Var {i: ivar} = &nd_info_imb.vi {
-                            jac_target.add(&mut self.jac_csc, ieqn, ivar, sgn * d_kcli0_dvi0);
+                            jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, sgn * d_kcli0_dvi0);
                         }
 
                     }
@@ -585,11 +617,11 @@ impl NodalRectSolver {
                         let sgn = sgn_ima * sgn_imb;
 
                         if let &Vc::Var {i: ivar} = &nd_info_imb.vr {
-                            jac_target.add(&mut self.jac_csc, ieqn, ivar, sgn * d_kclr0_dvr0);
+                            jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, sgn * d_kclr0_dvr0);
                         }
 
                         if let &Vc::Var {i: ivar} = &nd_info_imb.vi {
-                            jac_target.add(&mut self.jac_csc, ieqn, ivar, sgn * d_kclr0_dvi0);
+                            jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, sgn * d_kclr0_dvi0);
                         }
                     }
                 }
@@ -601,11 +633,11 @@ impl NodalRectSolver {
                         let sgn = sgn_ima * sgn_imb;
 
                         if let &Vc::Var {i: ivar} = &nd_info_imb.vr {
-                            jac_target.add(&mut self.jac_csc, ieqn, ivar, sgn * d_kcli0_dvr0);
+                            jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, sgn * d_kcli0_dvr0);
                         }
 
                         if let &Vc::Var {i: ivar} = &nd_info_imb.vi {
-                            jac_target.add(&mut self.jac_csc, ieqn, ivar, sgn * d_kcli0_dvi0);
+                            jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, sgn * d_kcli0_dvi0);
                         }
                     }
                 }
@@ -630,15 +662,15 @@ impl NodalRectSolver {
                 self.rhs[ieqn] += -qg * vi_i / vm_i_2;
 
                 if let Vc::Var{i: ivar} = ngi_i.qg {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, -vi_i / vm_i_2);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -vi_i / vm_i_2);
                 }
 
                 if let Vc::Var {i: ivar} = nd_info_i.vr {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, 2.0 * qg * vi_i * vr_i * vm_i_n4);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, 2.0 * qg * vi_i * vr_i * vm_i_n4);
                 }
 
                 if let Vc::Var {i: ivar} = nd_info_i.vi {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, -qg * v2_i_diff * vm_i_n4);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -qg * v2_i_diff * vm_i_n4);
                 }
 
             }
@@ -647,15 +679,15 @@ impl NodalRectSolver {
                 self.rhs[ieqn] += qg * vr_i / vm_i_2;
 
                 if let Vc::Var{i: ivar} = ngi_i.qg {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, vr_i / vm_i_2);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, vr_i / vm_i_2);
                 }
 
                 if let Vc::Var {i: ivar} = nd_info_i.vr {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, -qg * v2_i_diff * vm_i_n4);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -qg * v2_i_diff * vm_i_n4);
                 }
 
                 if let Vc::Var {i: ivar} = nd_info_i.vi {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, -2.0 * qg * vi_i * vr_i * vm_i_n4);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -2.0 * qg * vi_i * vr_i * vm_i_n4);
                 }
             }
 
@@ -663,11 +695,11 @@ impl NodalRectSolver {
                 self.rhs[ieqn] = vr_i.powi(2) + vi_i.powi(2) - vm.powi(2);
 
                 if let Vc::Var {i: ivar} = nd_info_i.vr {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, 2.0 * vr_i);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, 2.0 * vr_i);
                 }
 
                 if let Vc::Var {i: ivar} = nd_info_i.vi {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, 2.0 * vi_i);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, 2.0 * vi_i);
                 }
             }
         }
@@ -695,23 +727,23 @@ impl NodalRectSolver {
                     for (nd_info_imb, sgn_imb) in [(&nd_info_im0, 1.0), (&nd_info_im1, -1.0)] {
                         let sgn = sgn_ima * sgn_imb;
                         if let Vc::Var{i: ivar} = bgi_m.pg {
-                            jac_target.add(&mut self.jac_csc, ieqn, ivar, -sgn * vr_m / vm_m_2);
+                            jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -sgn * vr_m / vm_m_2);
                         }
 
                         if let Vc::Var{i: ivar} = bgi_m.qg {
-                            jac_target.add(&mut self.jac_csc, ieqn, ivar, -sgn * vi_m / vm_m_2);
+                            jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -sgn * vi_m / vm_m_2);
                         }
 
                         if let Vc::Var {i: ivar} = nd_info_imb.vr {
                             jac_target.add(
-                                &mut self.jac_csc, ieqn, ivar,
+                                &mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar,
                                 (pg_m * v2_m_diff + 2.0 * qg_m * vi_m * vr_m) * vm_m_n4
                             );
                         }
 
                         if let Vc::Var {i: ivar} = nd_info_imb.vi {
                             jac_target.add(
-                                &mut self.jac_csc, ieqn, ivar,
+                                &mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar,
                                 (-qg_m * v2_m_diff + 2.0 * pg_m * vi_m * vr_m) * vm_m_n4
                             );
                         }
@@ -723,23 +755,23 @@ impl NodalRectSolver {
                     for (nd_info_imb, sgn_imb) in [(&nd_info_im0, 1.0), (&nd_info_im1, -1.0)] {
                         let sgn = sgn_ima * sgn_imb;
                         if let Vc::Var{i: ivar} = bgi_m.pg {
-                            jac_target.add(&mut self.jac_csc, ieqn, ivar, -sgn * vi_m / vm_m_2);
+                            jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -sgn * vi_m / vm_m_2);
                         }
 
                         if let Vc::Var{i: ivar} = bgi_m.qg {
-                            jac_target.add(&mut self.jac_csc, ieqn, ivar, sgn * vr_m / vm_m_2);
+                            jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, sgn * vr_m / vm_m_2);
                         }
 
                         if let Vc::Var {i: ivar} = nd_info_imb.vr {
                             jac_target.add(
-                                &mut self.jac_csc, ieqn, ivar,
+                                &mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar,
                                 (-qg_m * v2_m_diff + 2.0 * pg_m * vi_m * vr_m) * vm_m_n4
                             );
                         }
 
                         if let Vc::Var {i: ivar} = nd_info_imb.vi {
                             jac_target.add(
-                                &mut self.jac_csc, ieqn, ivar,
+                                &mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar,
                                 (-pg_m * v2_m_diff - 2.0 * qg_m * vi_m * vr_m) * vm_m_n4
                             );
                         }
@@ -751,11 +783,11 @@ impl NodalRectSolver {
                 self.rhs[ieqn] = vr_m - vr;
 
                 if let Vc::Var {i: ivar} = nd_info_im0.vr {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, 1.0);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, 1.0);
                 }
 
                 if let Vc::Var {i: ivar} = nd_info_im1.vr {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, -1.0);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -1.0);
                 }
             }
 
@@ -763,11 +795,11 @@ impl NodalRectSolver {
                 self.rhs[ieqn] = vi_m - vi;
 
                 if let Vc::Var {i: ivar} = nd_info_im0.vi {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, 1.0);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, 1.0);
                 }
 
                 if let Vc::Var {i: ivar} = nd_info_im1.vi {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, -1.0);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -1.0);
                 }
             }
 
@@ -775,24 +807,24 @@ impl NodalRectSolver {
                 self.rhs[ieqn] = vm_m_2 - vm.powi(2);
 
                 if let Vc::Var {i: ivar} = nd_info_im0.vr {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, 2.0 * vr_m);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, 2.0 * vr_m);
                 }
 
                 if let Vc::Var {i: ivar} = nd_info_im1.vr {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, -2.0 * vr_m);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -2.0 * vr_m);
                 }
 
                 if let Vc::Var {i: ivar} = nd_info_im0.vi {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, 2.0 * vi_m);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, 2.0 * vi_m);
                 }
 
                 if let Vc::Var {i: ivar} = nd_info_im1.vi {
-                    jac_target.add(&mut self.jac_csc, ieqn, ivar, -2.0 * vi_m);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -2.0 * vi_m);
                 }
             }
         }
 
-        jac_target.finalize(&mut self.jac_csc);
+        jac_target.finalize(&mut self.jac_csc, &mut self.jac_csc_idxs);
     }
 
     fn update_vars_after_solve(&mut self) {
