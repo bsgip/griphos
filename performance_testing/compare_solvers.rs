@@ -17,7 +17,10 @@
 use std::path::{Path, PathBuf};
 
 use clap::Parser;
-use griphos::{configure_logging, SolverPlugin, SolverStatusFlags, ejson_phase_map_abcng, parse_ejson_file, solve_network};
+use griphos::{
+    configure_logging, NetworkSolver, SolverPlugin, SolverStatusFlags,
+    ejson_phase_map_abcng, parse_ejson_file, solve_network
+};
 use regex::Regex;
 
 #[derive(Parser)]
@@ -28,6 +31,12 @@ struct Args {
     /// Directory to look in for network files (not recursive). Defaults to CWD.
     #[arg(short, long, default_value = ".")]
     dir: PathBuf,
+
+    #[arg(long, default_value_t = 1)]
+    iters_outer: u32,
+
+    #[arg(long, default_value_t = 1)]
+    iters_inner: u32,
 
     /// Regex to select filenames within --dir.
     #[arg(short, long, default_value = r".*\.json$")]
@@ -98,14 +107,27 @@ fn main() {
         for &solver_name in &solvers {
             let mut netw = parse_ejson_file(network_filename, &ejson_phase_map_abcng())
                 .expect("could not parse network {network_filename");
-            let solve_result = solve_network(&mut netw, solver_name, None).unwrap();
-            let all_ok = solve_result.statuses.iter().all(|x| x.status.flags.contains(SolverStatusFlags::SUCCESS));
-            let n_iter: usize = solve_result.statuses.iter().map(|status| status.iteration_statuses.len()).sum();
-            let ls_time_ms: f64 = 1e3 * solve_result.statuses.iter().map(|x| x.status.linear_solver_time_s).sum::<f64>();
-            let tot_time_ms: f64 = 1e3 * solve_result.statuses.iter().map(|x| x.status.total_time_s).sum::<f64>();
+
+            let mut all_ok: bool = true;
+            let mut n_iter: usize = 0;
+            let mut ls_time_ms: f64 = 0.0;
+            let mut tot_time_ms: f64 = 0.0;
+            for _ in 0..args.iters_outer {
+                let mut solvers: Option<Vec<Box<dyn NetworkSolver>>> = None;
+                for _ in 0..args.iters_inner {
+                    let result = std::hint::black_box(
+                        solve_network(&mut netw, solver_name, solvers).unwrap()
+                    );
+                    all_ok &= result.statuses.iter().all(|x| x.status.flags.contains(SolverStatusFlags::SUCCESS));
+                    n_iter += result.statuses.iter().map(|status| status.iteration_statuses.len()).sum::<usize>();
+                    ls_time_ms += 1e3 * result.statuses.iter().map(|x| x.status.linear_solver_time_s).sum::<f64>();
+                    tot_time_ms += 1e3 * result.statuses.iter().map(|x| x.status.total_time_s).sum::<f64>();
+                    solvers = Some(result.solvers);
+                }
+            }
             println!(
-                "{network_name:<20} {solver_name:<20} {all_ok:<6} {n_iter:<6} {ls_time_ms:>10.3?} {tot_time_ms:>10.3?}"
-            );
+            "{network_name:<20} {solver_name:<20} {all_ok:<6} {n_iter:<6} {ls_time_ms:>10.3?} {tot_time_ms:>10.3?}"
+        );
         }
     }
 }
