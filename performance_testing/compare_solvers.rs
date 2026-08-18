@@ -48,7 +48,7 @@ struct Args {
 }
 
 fn discover_networks(dir: &Path, name_regex: &Regex) -> Vec<PathBuf> {
-    std::fs::read_dir(dir)
+    let mut netws: Vec<PathBuf> = std::fs::read_dir(dir)
         .unwrap_or_else(|e| panic!("cannot read directory '{}': {e}", dir.display()))
         .filter_map(|entry| match entry {
             Ok(e) => Some(e.path()),
@@ -62,11 +62,15 @@ fn discover_networks(dir: &Path, name_regex: &Regex) -> Vec<PathBuf> {
             let filename = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
             name_regex.is_match(filename)
         })
-        .collect()
+        .collect();
+    netws.sort();
+    netws
 }
 
 fn all_solver_names() -> Vec<&'static str> {
-    inventory::iter::<SolverPlugin>().map(|p| p.name).collect()
+    let mut solver_names: Vec<&str> = inventory::iter::<SolverPlugin>().map(|p| p.name).collect();
+    solver_names.sort();
+    solver_names
 }
 
 fn main() {
@@ -95,7 +99,7 @@ fn main() {
     println!(
         "{:<20} {:<20} {:<6} {:<6} {:>10} {:>10}", "network", "solver", "ok", "iters", "lin_solv_time_ms", "tot_ms"
     );
-    println!("{}", "-".repeat(60));
+    println!("{}", "-".repeat(83));
 
     for network_path in &networks {
         let network_name = network_path
