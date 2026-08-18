@@ -829,11 +829,15 @@ impl NodalRectSolver {
     }
 
     pub fn debug_node_infos(&self) {
-        self.log_node_infos(|args| debug!("{}", args));
+        if log::log_enabled!(log::Level::Debug) {
+            self.log_node_infos(|args| debug!("{}", args));
+        }
     }
 
     pub fn info_node_infos(&self) {
-        self.log_node_infos(|args| info!("{}", args));
+        if log::log_enabled!(log::Level::Info) {
+            self.log_node_infos(|args| info!("{}", args));
+        }
     }
 
     fn log_node_gen_infos(&self, log: impl Fn(std::fmt::Arguments)) {
@@ -846,11 +850,15 @@ impl NodalRectSolver {
     }
 
     pub fn debug_node_gen_infos(&self) {
-        self.log_node_gen_infos(|args| debug!("{}", args));
+        if log::log_enabled!(log::Level::Debug) {
+            self.log_node_gen_infos(|args| debug!("{}", args));
+        }
     }
 
     pub fn info_node_gen_infos(&self) {
-        self.log_node_gen_infos(|args| info!("{}", args));
+        if log::log_enabled!(log::Level::Info) {
+            self.log_node_gen_infos(|args| info!("{}", args));
+        }
     }
 
     fn log_branch_gen_infos(&self, log: impl Fn(std::fmt::Arguments)) {
@@ -864,11 +872,15 @@ impl NodalRectSolver {
     }
 
     pub fn debug_branch_gen_infos(&self) {
-        self.log_branch_gen_infos(|args| debug!("{}", args));
+        if log::log_enabled!(log::Level::Debug) {
+            self.log_branch_gen_infos(|args| debug!("{}", args));
+        }
     }
 
     pub fn info_branch_gen_infos(&self) {
-        self.log_branch_gen_infos(|args| info!("{}", args));
+        if log::log_enabled!(log::Level::Info) {
+            self.log_branch_gen_infos(|args| info!("{}", args));
+        }
     }
 
     fn log_vars(&self, log: impl Fn(std::fmt::Arguments)) {
@@ -879,11 +891,15 @@ impl NodalRectSolver {
     }
 
     pub fn debug_vars(&self) {
-        self.log_vars(|args| debug!("{}", args));
+        if log::log_enabled!(log::Level::Debug) {
+            self.log_vars(|args| debug!("{}", args));
+        }
     }
 
     pub fn info_vars(&self) {
-        self.log_vars(|args| info!("{}", args));
+        if log::log_enabled!(log::Level::Info) {
+            self.log_vars(|args| info!("{}", args));
+        }
     }
 
     fn log_eqns(&self, log: impl Fn(std::fmt::Arguments)) {
@@ -894,11 +910,15 @@ impl NodalRectSolver {
     }
 
     pub fn debug_eqns(&self) {
-        self.log_eqns(|args| debug!("{}", args));
+        if log::log_enabled!(log::Level::Debug) {
+            self.log_eqns(|args| debug!("{}", args));
+        }
     }
 
     pub fn info_eqns(&self) {
-        self.log_eqns(|args| info!("{}", args));
+        if log::log_enabled!(log::Level::Info) {
+            self.log_eqns(|args| info!("{}", args));
+        }
     }
 
     /// Using a small delta x, compare the delta rhs computed using jac with that computed directly from RHS
