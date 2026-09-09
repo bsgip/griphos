@@ -27,6 +27,41 @@ const S_FACTOR: f64 = 1e-6; // Convert e-JSON W to internal MW
 const Z_FACTOR: f64 = 1.0; // Convert e-JSON Ohm to internal Ohm
 const Y_FACTOR: f64 = 1.0; // Convert e-JSON S to internal S
 
+#[derive(Deserialize)]
+#[serde(tag = "type")]
+enum Component {
+    Connector(ejt::Connector),
+    Gen(ejt::Gen),
+    Infeeder(ejt::Infeeder),
+    Line(ejt::Line),
+    Load(ejt::Load),
+    Node(ejt::Node),
+    Transformer(ejt::Transformer),
+}
+
+#[derive(Deserialize)]
+struct Root {
+    ejson_version: String,
+    id: String,
+    voltage_type: String,
+    user_data: Box<serde_json::value::RawValue>,
+    components: Vec<Component>,
+}
+
+pub fn parse_ejson_file(path: &str, ejson_phase_map: &HashMap<String, Phase>) -> serde_json::Result<Network> {
+    let file = File::open(path).expect("Failed to open test file");
+    let reader = BufReader::new(file);
+    parse_ejson(reader, ejson_phase_map)
+}
+
+pub fn parse_ejson<R: Read>(reader: R, ejson_phase_map: &HashMap<String, Phase>) -> serde_json::Result<Network> {
+    let mut json_value: serde_json::Value = serde_json::from_reader(reader)?;
+    fix_transformers_kludge(&mut json_value);
+
+    let seed = EJsonParser { ejson_phase_map };
+    seed.deserialize(json_value)
+}
+
 fn fix_transformers_kludge(json_value: &mut serde_json::Value) {
     if let Some(obj) = json_value.as_object_mut()
         && let Some(serde_json::Value::Array(components)) = obj.get_mut("components")
@@ -46,20 +81,6 @@ fn fix_transformers_kludge(json_value: &mut serde_json::Value) {
             }
         }
     }
-}
-
-pub fn parse_ejson<R: Read>(reader: R, ejson_phase_map: &HashMap<String, Phase>) -> serde_json::Result<Network> {
-    let mut json_value: serde_json::Value = serde_json::from_reader(reader)?;
-    fix_transformers_kludge(&mut json_value);
-
-    let seed = EJsonParser { ejson_phase_map };
-    seed.deserialize(json_value)
-}
-
-pub fn parse_ejson_file(path: &str, ejson_phase_map: &HashMap<String, Phase>) -> serde_json::Result<Network> {
-    let file = File::open(path).expect("Failed to open test file");
-    let reader = BufReader::new(file);
-    parse_ejson(reader, ejson_phase_map)
 }
 
 pub fn ejson_phase_map_abcng() -> HashMap<String, Phase> {
@@ -96,18 +117,16 @@ impl<'de> DeserializeSeed<'de> for EJsonParser<'de> {
     type Value = Network;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error> where D: Deserializer<'de> {
-        // Deserialize into the generated type
-        let schema_obj = ejt::EJsonSchema::deserialize(deserializer)?;
+        let root = Root::deserialize(deserializer)?;
 
-        // Convert to Network
-        let network = convert_to_network(schema_obj, self.ejson_phase_map)
+        let network = convert_to_network(root, self.ejson_phase_map)
             .map_err(serde::de::Error::custom)?;
 
         Ok(network)
     }
 }
 
-fn convert_to_network(schema: ejt::EJsonSchema, ejson_phase_map: &HashMap<String, Phase>) -> Result<Network, String> {
+fn convert_to_network(schema: Root, ejson_phase_map: &HashMap<String, Phase>) -> Result<Network, String> {
     let mut netw = Network::new();
 
     // Add an explicit ground node.
@@ -120,51 +139,51 @@ fn convert_to_network(schema: ejt::EJsonSchema, ejson_phase_map: &HashMap<String
     let comps = &schema.components;
     for comp in comps {
         match comp {
-            ejt::Component::Node(ejt::Node{
+            Component::Node(ejt::Node{
                 id, lat_long: _, phs, type_: _, user_data: _, v, v_base, xy: _
             }) => {
                 handle_node(&mut netw, ejson_phase_map, id, phs, v_base.0, v)?
             },
-            ejt::Component::Infeeder(ejt::Infeeder{
+            Component::Infeeder(ejt::Infeeder{
                 cons, i_max, id, in_service, type_, user_data, v_setpoint
             }) => {
                 handle_infeeder(&mut netw, ejson_phase_map, id, cons, in_service, v_setpoint)?
             },
-            ejt::Component::Gen(ejt::Gen{
+            Component::Gen(ejt::Gen{
                 cons, cost, fixed_voltage, id, in_service, is_reference, p_max, p_min, q_max, q_min, type_, user_data,
                 v_setpoint, wiring
             }) => {
                 warn!("Unimplemented ejson {type_}. Ignoring.");
             },
-            ejt::Component::Line(ejt::Line::Variant0{
+            Component::Line(ejt::Line::Variant0{
                 b_chg, cons, i_max, id, in_service, length, type_: _, user_data: _, z, z0
             }) => {
                 handle_line_variant_0(&mut netw, ejson_phase_map, id, cons, in_service, i_max, z, z0, b_chg, *length);
             },
-            ejt::Component::Line(ejt::Line::Variant1{
+            Component::Line(ejt::Line::Variant1{
                 cons, i_max, id, in_service, length, type_, user_data, y_bus
             }) => {
                 warn!("Unimplemented ejson {type_}. Ignoring.");
             },
-            ejt::Component::Transformer(transformer @ ejt::Transformer::Variant0 {..}) => {
+            Component::Transformer(transformer @ ejt::Transformer::Variant0 {..}) => {
                 handle_transformer(&mut netw, ejson_phase_map, transformer).unwrap();
             },
-            ejt::Component::Transformer(transformer @ ejt::Transformer::Variant1 {..}) => {
+            Component::Transformer(transformer @ ejt::Transformer::Variant1 {..}) => {
                 handle_transformer(&mut netw, ejson_phase_map, transformer).unwrap();
             },
-            ejt::Component::Connector(ejt::Connector{
+            Component::Connector(ejt::Connector{
                 cons, i_max, id, in_service, switch_state,
                 type_,
                 user_data,
             }) => {
                 handle_connector(&mut netw, ejson_phase_map, id, cons, in_service, i_max, switch_state).unwrap();
             },
-            ejt::Component::Load(ejt::Load{
-                cons, id, s, type_: _, user_data: _, wiring
+            Component::Load(ejt::Load{
+                cons, id, s, type_: _, user_data: _, wiring, in_service,
             }) => {
                 // KLUDGE: typify is messing up due to the fact that s is optional but has min_items 1.
                 let s: Option<Vec<ejt::ComplexNumber>> = if s.is_empty() {None} else {Some(s.clone())};
-                handle_load(&mut netw, ejson_phase_map, id, cons, wiring, &s).unwrap();
+                handle_load(&mut netw, ejson_phase_map, id, cons, wiring, in_service, &s).unwrap();
             },
         };
     }
@@ -397,7 +416,7 @@ fn handle_connector(
 fn handle_load(
     netw: &mut Network, ejson_phase_map: &HashMap<String, Phase>,
     id: &str, cons: &ejt::OneConnection,
-    wiring: &ejt::Wiring, s: &Option<Vec<ejt::ComplexNumber>>
+    wiring: &ejt::Wiring, in_service: &Option<ejt::InService>, s: &Option<Vec<ejt::ComplexNumber>>
 ) -> Result<(), String> {
     let mut bts = get_bts(&cons.0, ejson_phase_map)[0].clone();
     let s: Option<Vec<c64>> = s.clone().map(|v| v.iter().map(|c| convert_complex(c, S_FACTOR)).collect());
@@ -409,7 +428,8 @@ fn handle_load(
             Load::new_wye(n_term, None, None, s, true)
         },
     };
-    netw.add_element(spec.element(id, bts)).unwrap();
+    let elem = netw.add_element(spec.element(id, bts)).unwrap();
+    elem.borrow_mut().is_in_service = convert_in_service(in_service);
     Ok(())
 }
 

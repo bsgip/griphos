@@ -1,6 +1,7 @@
 use std::fs;
 use std::io::Write;
 use std::path::Path;
+use schemars::schema::RootSchema;
 use typify::{TypeSpace, TypeSpaceSettings};
 
 fn main() {
@@ -26,12 +27,16 @@ fn main() {
     // For debugging:
     // let mut file = fs::File::create("e-json-schema.json").expect("Failed to create file");
     // write!(file, "{}", e_json_schema).unwrap();
+    let root: RootSchema = serde_json::from_str(&e_json_schema).expect("Failed to parse e_json_schema");
 
-    // Generate Rust types
+    // `component` discriminates the seven component kinds (Node, Infeeder, Gen,
+    // Load, Line, Connector, Transformer) via if/then, which typify can't
+    // process - it's excluded here and hand-written instead as a
+    // `#[serde(tag = "type")]` enum (see src/....rs).
+    let defs: Vec<_> = root.definitions.into_iter().filter(|(name, _)| name != "component").collect();
+
     let mut type_space = TypeSpace::new(&TypeSpaceSettings::default());
-    type_space.add_root_schema(serde_json::from_str(&e_json_schema).unwrap())
-        .expect("Failed to process schema");
-
+    type_space.add_ref_types(defs).expect("Failed to process schema definitions");
     // Write to file
     let mut file = fs::File::create("src/e_json_generated_types.rs")
         .expect("Failed to create file");
@@ -54,5 +59,4 @@ fn main() {
         println!("cargo:rustc-cfg=has_griphos_extras");
     }
     println!("cargo:rustc-check-cfg=cfg(has_griphos_extras)");
-
 }
