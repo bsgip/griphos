@@ -1,59 +1,20 @@
 use pyo3::prelude::*;
+use pyo3_stub_gen::derive::{gen_stub_pymethods};
+
 use ::griphos as gr;
 use gr::{c64, HasUid, Shared, SharedExt};
-use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods, gen_stub_pyclass_enum};
-use crate::py_struct;
 
-#[gen_stub_pyclass_enum]
-#[pyclass(module = "griphos", eq, eq_int, from_py_object)]
-#[derive(Clone, PartialEq)]
-pub enum SwitchState {
-    NoSwitch,
-    Closed,
-    Open,
-}
+use crate::plumbing::{py_enum, py_value, py_wrapper};
 
-#[gen_stub_pyclass_enum]
-#[pyclass(module = "griphos", eq, eq_int, from_py_object)]
-#[derive(Clone, PartialEq)]
-pub enum Phase {
-    A,
-    B,
-    C,
-    N,
-}
+py_enum!(SwitchState, gr::SwitchState { NoSwitch, Closed, Open });
 
-impl From<gr::Phase> for Phase {
-    fn from(p: gr::Phase) -> Self {
-        match p {
-            gr::Phase::A => Phase::A,
-            gr::Phase::B => Phase::B,
-            gr::Phase::C => Phase::C,
-            gr::Phase::N => Phase::N,
-        }
-    }
-}
+py_enum!(Phase, gr::Phase { A, B, C, N });
 
-impl From<Phase> for gr::Phase {
-    fn from(p: Phase) -> Self {
-        match p {
-            Phase::A => gr::Phase::A,
-            Phase::B => gr::Phase::B,
-            Phase::C => gr::Phase::C,
-            Phase::N => gr::Phase::N,
-        }
-    }
-}
+py_value!(BusTermId, gr::BusTermId { pub b: String, pub p: Phase });
 
-py_struct!(BusTermId, gr::BusTermId { pub b: String, pub p: Phase });
+py_value!(ElemBranchId, gr::ElemBranchId { pub e: String, pub b: usize });
 
-py_struct!(ElemBranchId, gr::ElemBranchId { pub e: String, pub b: usize });
-
-#[gen_stub_pyclass]
-#[pyclass(module = "griphos", unsendable)]
-pub struct Bus {
-    pub(crate) inner: Shared<gr::Bus>,
-}
+py_wrapper!(Bus, gr::Bus);
 
 #[gen_stub_pymethods]
 #[pymethods]
@@ -97,11 +58,7 @@ impl Bus {
     }
 }
 
-#[gen_stub_pyclass]
-#[pyclass(module = "griphos", subclass, unsendable)]
-pub struct Element {
-    pub(crate) inner: Shared<gr::Element>,
-}
+py_wrapper!(Element, gr::Element, subclass);
 
 #[gen_stub_pymethods]
 #[pymethods]
@@ -172,11 +129,7 @@ impl Element {
     }
 }
 
-#[gen_stub_pyclass]
-#[pyclass(module = "griphos", unsendable)]
-pub struct Network {
-    pub(crate) inner: Shared<gr::Network>,
-}
+py_wrapper!(Network, gr::Network);
 
 impl Network {
     pub(crate) fn new_with_inner(inner: gr::Network) -> Network {

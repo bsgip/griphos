@@ -6,6 +6,8 @@ mod line;
 mod network;
 mod network_solvers;
 mod plumbing;
+mod py_file_reader;
+mod transformer;
 
 define_stub_info_gatherer!(stub_info);
 

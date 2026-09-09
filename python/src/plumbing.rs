@@ -1,45 +1,19 @@
-use std::io::{self, Read};
-use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyString};
-
-/// Adapts a Python file-like object into something Rust's `Read` trait can consume.
-pub(crate) struct PyFileReader<'py> {
-    pub(crate) file: Bound<'py, PyAny>,
-}
-
-impl<'py> Read for PyFileReader<'py> {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let result = self
-            .file
-            .call_method1("read", (buf.len(),))
-            .map_err(|e| io::Error::other(e.to_string()))?;
-
-        // Handle both binary-mode (`bytes`) and text-mode (`str`) files.
-        let data: Vec<u8> = if let Ok(b) = result.cast::<PyBytes>() {
-            b.as_bytes().to_vec()
-        } else if let Ok(s) = result.cast::<PyString>() {
-            s.to_string().into_bytes()
-        } else {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "file object's read() did not return str or bytes",
-            ));
-        };
-
-        let n = data.len().min(buf.len());
-        buf[..n].copy_from_slice(&data[..n]);
-        Ok(n)
-    }
-}
-
-#[macro_export]
-macro_rules! py_struct {
+macro_rules! py_value {
     ($py_name:ident, $rust_ty:path { $($vis:vis $field:ident: $field_ty:ty),* $(,)? }) => {
         #[pyo3_stub_gen::derive::gen_stub_pyclass]
-        #[pyclass(module = "griphos", get_all, set_all, from_py_object)]
-        #[derive(Clone)]
+        #[pyclass(module = "griphos", get_all, eq, frozen, from_py_object)]
+        #[derive(Clone, PartialEq)]
         pub struct $py_name {
             $($vis $field: $field_ty,)*
+        }
+
+        #[pyo3_stub_gen::derive::gen_stub_pymethods]
+        #[pymethods]
+        impl $py_name {
+            #[new]
+            fn new($($field: $field_ty),*) -> Self {
+                $py_name { $($field,)* }
+            }
         }
 
         impl From<$rust_ty> for $py_name {
@@ -48,46 +22,117 @@ macro_rules! py_struct {
             }
         }
 
+        impl From<&$rust_ty> for $py_name {
+            fn from(v: &$rust_ty) -> Self {
+                $py_name { $($field: v.$field.clone().into(),)* }
+            }
+        }
+
+        impl From<$py_name> for $rust_ty {
+            fn from(v: $py_name) -> Self {
+                $rust_ty { $($field: v.$field.into(),)* }
+            }
+        }
+
+        impl From<&$py_name> for $rust_ty {
+            fn from(v: &$py_name) -> Self {
+                $rust_ty { $($field: v.$field.clone().into(),)* }
+            }
+        }
+
         impl $py_name {
-            pub fn into_inner(self) -> $rust_ty {
-                $rust_ty { $($field: self.$field.into(),)* }
+            pub(crate) fn into_rust(self) -> $rust_ty {
+                self.into()
+            }
+
+            pub(crate) fn to_rust(&self) -> $rust_ty {
+                self.into()
             }
         }
     };
 }
+pub(crate) use py_value;
 
-#[macro_export]
 macro_rules! py_enum {
     ($py_name:ident, $rust_ty:ty { $($variant:ident),* $(,)? }) => {
         #[pyo3_stub_gen::derive::gen_stub_pyclass_enum]
         #[pyclass(module = "griphos", eq, eq_int, from_py_object)]
-        #[derive(Clone, PartialEq)]
+        #[derive(Clone, Copy, PartialEq, Hash)]
         pub enum $py_name {
             $($variant,)*
         }
 
-        impl From<$rust_ty> for $py_name {
-            fn from(v: $rust_ty) -> Self {
+        impl From<&$rust_ty> for $py_name {
+            fn from(v: &$rust_ty) -> Self {
                 match v {
                     $(<$rust_ty>::$variant => $py_name::$variant,)*
                 }
             }
         }
 
-        impl From<$py_name> for $rust_ty {
-            fn from(v: $py_name) -> Self {
+        impl From<$rust_ty> for $py_name {
+            fn from(v: $rust_ty) -> Self {
+                (&v).into()
+            }
+        }
+
+        impl From<&$py_name> for $rust_ty {
+            fn from(v: &$py_name) -> Self {
                 match v {
                     $($py_name::$variant => <$rust_ty>::$variant,)*
                 }
             }
         }
+
+        impl From<$py_name> for $rust_ty {
+            fn from(v: $py_name) -> Self {
+                (&v).into()
+            }
+        }
+
+        impl $py_name {
+            pub(crate) fn into_rust(self) -> $rust_ty {
+                self.into()
+            }
+
+            pub(crate) fn to_rust(&self) -> $rust_ty {
+                self.into()
+            }
+        }
     };
 }
+pub(crate) use py_enum;
 
-#[macro_export]
+/// Boilerplate for a pyclass that just wraps a `Shared<$rust_ty>` handle
+/// (module = "griphos", unsendable, plus any extra bare pyclass flags you
+/// pass, e.g. `subclass`). `#[pymethods]` is left for you to write by hand
+/// right after invoking this.
+macro_rules! py_wrapper {
+    ($py_name:ident, $rust_ty:path $(, $flag:ident)*) => {
+        #[pyo3_stub_gen::derive::gen_stub_pyclass]
+        #[pyclass(module = "griphos", unsendable $(, $flag)*)]
+        pub struct $py_name {
+            pub(crate) inner: Shared<$rust_ty>,
+        }
+
+        impl From<Shared<$rust_ty>> for $py_name {
+            fn from(inner: Shared<$rust_ty>) -> Self {
+                $py_name { inner }
+            }
+        }
+
+        impl From<$py_name> for Shared<$rust_ty> {
+            fn from(v: $py_name) -> Self {
+                v.inner
+            }
+        }
+    };
+}
+pub(crate) use py_wrapper;
+
 macro_rules! element_subclass {
     ($name:ident, $spec:ty) => {
-        #[pyclass(extends=Element, unsendable)]
+        #[pyclass(extends=$crate::network::Element, unsendable)]
         pub struct $name {
             // Convenience reference to the parent elem for the purpose of rust code.
             elem: Shared<gr::Element>,
@@ -99,7 +144,7 @@ macro_rules! element_subclass {
             }
 
             fn into_initializer(self) -> PyClassInitializer<Self> {
-                PyClassInitializer::from(Element { inner: self.elem.clone() })
+                PyClassInitializer::from($crate::network::Element { inner: self.elem.clone() })
                     .add_subclass(self)
             }
 
@@ -121,3 +166,4 @@ macro_rules! element_subclass {
         }
     };
 }
+pub(crate) use element_subclass;
