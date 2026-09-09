@@ -5,15 +5,35 @@ use serde::Serialize;
 use crate::foundation::*;
 use crate::network::*;
 
-#[derive(Serialize)]
+/// Specifies the side of the transformer, P = primary, S = secondary
+#[derive(Debug, Serialize)]
 pub enum TransformerSide {
     P,
     S,
 }
 
-#[derive(Serialize)]
+/// A transformer winding pair, i.e. a specification of a magnetically coupled
+/// pair of windings, one primary and one secondary. Each winding has a pair
+/// of terminal indexes, specifying the terminals between which the winding is
+/// connected. Note that the indexing starts at zero for both primary and
+/// secondary, so for a three phase DD transformer, p = (0, 1) and s = (2, 0)
+/// means the winding runs between the first and second terminals on the
+/// primary side and the third and first terminals on the secondary side.
+#[derive(Clone, Copy, Debug)]
+pub struct WindingPair {
+    /// Index of the primary side terminals
+    pub p: (usize, usize),
+
+    /// Index of the secondary side terminals
+    pub s: (usize, usize),
+}
+
+/// Tap setup for a transformer with taps.
+#[derive(Debug, Serialize)]
 pub struct TransformerTaps {
+    /// Is the transformer tapped on the primary or secondary side?
     pub side: TransformerSide,
+    /// Tap factor. For a transformer at tap i, the actual ratio is (1 + i) *
     pub factor: f64,
     pub min: i32,
     pub max: i32,
@@ -25,9 +45,17 @@ impl TransformerTaps {
         Self {side, factor, min, max, settings: vec![0; n_phases]}
     }
 
+    pub fn get(&self, i: usize) -> i32 {
+        self.settings[i]
+    }
+
     pub fn set(&mut self, i: usize, setting: i32) {
         assert!(i < self.settings.len() && setting >= self.min && setting <= self.max);
         self.settings[i] = setting;
+    }
+
+    pub fn get_all(&self) -> &Vec<i32> {
+        &self.settings
     }
 
     pub fn set_all(&mut self, settings: impl Iterator<Item = i32>) {
@@ -35,14 +63,6 @@ impl TransformerTaps {
             assert!(val >= self.min && val <= self.max);
             *targ = val;
         }
-    }
-
-    pub fn get(&mut self, i: usize) -> i32 {
-        self.settings[i]
-    }
-
-    pub fn get_all(&self) -> &Vec<i32> {
-        &self.settings
     }
 }
 
@@ -71,12 +91,6 @@ pub struct Transformer {
     /// Specification for optional taps
     pub taps: Option<TransformerTaps>,
 
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct WindingPair {
-    pub p: (usize, usize),
-    pub s: (usize, usize),
 }
 
 impl Transformer {
