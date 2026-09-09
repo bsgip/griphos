@@ -6,7 +6,7 @@ use crate::foundation::*;
 use crate::network::*;
 
 /// Specifies the side of the transformer, P = primary, S = secondary
-#[derive(Debug, Serialize)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub enum TransformerSide {
     P,
     S,
@@ -33,16 +33,24 @@ pub struct WindingPair {
 pub struct TransformerTaps {
     /// Is the transformer tapped on the primary or secondary side?
     pub side: TransformerSide,
-    /// Tap factor. For a transformer at tap i, the actual ratio is (1 + i) *
+    /// Tap factor.
+    ///
+    /// For a transformer primary winding at tap i, the tapped ratio is
+    /// nom_turns_ratio * (1 + i *  factor). For a transformer secondary
+    /// winding at tap i, the tapped ratio is
+    /// nom_turns_ratio / (1 + i *  factor)
     pub factor: f64,
-    pub min: i32,
-    pub max: i32,
+    /// Minimum allowable tap.
+    pub min_tap: i32,
+    /// Maximum allowable tap.
+    pub max_tap: i32,
+    /// Tap settings for each winding pair.
     settings: Vec<i32>,
 }
 
 impl TransformerTaps {
-    pub fn new(side: TransformerSide, factor: f64, min: i32, max: i32, n_phases: usize) -> Self {
-        Self {side, factor, min, max, settings: vec![0; n_phases]}
+    pub fn new(side: TransformerSide, factor: f64, min_tap: i32, max_tap: i32, n_phases: usize) -> Self {
+        Self {side, factor, min_tap, max_tap, settings: vec![0; n_phases]}
     }
 
     pub fn get(&self, i: usize) -> i32 {
@@ -50,7 +58,7 @@ impl TransformerTaps {
     }
 
     pub fn set(&mut self, i: usize, setting: i32) {
-        assert!(i < self.settings.len() && setting >= self.min && setting <= self.max);
+        assert!(i < self.settings.len() && setting >= self.min_tap && setting <= self.max_tap);
         self.settings[i] = setting;
     }
 
@@ -60,7 +68,7 @@ impl TransformerTaps {
 
     pub fn set_all(&mut self, settings: impl Iterator<Item = i32>) {
         for (targ, val) in self.settings.iter_mut().zip(settings) {
-            assert!(val >= self.min && val <= self.max);
+            assert!(val >= self.min_tap && val <= self.max_tap);
             *targ = val;
         }
     }
