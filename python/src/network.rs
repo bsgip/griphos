@@ -184,4 +184,8 @@ impl Network {
         self.inner.borrow().element_i(i)
             .map(|inner| Element { inner: inner.clone() })
     }
+
+    fn __str__(&self) -> String {
+        format!("{}", self.inner.borrow())
+    }
 }
