@@ -39,16 +39,6 @@ macro_rules! py_value {
                 $rust_ty { $($field: v.$field.clone().into(),)* }
             }
         }
-
-        impl $py_name {
-            pub(crate) fn into_rust(self) -> $rust_ty {
-                self.into()
-            }
-
-            pub(crate) fn to_rust(&self) -> $rust_ty {
-                self.into()
-            }
-        }
     };
 }
 pub(crate) use py_value;
@@ -87,16 +77,6 @@ macro_rules! py_enum {
         impl From<$py_name> for $rust_ty {
             fn from(v: $py_name) -> Self {
                 (&v).into()
-            }
-        }
-
-        impl $py_name {
-            pub(crate) fn into_rust(self) -> $rust_ty {
-                self.into()
-            }
-
-            pub(crate) fn to_rust(&self) -> $rust_ty {
-                self.into()
             }
         }
     };
@@ -138,6 +118,7 @@ macro_rules! element_subclass {
             elem: Shared<gr::Element>,
         }
 
+        #[allow(unused)]
         impl $name {
             fn from_elem(elem: Shared<gr::Element>) -> Self {
                 Self { elem }

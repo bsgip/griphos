@@ -5,14 +5,15 @@ use ::griphos as gr;
 use gr::{c64, Shared, SharedExt};
 
 use crate::plumbing::{element_subclass, py_enum, py_value};
-use crate::network::{BusTermId};
+use crate::network::{BusTermId, bus_term_ids_to_gr};
 
 py_enum!(TransformerSide, gr::TransformerSide {P, S});
 
 py_value!(WindingPair, gr::WindingPair { pub p: (usize, usize), pub s: (usize, usize) });
 
 #[gen_stub_pyclass]
-#[pyclass(module = "griphos", unsendable)]
+#[pyclass(module = "griphos", unsendable, from_py_object)]
+#[derive(Clone)]
 pub struct TransformerTapsData {
     pub side: TransformerSide,
     pub factor: f64,
@@ -94,10 +95,11 @@ element_subclass!(Transformer, gr::Transformer);
 
 impl Transformer {
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
+    #[allow(clippy::too_many_arguments)]
     pub fn new_raw(
         uid: &str,
-        bus_phases_0: Vec<BusTermId>,
-        bus_phases_1: Vec<BusTermId>,
+        bus_term_ids_0: Vec<BusTermId>,
+        bus_term_ids_1: Vec<BusTermId>,
         winding_pairs: &[WindingPair],
         nom_turns_ratio: Vec<c64>,
         y_series: c64,
@@ -106,24 +108,50 @@ impl Transformer {
     ) -> Self {
         let gr_taps = taps.map(
             |taps| gr::TransformerTaps::new(
-                taps.side.to_rust(),
+                taps.side.into(),
                 taps.factor,
                 taps.min_tap,
                 taps.max_tap,
                 taps.n_phases,
             )
         );
-        let gr_bps_0: Vec<gr::BusTermId> = bus_phases_0.into_iter().map(|x| x.into_rust()).collect();
-        let gr_bps_1: Vec<gr::BusTermId> = bus_phases_1.into_iter().map(|x| x.into_rust()).collect();
+        let gr_bts_0 = bus_term_ids_to_gr(bus_term_ids_0);
+        let gr_bts_1 = bus_term_ids_to_gr(bus_term_ids_1);
+        let wps_gr: Vec<gr::WindingPair> = winding_pairs.iter().map(|wp| wp.into()).collect();
         let gr_tx = gr::Transformer::new(
-            &winding_pairs.iter().map(|wp| gr::WindingPair::from(wp)).collect::<Vec<gr::WindingPair>>(),
+            &wps_gr,
             nom_turns_ratio,
             y_series,
             y_shunt,
             gr_taps
         );
-        let elem = gr_tx.element(uid, &gr_bps_0, &gr_bps_1).into_shared();
+        let elem = gr_tx.element(uid, &gr_bts_0, &gr_bts_1).into_shared();
         Transformer::from_elem(elem)
+    }
+}
+
+#[pymethods]
+impl Transformer {
+
+    #[new]
+    pub fn new(
+        uid: &str,
+        bus_term_ids_0: Vec<BusTermId>,
+        bus_term_ids_1: Vec<BusTermId>,
+        winding_pairs: Vec<WindingPair>,
+        nom_turns_ratio: Vec<c64>,
+        y_series: c64,
+        y_shunt: c64,
+        taps: Option<TransformerTapsData>,
+    ) -> PyClassInitializer<Self> {
+        Self::new_raw(
+            uid, bus_term_ids_0, bus_term_ids_1, &winding_pairs, nom_turns_ratio, y_series, y_shunt, taps
+        ).into_initializer()
+    }
+
+    #[getter]
+    fn n_phase(self_: PyRef<'_, Self>) -> usize {
+        Self::with_spec(&self_, |s| s.n_phase)
     }
 }
 

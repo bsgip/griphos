@@ -12,6 +12,24 @@ pub struct Load {
 }
 
 impl Load {
+    pub fn new(
+        n_terms: usize,
+        branches: Vec<(usize, usize)>,
+        y_const: Option<Vec<((usize, usize), c64)>>,
+        i_const: Option<Vec<(usize, c64)>>,
+        s_const: Option<Vec<(usize, c64)>>,
+        grounding: Option<Vec<usize>>,
+    ) -> Load {
+        Load {
+            n_terms,
+            branches,
+            y_const: y_const.unwrap_or_default(),
+            i_const: i_const.unwrap_or_default(),
+            s_const: s_const.unwrap_or_default(),
+            grounding: grounding.unwrap_or_default(),
+        }
+    }
+
     pub fn new_wye(
         n_phases: usize, y_const: Option<Vec<c64>>, i_const: Option<Vec<c64>>, s_const: Option<Vec<c64>>,
         is_grounded: bool
@@ -43,7 +61,7 @@ impl Load {
     pub fn new_delta(
         n_phases: usize, y_const: Option<Vec<c64>>, i_const: Option<Vec<c64>>, s_const: Option<Vec<c64>>
     ) -> Load {
-        let branches: Vec<(usize, usize)> = (0..=n_phases).map(|i| (i, (i+1) % n_phases)).collect();
+        let branches: Vec<(usize, usize)> = (0..n_phases).map(|i| (i, (i+1) % n_phases)).collect();
 
         let y_const: Vec<((usize, usize), c64)> = if let Some(yca) = y_const {
             yca.iter().cloned().enumerate().map(|(i, ycai)| ((i, i), ycai)).collect()

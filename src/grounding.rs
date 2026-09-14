@@ -5,12 +5,12 @@ use crate::network::*;
 
 #[derive(Serialize)]
 pub struct Grounding {
-    pub n_node: usize,
+    pub n_term: usize,
 }
 
 impl Grounding {
-    pub fn new(n_node: usize) -> Grounding {
-        Grounding {n_node}
+    pub fn new(n_term: usize) -> Grounding {
+        Grounding {n_term}
     }
 
     pub fn element(self, id: &str, bus_term_ids: Vec<BusTermId>) -> Element {
@@ -20,7 +20,7 @@ impl Grounding {
 
 impl ElementSpec for Grounding {
     fn element_type(&self) -> &str {"Grounding"}
-    fn grounding(&self) -> Vec<usize> {(0..self.n_node).collect()}
+    fn grounding(&self) -> Vec<usize> {(0..self.n_term).collect()}
 }
 
 impl_g_ser_disp!(Grounding);

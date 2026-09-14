@@ -5,13 +5,13 @@ use crate::network::*;
 
 #[derive(Serialize)]
 pub struct Connector {
-    pub n_node: usize,
+    pub n_term: usize,
     pub switch_state: SwitchState,
 }
 
 impl Connector {
-    pub fn new(n_node: usize, switch_state: SwitchState) -> Connector {
-        Connector {n_node, switch_state}
+    pub fn new(n_term: usize, switch_state: SwitchState) -> Connector {
+        Connector {n_term, switch_state}
     }
 
     pub fn element(self, id: &str, bus_term_ids: Vec<BusTermId>) -> Element {
@@ -22,7 +22,7 @@ impl Connector {
 impl ElementSpec for Connector {
     fn element_type(&self) -> &str {"Connector"}
     fn is_live(&self) -> bool {self.switch_state != SwitchState::Open}
-    fn copper_plate(&self) -> Vec<Vec<usize>> {vec![{(0..self.n_node).collect()}]}
+    fn copper_plate(&self) -> Vec<Vec<usize>> {vec![{(0..self.n_term).collect()}]}
 }
 
 impl_g_ser_disp!(Connector);
