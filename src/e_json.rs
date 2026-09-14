@@ -28,7 +28,8 @@ const Z_FACTOR: f64 = 1.0; // Convert e-JSON Ohm to internal Ohm
 const Y_FACTOR: f64 = 1.0; // Convert e-JSON S to internal S
 
 #[derive(Deserialize)]
-#[serde(tag = "type")]
+#[serde(untagged)]
+#[allow(clippy::large_enum_variant)]
 enum Component {
     Connector(ejt::Connector),
     Gen(ejt::Gen),
@@ -41,10 +42,10 @@ enum Component {
 
 #[derive(Deserialize)]
 struct Root {
-    ejson_version: String,
-    id: String,
+    ejson_version: Option<String>,
+    id: Option<String>,
     voltage_type: String,
-    user_data: Box<serde_json::value::RawValue>,
+    user_data: Option<Box<serde_json::value::RawValue>>,
     components: Vec<Component>,
 }
 
@@ -58,8 +59,8 @@ pub fn parse_ejson<R: Read>(reader: R, ejson_phase_map: &HashMap<String, Phase>)
     let mut json_value: serde_json::Value = serde_json::from_reader(reader)?;
     fix_transformers_kludge(&mut json_value);
 
-    let seed = EJsonParser { ejson_phase_map };
-    seed.deserialize(json_value)
+    let parser = EJsonParser { ejson_phase_map };
+    parser.deserialize(json_value)
 }
 
 fn fix_transformers_kludge(json_value: &mut serde_json::Value) {

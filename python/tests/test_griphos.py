@@ -1,6 +1,6 @@
 import griphos as gr
 
 def test_network():
-    netw = gr.Network()
-    bus = gr.Bus("b1", [gr.Phase.A], 11.0)
+    netw = gr.parse_ejson_file("../test_data/netw_a.json")
+    print(netw)
     gr.solve_network(netw, "nodal_rect")
