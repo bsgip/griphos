@@ -65,8 +65,8 @@ impl Load {
         }
     }
 
-    pub fn element(self, id: &str, bus_phases: Vec<BusTermId>) -> Element {
-        self.element_generic(id, bus_phases)
+    pub fn element(self, id: &str, bus_term_ids: Vec<BusTermId>) -> Element {
+        self.element_generic(id, bus_term_ids)
     }
 }
 

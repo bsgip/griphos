@@ -23,8 +23,8 @@ impl GenericElement {
         GenericElement {n_terms, branches, y_const, i_const, s_const, vmag_const, vang_const, copper_plate, grounding}
     }
 
-    pub fn element(self, id: &str, bus_phases: Vec<BusTermId>) -> Element {
-        self.element_generic(id, bus_phases)
+    pub fn element(self, id: &str, bus_term_ids: Vec<BusTermId>) -> Element {
+        self.element_generic(id, bus_term_ids)
     }
 }
 

@@ -140,11 +140,11 @@ impl Transformer {
 
     pub fn element(
         self, id: &str,
-        bus_phases_p: &[BusTermId],
-        bus_phases_s: &[BusTermId],
+        bus_term_ids_p: &[BusTermId],
+        bus_term_ids_s: &[BusTermId],
     ) -> Element {
-        let bus_phases: Vec<BusTermId> = bus_phases_p.iter().chain(bus_phases_s.iter()).cloned().collect();
-        self.element_generic(id, bus_phases)
+        let bus_term_ids: Vec<BusTermId> = bus_term_ids_p.iter().chain(bus_term_ids_s.iter()).cloned().collect();
+        self.element_generic(id, bus_term_ids)
     }
 
     pub fn turns_ratio(&self, i: usize) -> c64 {
