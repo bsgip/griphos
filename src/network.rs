@@ -477,6 +477,7 @@ impl Default for Network {
 }
 
 impl_g_ser_disp!(Network);
+impl_disp_from_wrap!(Network);
 
 /// A node is a single phase of a bus. It has a complex voltage.
 #[derive(Clone, Debug, Serialize)]
