@@ -1,65 +1,47 @@
 use ::griphos as gr;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::pyclass_init::PyClassInitializer;
 use pyo3::Borrowed;
+use pyo3_stub_gen::derive::{gen_stub_pyclass};
 
 use crate::network::Network;
 
-#[pyclass(subclass)]
-pub struct SolveStatus;
-
-#[pyclass(extends=SolveStatus)]
-pub struct LinearSolverFailed;
-
-#[pymethods]
-impl LinearSolverFailed {
-    #[new]
-    fn new() -> PyClassInitializer<Self> {
-        PyClassInitializer::from(SolveStatus).add_subclass(LinearSolverFailed)
-    }
+#[gen_stub_pyclass]
+#[pyclass(module = "griphos", get_all, eq, frozen, skip_from_py_object)]
+#[derive(Clone, PartialEq)]
+pub struct SolverStatusItem {
+    pub flags: u8,
+    pub initial_residual: f64,
+    pub final_residual: f64,
+    pub total_time_s: f64,
+    pub linear_solver_time_s: f64,
 }
 
-#[pyclass(extends=SolveStatus)]
-pub struct NotConverged {
-    #[pyo3(get)]
-    pub iteration_errs: Vec<f64>,
-}
-
-#[pymethods]
-impl NotConverged {
-    #[new]
-    fn new(iteration_errs: Vec<f64>) -> PyClassInitializer<Self> {
-        PyClassInitializer::from(SolveStatus).add_subclass(NotConverged { iteration_errs })
-    }
-}
-
-#[pyclass(extends=SolveStatus)]
-pub struct Converged {
-    #[pyo3(get)]
-    pub iteration_errs: Vec<f64>,
-}
-
-#[pymethods]
-impl Converged {
-    #[new]
-    fn new(iteration_errs: Vec<f64>) -> PyClassInitializer<Self> {
-        PyClassInitializer::from(SolveStatus).add_subclass(Converged { iteration_errs })
-    }
-}
-
-fn solve_status_to_py(py: Python, status: gr::SolveStatus) -> PyResult<Py<PyAny>> {
-    match status {
-        gr::SolveStatus::LinearSolverFailed => {
-            Ok(Py::new(py, PyClassInitializer::from(SolveStatus).add_subclass(LinearSolverFailed))?.into())
+impl From<&gr::SolverStatusItem> for SolverStatusItem {
+    fn from(v: &gr::SolverStatusItem) -> Self {
+        SolverStatusItem {
+            flags: v.flags.bits(),
+            initial_residual: v.initial_residual,
+            final_residual: v.final_residual,
+            total_time_s: v.total_time_s,
+            linear_solver_time_s: v.linear_solver_time_s,
         }
-        gr::SolveStatus::NotConverged { iteration_errs } => {
-            Ok(Py::new(py, PyClassInitializer::from(SolveStatus)
-                .add_subclass(NotConverged { iteration_errs }))?.into())
-        }
-        gr::SolveStatus::Converged { iteration_errs } => {
-            Ok(Py::new(py, PyClassInitializer::from(SolveStatus)
-                .add_subclass(Converged { iteration_errs }))?.into())
+    }
+}
+
+#[gen_stub_pyclass]
+#[pyclass(module = "griphos", get_all, eq, frozen, skip_from_py_object)]
+#[derive(Clone, PartialEq)]
+pub struct SolverStatus {
+    pub status: SolverStatusItem,
+    pub iteration_statuses: Vec<SolverStatusItem>,
+}
+
+impl From<&gr::SolverStatus> for SolverStatus {
+    fn from(v: &gr::SolverStatus) -> Self {
+        SolverStatus {
+            status: (&v.status).into(),
+            iteration_statuses: v.iteration_statuses.iter().map(Into::into).collect(),
         }
     }
 }
@@ -84,7 +66,7 @@ impl<'a, 'py> FromPyObject<'a, 'py> for NetworkSolver {
 #[pyclass]
 pub struct SolveNetworkResult {
     #[pyo3(get)]
-    pub statuses: Vec<Py<PyAny>>,
+    pub statuses: Vec<SolverStatus>,
     #[pyo3(get)]
     pub solvers: Vec<Py<NetworkSolver>>,
 }
@@ -96,8 +78,8 @@ fn solve_network_result_to_py(
     let statuses = result
         .statuses
         .into_iter()
-        .map(|s| solve_status_to_py(py, s))
-        .collect::<PyResult<Vec<_>>>()?;
+        .map(|s| SolverStatus::from(&s))
+        .collect::<Vec<SolverStatus>>();
 
     let solvers = result
         .solvers
