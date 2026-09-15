@@ -1035,6 +1035,7 @@ impl NetworkSolver for NodalRectSolver {
                         info!("solve_klu failed.");
                         iter_status.flags |= SolverStatusFlags::FAILURE;
                         iter_status.flags |= SolverStatusFlags::LINEAR_SOLVER_FAILURE;
+                        break;
                     } else {
                         info!("solve_klu succeeded.");
                         iter_status.flags |= SolverStatusFlags::SUCCESS;
