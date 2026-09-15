@@ -269,10 +269,10 @@ impl NodalRectSolver {
 
         debug!("Nodal Solver");
         debug!("n_ground = {n_ground}");
-        debug!("nd_nd_sl = {n_nd_sl}");
-        debug!("nd_nd_pv = {n_nd_pv}");
-        debug!("nd_br_sl = {n_br_sl}");
-        debug!("nd_br_pv = {n_br_pv}");
+        debug!("n_nd_sl = {n_nd_sl}");
+        debug!("n_nd_pv = {n_nd_pv}");
+        debug!("n_br_sl = {n_br_sl}");
+        debug!("n_br_pv = {n_br_pv}");
         debug!("n_not_const = {n_not_const}");
         debug!("ndim = {ndim}");
 
