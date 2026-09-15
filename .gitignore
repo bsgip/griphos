@@ -4,6 +4,7 @@ Cargo.lock
 # Build artifacts
 /target/
 /src/target/
+/python/src/target/
 /performance_testing/target/
 /performance_testing/test_sgt
 
