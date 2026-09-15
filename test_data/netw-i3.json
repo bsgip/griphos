@@ -1,0 +1,20 @@
+{
+    "voltage_type": "lg",
+    "components": [
+        {
+            "id": "in1",
+            "type": "Infeeder",
+            "cons": [{
+                "node": "nd1",
+                "phs": ["A", "B", "C"]
+            }],
+            "v_setpoint": 1000.0
+        },
+        {
+            "id": "nd1",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 1000.0
+        }
+    ]
+}
