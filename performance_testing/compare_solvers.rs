@@ -10,7 +10,7 @@
 //
 // Examples:
 //   cargo run --example compare_solvers --release
-//   cargo run --example compare_solvers --release -- --dir test_data --networks 'netw_a.json'
+//   cargo run --example compare_solvers --release -- --dir test_data --networks 'netw-i1l1y1.json'
 //
 // Run with --release: debug-mode phase timings aren't representative.
 

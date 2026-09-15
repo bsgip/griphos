@@ -1,40 +1,40 @@
 {
-    "voltage_type": "ll",
+    "voltage_type": "lg",
     "components": [
         {
             "id": "in1a",
             "type": "Infeeder",
             "cons": [{
                 "node": "nd1a",
-                "phs": ["A", "B"]
+                "phs": ["A"]
             }],
-            "v_setpoint": 11000
+            "v_setpoint": 1000.0
         },
         {
             "id": "nd1a",
             "type": "Node",
-            "phs": ["A", "B"],
-            "v_base": 11000
+            "phs": ["A"],
+            "v_base": 1000.0
         },
         {
             "id": "nd2a",
             "type": "Node",
-            "phs": ["A", "B"],
-            "v_base": 11000
+            "phs": ["A"],
+            "v_base": 1000.0
         },
         {
-            "id": "ln1_2a",
+            "id": "ln1a_2a",
             "type": "Line",
             "cons": [{
                 "node": "nd1a",
-                "phs": ["A", "B"]
+                "phs": ["A"]
             }, {
                 "node": "nd2a",
-                "phs": ["A", "B"]
+                "phs": ["A"]
             }],
-            "length": 1,
-            "z": [1, 0],
-            "z0": [1, 0],
+            "length": 50.0,
+            "z": [1.0, 1.0],
+            "z0": [1.0, 1.0],
             "in_service": true
         },
         {
@@ -42,46 +42,47 @@
             "type": "Load",
             "cons": [{
                 "node": "nd2a",
-                "phs": ["A", "B"]
+                "phs": ["A"]
             }],
             "in_service": true,
             "wiring": "wye",
-            "s_nom": [[1, 0]]
+            "s": [[1.0e3, 5.0e2]]
         },
+
         {
             "id": "in1b",
             "type": "Infeeder",
             "cons": [{
                 "node": "nd1b",
-                "phs": ["A", "B"]
+                "phs": ["A"]
             }],
-            "v_setpoint": 11000
+            "v_setpoint": 1000.0
         },
         {
             "id": "nd1b",
             "type": "Node",
-            "phs": ["A", "B"],
-            "v_base": 11000
+            "phs": ["A"],
+            "v_base": 1000.0
         },
         {
             "id": "nd2b",
             "type": "Node",
-            "phs": ["A", "B"],
-            "v_base": 11000
+            "phs": ["A"],
+            "v_base": 1000.0
         },
         {
-            "id": "ln1_2b",
+            "id": "ln1b_2b",
             "type": "Line",
             "cons": [{
                 "node": "nd1b",
-                "phs": ["A", "B"]
+                "phs": ["A"]
             }, {
                 "node": "nd2b",
-                "phs": ["A", "B"]
+                "phs": ["A"]
             }],
-            "length": 1,
-            "z": [1, 0],
-            "z0": [1, 0],
+            "length": 50.0,
+            "z": [1.0, 1.0],
+            "z0": [1.0, 1.0],
             "in_service": true
         },
         {
@@ -89,11 +90,11 @@
             "type": "Load",
             "cons": [{
                 "node": "nd2b",
-                "phs": ["A", "B"]
+                "phs": ["A"]
             }],
             "in_service": true,
             "wiring": "wye",
-            "s_nom": [[1, 0]]
+            "s": [[1.0e3, 5.0e2]]
         }
     ]
 }

@@ -1075,7 +1075,8 @@ mod tests {
         // Setup: create a phase map (adjust based on your actual Phase type)
         let ejson_phase_map = ejson_phase_map_abcng();
 
-        let netw = parse_ejson_file("test_data/netw_cyc_a.json", &ejson_phase_map).expect("Failed to parse e-JSON");
+        let netw = parse_ejson_file("test_data/netw-i1l1y1.json", &ejson_phase_map)
+            .expect("Failed to parse e-JSON");
         let mods = NetworkModels::new(&netw);
 
         println!("Network:\n{}", Wrap(&netw));
@@ -1090,7 +1091,8 @@ mod tests {
         // Setup: create a phase map (adjust based on your actual Phase type)
         let ejson_phase_map = ejson_phase_map_abcng();
 
-        let netw = parse_ejson_file("test_data/netw_cyc_b.json", &ejson_phase_map).expect("Failed to parse e-JSON");
+        let netw = parse_ejson_file("test_data/netw-i2l2y2.json", &ejson_phase_map)
+            .expect("Failed to parse e-JSON");
 
         println!("Network:\n{}", Wrap(&netw));
 
@@ -1105,7 +1107,7 @@ mod tests {
         // Setup: create a phase map (adjust based on your actual Phase type)
         let ejson_phase_map = ejson_phase_map_abcng();
 
-        let netw = parse_ejson_file("test_data/netw_cyc_c.json", &ejson_phase_map).expect("Failed to parse e-JSON");
+        let netw = parse_ejson_file("test_data/netw-dup-i1l1y1.json", &ejson_phase_map).expect("Failed to parse e-JSON");
         println!("Network:\n{}", Wrap(&netw));
 
         let mods = NetworkModels::new(&netw);

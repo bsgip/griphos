@@ -1,5 +1,5 @@
 {
-    "voltage_type": "ll",
+    "voltage_type": "lg",
     "components": [
         {
             "id": "in1",
@@ -8,19 +8,19 @@
                 "node": "nd1",
                 "phs": ["A"]
             }],
-            "v_setpoint": 11000
+            "v_setpoint": 1000.0
         },
         {
             "id": "nd1",
             "type": "Node",
             "phs": ["A"],
-            "v_base": 11000
+            "v_base": 1000.0
         },
         {
             "id": "nd2",
             "type": "Node",
             "phs": ["A"],
-            "v_base": 415
+            "v_base": 1000.0
         },
         {
             "id": "ln1_2",
@@ -32,9 +32,9 @@
                 "node": "nd2",
                 "phs": ["A"]
             }],
-            "length": 1,
-            "z": [1, 0],
-            "z0": [1, 0],
+            "length": 50.0,
+            "z": [1.0, 1.0],
+            "z0": [1.0, 1.0],
             "in_service": true
         },
         {
@@ -46,7 +46,7 @@
             }],
             "in_service": true,
             "wiring": "wye",
-            "s_nom": [[1, 0]]
+            "s": [[1.0e3, 5.0e2]]
         }
     ]
 }
