@@ -1,8 +1,21 @@
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+
 use crate::foundation::*;
 use crate::network::*;
+use crate::e_json::*;
 use crate::test_utils::*;
 
-pub fn netw_y(y: c64) -> Network {
+pub fn test_data_path(filename: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("test_data").join(filename)
+}
+
+pub fn test_netw_ejson(filename: &str, ejson_phase_map: Option<HashMap<String, Phase>>) -> Network {
+    let ejson_phase_map = ejson_phase_map.unwrap_or_else(ejson_phase_map_abcng);
+    parse_ejson_file(test_data_path(filename).to_str().unwrap(), &ejson_phase_map).unwrap()
+}
+
+pub fn test_netw_y(y: c64) -> Network {
     let mut netw = Network::new();
 
     add_bus(&mut netw, 0, Phase::N);
@@ -16,7 +29,7 @@ pub fn netw_y(y: c64) -> Network {
     netw
 }
 
-pub fn netw_s(s: c64) -> Network {
+pub fn test_netw_s(s: c64) -> Network {
     let mut netw = Network::new();
 
     add_bus(&mut netw, 0, Phase::N);
@@ -31,7 +44,7 @@ pub fn netw_s(s: c64) -> Network {
     netw
 }
 
-pub fn netw_yy(y: c64) -> Network {
+pub fn test_netw_yy(y: c64) -> Network {
     let mut netw = Network::new();
 
     add_bus(&mut netw, 0, Phase::N);
@@ -48,7 +61,7 @@ pub fn netw_yy(y: c64) -> Network {
     netw
 }
 
-pub fn netw_ys(y: c64, s: c64) -> Network {
+pub fn test_netw_ys(y: c64, s: c64) -> Network {
     let mut netw = Network::new();
 
     add_bus(&mut netw, 0, Phase::N);
@@ -66,7 +79,7 @@ pub fn netw_ys(y: c64, s: c64) -> Network {
     netw
 }
 
-pub fn netw_tx() -> Network {
+pub fn test_netw_tx() -> Network {
     let mut netw = Network::new();
 
     add_bus(&mut netw, 0, Phase::N);
@@ -86,7 +99,7 @@ pub fn netw_tx() -> Network {
     netw
 }
 
-pub fn netw_cycles() -> Network {
+pub fn test_netw_cycles() -> Network {
     let mut netw = Network::new();
 
     add_bus(&mut netw, 0, Phase::N);
@@ -109,7 +122,7 @@ pub fn netw_cycles() -> Network {
     netw
 }
 
-pub fn netw_large_a() -> Network {
+pub fn test_netw_large_a() -> Network {
     let mut netw = Network::new();
 
     add_bus(&mut netw, 0, Phase::N);
@@ -135,7 +148,7 @@ pub fn netw_large_a() -> Network {
     netw
 }
 
-pub fn netw_large_b() -> Network {
+pub fn test_netw_large_b() -> Network {
     let mut netw = Network::new();
 
     add_bus(&mut netw, 0, Phase::N);

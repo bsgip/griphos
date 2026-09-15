@@ -1094,6 +1094,7 @@ mod tests {
     use rand::RngExt;
     use rand::SeedableRng;
     use rand::rngs::StdRng;
+
     use crate::nodal_rect_solver::*;
     use crate::test_networks::*;
     use crate::graph::graph_dot;
@@ -1115,57 +1116,57 @@ mod tests {
 
     #[test] fn test_solver_y() {
         configure_logging();
-        test_network(netw_y(c!(1.0, 0.0)));
+        test_network(test_netw_y(c!(1.0, 0.0)));
     }
 
     #[test] fn test_solver_y_cplx() {
         configure_logging();
-        test_network(netw_y(c!(1.0, 1.2)));
+        test_network(test_netw_y(c!(1.0, 1.2)));
     }
 
     #[test] fn test_solver_s() {
         configure_logging();
-        test_network(netw_s(c!(0.123, 0.0)));
+        test_network(test_netw_s(c!(0.123, 0.0)));
     }
 
     #[test] fn test_solver_s_cplx() {
         configure_logging();
-        test_network(netw_s(c!(0.123, 0.0234)));
+        test_network(test_netw_s(c!(0.123, 0.0234)));
     }
 
     #[test] fn test_solver_yy() {
         configure_logging();
-        test_network(netw_yy(c!(0.123, 0.0)));
+        test_network(test_netw_yy(c!(0.123, 0.0)));
     }
 
     #[test] fn test_solver_yy_cplx() {
         configure_logging();
-        test_network(netw_yy(c!(0.123, 0.123)));
+        test_network(test_netw_yy(c!(0.123, 0.123)));
     }
 
     #[test] fn test_solver_ys() {
         configure_logging();
-        test_network(netw_ys(c!(1.0, 0.0), c!(0.1, 0.0)));
+        test_network(test_netw_ys(c!(1.0, 0.0), c!(0.1, 0.0)));
     }
 
     #[test] fn test_solver_ys_cplx() {
         configure_logging();
-        test_network(netw_ys(c!(3.15, 1.0), c!(0.123, 0.11)));
+        test_network(test_netw_ys(c!(3.15, 1.0), c!(0.123, 0.11)));
     }
 
     #[test] fn test_solver_tx() {
         configure_logging();
-        test_network(netw_tx());
+        test_network(test_netw_tx());
     }
 
     #[test] fn test_solver_large_a() {
         configure_logging();
-        test_network(netw_large_a());
+        test_network(test_netw_large_a());
     }
 
     #[test] fn test_solver_large_b() {
         configure_logging();
-        test_network(netw_large_b());
+        test_network(test_netw_large_b());
     }
 
     fn test_jac_against_rhs(netw: Network) {
@@ -1207,58 +1208,73 @@ mod tests {
         }
     }
 
+    #[test] fn test_jac_against_rhs_ejson_i1l1s1() {
+        configure_logging();
+        test_jac_against_rhs(test_netw_ejson("netw-i1l1s1.json", None));
+    }
+
+    #[test] fn test_jac_against_rhs_ejson_i2l2s2() {
+        configure_logging();
+        test_jac_against_rhs(test_netw_ejson("netw-i2l2s2.json", None));
+    }
+
+    #[test] fn test_jac_against_rhs_ejson_i3l3s3() {
+        configure_logging();
+        test_jac_against_rhs(test_netw_ejson("netw-i3l3s3.json", None));
+    }
+
     #[test] fn test_jac_against_rhs_y() {
         configure_logging();
-        test_jac_against_rhs(netw_y(c!(0.658, 0.0)));
+        test_jac_against_rhs(test_netw_y(c!(0.658, 0.0)));
     }
 
     #[test] fn test_jac_against_rhs_y_cplx() {
         configure_logging();
-        test_jac_against_rhs(netw_y(c!(0.658, 0.123)));
+        test_jac_against_rhs(test_netw_y(c!(0.658, 0.123)));
     }
 
     #[test] fn test_jac_against_rhs_s() {
         configure_logging();
-        test_jac_against_rhs(netw_s(c!(0.5, 0.0)));
+        test_jac_against_rhs(test_netw_s(c!(0.5, 0.0)));
     }
 
     #[test] fn test_jac_against_rhs_s_cplx() {
         configure_logging();
-        test_jac_against_rhs(netw_s(c!(0.5, 0.4)));
+        test_jac_against_rhs(test_netw_s(c!(0.5, 0.4)));
     }
 
     #[test] fn test_jac_against_rhs_yy() {
         configure_logging();
-        test_jac_against_rhs(netw_yy(c!(0.658, 0.0)));
+        test_jac_against_rhs(test_netw_yy(c!(0.658, 0.0)));
     }
 
     #[test] fn test_jac_against_rhs_yy_cplx() {
         configure_logging();
-        test_jac_against_rhs(netw_yy(c!(0.658, 0.123)));
+        test_jac_against_rhs(test_netw_yy(c!(0.658, 0.123)));
     }
 
     #[test] fn test_jac_against_rhs_ys() {
         configure_logging();
-        test_jac_against_rhs(netw_ys(c!(0.658, 0.0), c!(0.23, 0.0)));
+        test_jac_against_rhs(test_netw_ys(c!(0.658, 0.0), c!(0.23, 0.0)));
     }
 
     #[test] fn test_jac_against_rhs_ys_cplx() {
         configure_logging();
-        test_jac_against_rhs(netw_ys(c!(0.658, 0.123), c!(0.23, 0.123)));
+        test_jac_against_rhs(test_netw_ys(c!(0.658, 0.123), c!(0.23, 0.123)));
     }
 
     #[test] fn test_jac_against_rhs_tx() {
         configure_logging();
-        test_jac_against_rhs(netw_tx());
+        test_jac_against_rhs(test_netw_tx());
     }
 
     #[test] fn test_jac_against_rhs_large_a() {
         configure_logging();
-        test_jac_against_rhs(netw_large_a());
+        test_jac_against_rhs(test_netw_large_a());
     }
 
     #[test] fn test_jac_against_rhs_large_b() {
         configure_logging();
-        test_jac_against_rhs(netw_large_b());
+        test_jac_against_rhs(test_netw_large_b());
     }
 }

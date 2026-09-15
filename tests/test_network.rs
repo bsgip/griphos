@@ -1,9 +1,6 @@
-use std::path::{Path, PathBuf};
-
 #[cfg(test)]
 mod tests {
     use griphos::*;
-    use super::*;
 
     #[test]
     fn test_network() {
@@ -59,14 +56,8 @@ mod tests {
         println!("Network structure_graph:\n{:?}", graph_dot(&nmod.structure_graph));
     }
 
-    fn test_path(filename: &str) -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("test_data").join(filename)
-    }
-
     fn test_solve_netw(filename: &str, solver_key: &str) {
-        let mut netw = parse_ejson_file(
-            test_path(filename).to_str().unwrap(), &ejson_phase_map_abcng()
-        ).unwrap();
+        let mut netw = test_netw_ejson(filename, None);
         let solve_result = solve_network(&mut netw, solver_key, None);
         assert!(solve_result.is_ok());
         if let Ok(SolveNetworkResult {statuses, solvers: _}) = solve_result {
