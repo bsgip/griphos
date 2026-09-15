@@ -443,7 +443,7 @@ mod tests {
         // Setup: create a phase map (adjust based on your actual Phase type)
         let ejson_phase_map = ejson_phase_map_abcng();
 
-        let mut network = parse_ejson_file("test_data/netw-i1l1y1.json", &ejson_phase_map)
+        let mut network = parse_ejson_file("test_data/netw-i1l1s1.json", &ejson_phase_map)
             .expect("Failed to parse e-JSON");
         println!("{}", Wrap(&network));
 

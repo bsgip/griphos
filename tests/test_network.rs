@@ -1,8 +1,9 @@
-extern crate nalgebra as na;
+use std::path::{Path, PathBuf};
 
 #[cfg(test)]
 mod tests {
     use griphos::*;
+    use super::*;
 
     #[test]
     fn test_network() {
@@ -56,5 +57,36 @@ mod tests {
         println!("Network vmag_const:\n{}", Wrap(&nmod.vmag_const));
         println!("Network vang_const:\n{}", Wrap(&nmod.vang_const));
         println!("Network structure_graph:\n{:?}", graph_dot(&nmod.structure_graph));
+    }
+
+    fn test_path(filename: &str) -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("test_data").join(filename)
+    }
+
+    fn test_solve_netw(filename: &str, solver_key: &str) {
+        let mut netw = parse_ejson_file(
+            test_path(filename).to_str().unwrap(), &ejson_phase_map_abcng()
+        ).unwrap();
+        let solve_result = solve_network(&mut netw, solver_key, None);
+        assert!(solve_result.is_ok());
+        if let Ok(SolveNetworkResult {statuses, solvers: _}) = solve_result {
+            println!("----------------");
+            println!("Testing: {filename}");
+            for status in statuses.iter() {
+                println!("\n    Overall:");
+                println!("        {:?}", status.status);
+                for iter_status in status.iteration_statuses.iter() {
+                    println!("\n    Iter:");
+                    println!("        {:?}", iter_status);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_solve_networks() {
+        test_solve_netw("netw-i1l1s1.json", "nodal_rect");
+        test_solve_netw("netw-i1l1s1.json", "nodal_rect");
+        test_solve_netw("netw-i3l3s3.json", "nodal_rect");
     }
 }
