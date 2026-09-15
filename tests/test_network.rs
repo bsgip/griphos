@@ -86,7 +86,7 @@ mod tests {
     #[test]
     fn test_solve_networks() {
         test_solve_netw("netw-i1l1s1.json", "nodal_rect");
-        test_solve_netw("netw-i1l1s1.json", "nodal_rect");
+        test_solve_netw("netw-i2l2s2.json", "nodal_rect");
         test_solve_netw("netw-i3l3s3.json", "nodal_rect");
     }
 }

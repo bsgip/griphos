@@ -6,20 +6,20 @@
             "type": "Infeeder",
             "cons": [{
                 "node": "nd1",
-                "phs": ["A"]
+                "phs": ["A", "B"]
             }],
             "v_setpoint": 1000.0
         },
         {
             "id": "nd1",
             "type": "Node",
-            "phs": ["A"],
+            "phs": ["A", "B"],
             "v_base": 1000.0
         },
         {
             "id": "nd2",
             "type": "Node",
-            "phs": ["A"],
+            "phs": ["A", "B"],
             "v_base": 1000.0
         },
         {
@@ -27,10 +27,10 @@
             "type": "Line",
             "cons": [{
                 "node": "nd1",
-                "phs": ["A"]
+                "phs": ["A", "B"]
             }, {
                 "node": "nd2",
-                "phs": ["A"]
+                "phs": ["A", "B"]
             }],
             "length": 50.0,
             "z": [1.0, 1.0],
@@ -42,11 +42,14 @@
             "type": "Load",
             "cons": [{
                 "node": "nd2",
-                "phs": ["A"]
+                "phs": ["A", "B"]
             }],
             "in_service": true,
             "wiring": "wye",
-            "s": [[1.0e3, 5.0e2]]
+            "s": [
+                [1.0e3, 5.0e2],
+                [1.0e3, 5.0e2]
+            ]
         }
     ]
 }
