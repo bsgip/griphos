@@ -44,6 +44,26 @@ pub enum Phase {
     N,
 }
 
+impl Phase {
+    pub fn va_nom(&self) -> f64 {
+        match self {
+            Phase::A => 0.0,
+            Phase::B => 2.0 * std::f64::consts::PI / 3.0,
+            Phase::C => 4.0 * std::f64::consts::PI / 3.0,
+            Phase::N => 0.0
+        }
+    }
+
+    pub fn v_nom_pu(&self) -> c64 {
+        match self {
+            Phase::A => {p!(1.0, 0.0)},
+            Phase::B => {p!(1.0, 2.0 * std::f64::consts::PI / 3.0)},
+            Phase::C => {p!(1.0, 4.0 * std::f64::consts::PI / 3.0)},
+            Phase::N => {c!(0.0, 0.0)},
+        }
+    }
+}
+
 impl_g_ser_disp!(Phase);
 
 impl fmt::Display for Phase {
@@ -125,7 +145,7 @@ pub struct Bus {
 impl Bus {
     pub fn new(uid: &str, phases: Vec<Phase>, v_base: f64) -> Bus {
         let terms: Vec<BusTerm> = phases.iter()
-            .map(|phase| BusTerm {phase: *phase, v: v_base * v_phase(phase)}).collect();
+            .map(|phase| BusTerm {phase: *phase, v: v_base * phase.v_nom_pu()}).collect();
         Bus {uid: uid.to_string(), v_base, terms}
     }
 
@@ -768,7 +788,7 @@ impl NetworkModel {
                 // Get v_base by looking at the first bus that has this node.
                 let BusTermId {b: b0, p: p0} = &copper.node_weight(cc[0]).unwrap();
                 let v_base = netw.buses[b0].borrow().v_base;
-                let v_nom = v_base * v_phase(p0);
+                let v_nom = v_base * p0.v_nom_pu();
 
                 // Create a shared node for this set of copperplated nodes.
                 nodes.push((nodes.len(), Node::new(v_nom, false)));
@@ -974,15 +994,6 @@ impl NetworkModels {
         let master = NetworkModel::new_master(netw).unwrap();
         let islands = master.islands().unwrap();
         NetworkModels {master, islands}
-    }
-}
-
-fn v_phase(p: &Phase) -> c64 {
-    match p {
-        Phase::A => {p!(1.0, 0.0)},
-        Phase::B => {p!(1.0, 2.0 * std::f64::consts::PI / 3.0)},
-        Phase::C => {p!(1.0, 4.0 * std::f64::consts::PI / 3.0)},
-        Phase::N => {c!(0.0, 0.0)},
     }
 }
 

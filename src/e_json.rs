@@ -245,13 +245,15 @@ fn handle_infeeder(
     let bus_id: &str = &con.node;
     let phs = convert_phases(&con.phs, ejson_phase_map);
     let mut bts: Vec<BusTermId> = Vec::with_capacity(phs.len() + 1);
-    bts.push(bt!("G".to_string(), Phase::N));
     phs.iter().for_each(|p| bts.push(bt!(bus_id, *p)));
+    bts.push(bt!("G".to_string(), Phase::N));
     let in_service = convert_in_service(in_service);
     let vmag = v_setpoint.0 * V_FACTOR;
     let elem = netw.add_element(
-        Generator::new(bts.len(), (1..bts.len()).map(|i| (0, i)).collect(), GeneratorControl::SL{vmag, vang: 0.0})
-            .element(id, bts)).unwrap();
+        Generator::new(
+            bts.len(), (0..bts.len()-1).map(|i| (i, bts.len()-1)).collect(),
+            GeneratorControl::new_wye_slack_with_std_phase_angles(vmag, &phs)
+        ).element(id, bts)).unwrap();
     elem.borrow_mut().is_in_service = in_service;
     Ok(())
 }
