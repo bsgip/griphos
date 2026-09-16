@@ -1,0 +1,56 @@
+{
+    "voltage_type": "lg",
+    "components": [
+        {
+            "id": "in1",
+            "type": "Infeeder",
+            "cons": [{
+                "node": "nd1",
+                "phs": ["A", "B", "C"]
+            }],
+            "v_setpoint": 1000.0
+        },
+        {
+            "id": "nd1",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 1000.0
+        },
+        {
+            "id": "nd2",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 1000.0
+        },
+        {
+            "id": "ln1_2",
+            "type": "Line",
+            "cons": [{
+                "node": "nd1",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "nd2",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 50.0,
+            "z": [1.0, 1.0],
+            "z0": [1.0, 1.0],
+            "in_service": true
+        },
+        {
+            "id": "ld2",
+            "type": "Load",
+            "cons": [{
+                "node": "nd2",
+                "phs": ["A", "B", "C"]
+            }],
+            "in_service": true,
+            "wiring": "wye",
+            "s": [
+                [0.0, 0.0],
+                [0.0, 0.0],
+                [0.0, 0.0]
+            ]
+        }
+    ]
+}
