@@ -1,0 +1,65 @@
+{
+    "voltage_type": "ll",
+    "components": [
+        {
+            "id": "infeeder_1",
+            "type": "Infeeder",
+            "cons": [{
+                "node": "node_1",
+                "phs": ["A", "B", "C"]
+            }],
+            "v_setpoint": 11000,
+            "user_data": {}
+        },
+        {
+            "id": "node_1",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 11000,
+            "user_data": {}
+        },
+        {
+            "id": "node_2",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 11000,
+            "user_data": {}
+        },
+        {
+            "id": "transformer_1",
+            "type": "Transformer",
+            "cons": [{
+                "node": "node_1",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_2",
+                "phs": ["A", "B", "C"]
+            }],
+            "vector_group": "dyn11",
+            "v_winding_base": [11000, 415.0],
+            "nom_turns_ratio": [45.910, 0],
+            "z_p": [0, 0],
+            "z_s": [1e-06, 1e-06],
+            "tap_side": "primary",
+            "tap_range": [0, 0],
+            "tap_factor": 0,
+            "taps": [0, 0, 0],
+            "n_winding_pairs": 3,
+            "is_grounded_p": false,
+            "is_grounded_s": true,
+            "s_max": 200000,
+            "user_data": {}
+        },
+        {
+            "id": "load_1",
+            "type": "Load",
+            "cons": [{
+                "node": "node_2",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[131.377, 13.137], [131.377, 13.137], [131.377, 13.137]],
+            "user_data": {}
+        }
+    ]
+}

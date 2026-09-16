@@ -1,0 +1,2295 @@
+{
+    "voltage_type": "ll",
+    "components": [
+        {
+            "id": "infeeder_1",
+            "type": "Infeeder",
+            "cons": [{
+                "node": "node_1",
+                "phs": ["A", "B", "C"]
+            }],
+            "v_setpoint": 11000,
+            "user_data": {}
+        },
+        {
+            "id": "node_1",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 11000,
+            "user_data": {}
+        },
+        {
+            "id": "node_2",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 11000,
+            "user_data": {}
+        },
+        {
+            "id": "line_1",
+            "type": "Line",
+            "cons": [{
+                "node": "node_2",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_3",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 0.001,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_3",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 11000,
+            "user_data": {}
+        },
+        {
+            "id": "transformer_1",
+            "type": "Transformer",
+            "cons": [{
+                "node": "node_3",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_4",
+                "phs": ["A", "B", "C"]
+            }],
+            "vector_group": "dyn11",
+            "v_winding_base": [11000, 415.0],
+            "nom_turns_ratio": [45.910, 0],
+            "z_p": [0, 0],
+            "z_s": [1e-06, 1e-06],
+            "tap_side": "primary",
+            "tap_range": [0, 0],
+            "tap_factor": 0,
+            "taps": [0, 0, 0],
+            "n_winding_pairs": 3,
+            "is_grounded_p": false,
+            "is_grounded_s": true,
+            "s_max": 200000,
+            "user_data": {}
+        },
+        {
+            "id": "node_4",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_2",
+            "type": "Line",
+            "cons": [{
+                "node": "node_4",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_5",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 0.001,
+            "z": [0.031, 0.010],
+            "z0": [0.031, 0.010],
+            "user_data": {}
+        },
+        {
+            "id": "node_5",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "node_6",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "node_7",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_3",
+            "type": "Line",
+            "cons": [{
+                "node": "node_7",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_8",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 35.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_8",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_4",
+            "type": "Line",
+            "cons": [{
+                "node": "node_8",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_9",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 11.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_9",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_1",
+            "type": "Load",
+            "cons": [{
+                "node": "node_9",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[131.377, 13.137], [131.377, 13.137], [131.377, 13.137]],
+            "user_data": {}
+        },
+        {
+            "id": "line_5",
+            "type": "Line",
+            "cons": [{
+                "node": "node_8",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_10",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 18.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_10",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_2",
+            "type": "Load",
+            "cons": [{
+                "node": "node_10",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[203.932, 20.393], [203.932, 20.393], [203.932, 20.393]],
+            "user_data": {}
+        },
+        {
+            "id": "line_6",
+            "type": "Line",
+            "cons": [{
+                "node": "node_8",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_11",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 55.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_11",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_7",
+            "type": "Line",
+            "cons": [{
+                "node": "node_11",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_12",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 9.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_12",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_3",
+            "type": "Load",
+            "cons": [{
+                "node": "node_12",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[123.645, 12.364], [123.645, 12.364], [123.645, 12.364]],
+            "user_data": {}
+        },
+        {
+            "id": "line_8",
+            "type": "Line",
+            "cons": [{
+                "node": "node_11",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_13",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 23.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_13",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_4",
+            "type": "Load",
+            "cons": [{
+                "node": "node_13",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[119.836, 11.983], [119.836, 11.983], [119.836, 11.983]],
+            "user_data": {}
+        },
+        {
+            "id": "line_9",
+            "type": "Line",
+            "cons": [{
+                "node": "node_11",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_14",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 40.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_14",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_10",
+            "type": "Line",
+            "cons": [{
+                "node": "node_14",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_15",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 18.0,
+            "z": [0.052, 0.010],
+            "z0": [0.052, 0.010],
+            "user_data": {}
+        },
+        {
+            "id": "node_15",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_5",
+            "type": "Load",
+            "cons": [{
+                "node": "node_15",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[120.938, 12.093], [120.938, 12.093], [120.938, 12.093]],
+            "user_data": {}
+        },
+        {
+            "id": "node_16",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_11",
+            "type": "Line",
+            "cons": [{
+                "node": "node_16",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_17",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 6.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_17",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_6",
+            "type": "Load",
+            "cons": [{
+                "node": "node_17",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[184.427, 18.442], [184.427, 18.442], [184.427, 18.442]],
+            "user_data": {}
+        },
+        {
+            "id": "line_12",
+            "type": "Line",
+            "cons": [{
+                "node": "node_16",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_18",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 5.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_18",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_7",
+            "type": "Load",
+            "cons": [{
+                "node": "node_18",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[81.233, 8.123], [81.233, 8.123], [81.233, 8.123]],
+            "user_data": {}
+        },
+        {
+            "id": "line_13",
+            "type": "Line",
+            "cons": [{
+                "node": "node_8",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_19",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 11.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_19",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_8",
+            "type": "Load",
+            "cons": [{
+                "node": "node_19",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[65.081, 6.508], [65.081, 6.508], [65.081, 6.508]],
+            "user_data": {}
+        },
+        {
+            "id": "line_14",
+            "type": "Line",
+            "cons": [{
+                "node": "node_7",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_20",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 15.0,
+            "z": [0.052, 0.010],
+            "z0": [0.052, 0.010],
+            "user_data": {}
+        },
+        {
+            "id": "node_20",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_9",
+            "type": "Load",
+            "cons": [{
+                "node": "node_20",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[43.141, 4.314], [43.141, 4.314], [43.141, 4.314]],
+            "user_data": {}
+        },
+        {
+            "id": "line_15",
+            "type": "Line",
+            "cons": [{
+                "node": "node_7",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_21",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 28.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_21",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "node_22",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_16",
+            "type": "Line",
+            "cons": [{
+                "node": "node_22",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_23",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 12.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_23",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_10",
+            "type": "Load",
+            "cons": [{
+                "node": "node_23",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[117.211, 11.721], [117.211, 11.721], [117.211, 11.721]],
+            "user_data": {}
+        },
+        {
+            "id": "line_17",
+            "type": "Line",
+            "cons": [{
+                "node": "node_22",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_24",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 38.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_24",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_11",
+            "type": "Load",
+            "cons": [{
+                "node": "node_24",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[136.459, 13.645], [136.459, 13.645], [136.459, 13.645]],
+            "user_data": {}
+        },
+        {
+            "id": "line_18",
+            "type": "Line",
+            "cons": [{
+                "node": "node_21",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_25",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 10.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_25",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_12",
+            "type": "Load",
+            "cons": [{
+                "node": "node_25",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[84.669, 8.466], [84.669, 8.466], [84.669, 8.466]],
+            "user_data": {}
+        },
+        {
+            "id": "line_19",
+            "type": "Line",
+            "cons": [{
+                "node": "node_21",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_26",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 49.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_26",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_20",
+            "type": "Line",
+            "cons": [{
+                "node": "node_26",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_27",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 10.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_27",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_13",
+            "type": "Load",
+            "cons": [{
+                "node": "node_27",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[67.002, 6.700], [67.002, 6.700], [67.002, 6.700]],
+            "user_data": {}
+        },
+        {
+            "id": "line_21",
+            "type": "Line",
+            "cons": [{
+                "node": "node_26",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_28",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 42.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_28",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_22",
+            "type": "Line",
+            "cons": [{
+                "node": "node_28",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_29",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 10.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_29",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_14",
+            "type": "Load",
+            "cons": [{
+                "node": "node_29",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[64.906, 6.490], [64.906, 6.490], [64.906, 6.490]],
+            "user_data": {}
+        },
+        {
+            "id": "line_23",
+            "type": "Line",
+            "cons": [{
+                "node": "node_28",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_30",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 26.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_30",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_15",
+            "type": "Load",
+            "cons": [{
+                "node": "node_30",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[47.365, 4.736], [47.365, 4.736], [47.365, 4.736]],
+            "user_data": {}
+        },
+        {
+            "id": "node_31",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_24",
+            "type": "Line",
+            "cons": [{
+                "node": "node_31",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_32",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 33.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_32",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "node_33",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_16",
+            "type": "Load",
+            "cons": [{
+                "node": "node_33",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[94.032, 9.403], [94.032, 9.403], [94.032, 9.403]],
+            "user_data": {}
+        },
+        {
+            "id": "line_25",
+            "type": "Line",
+            "cons": [{
+                "node": "node_32",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_34",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 45.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_34",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_17",
+            "type": "Load",
+            "cons": [{
+                "node": "node_34",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[151.737, 15.173], [151.737, 15.173], [151.737, 15.173]],
+            "user_data": {}
+        },
+        {
+            "id": "line_26",
+            "type": "Line",
+            "cons": [{
+                "node": "node_31",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_35",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 33.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_35",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_18",
+            "type": "Load",
+            "cons": [{
+                "node": "node_35",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[193.624, 19.362], [193.624, 19.362], [193.624, 19.362]],
+            "user_data": {}
+        },
+        {
+            "id": "line_27",
+            "type": "Line",
+            "cons": [{
+                "node": "node_31",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_36",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 10.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_36",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_19",
+            "type": "Load",
+            "cons": [{
+                "node": "node_36",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[117.719, 11.771], [117.719, 11.771], [117.719, 11.771]],
+            "user_data": {}
+        },
+        {
+            "id": "line_28",
+            "type": "Line",
+            "cons": [{
+                "node": "node_31",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_37",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 44.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_37",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_29",
+            "type": "Line",
+            "cons": [{
+                "node": "node_37",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_38",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 43.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_38",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_30",
+            "type": "Line",
+            "cons": [{
+                "node": "node_38",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_39",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 43.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_39",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_31",
+            "type": "Line",
+            "cons": [{
+                "node": "node_39",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_40",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 16.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_40",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_20",
+            "type": "Load",
+            "cons": [{
+                "node": "node_40",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[66.266, 6.626], [66.266, 6.626], [66.266, 6.626]],
+            "user_data": {}
+        },
+        {
+            "id": "line_32",
+            "type": "Line",
+            "cons": [{
+                "node": "node_39",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_41",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 10.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_41",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_21",
+            "type": "Load",
+            "cons": [{
+                "node": "node_41",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[173.338, 17.333], [173.338, 17.333], [173.338, 17.333]],
+            "user_data": {}
+        },
+        {
+            "id": "line_33",
+            "type": "Line",
+            "cons": [{
+                "node": "node_39",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_42",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 46.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_42",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_34",
+            "type": "Line",
+            "cons": [{
+                "node": "node_42",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_43",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 19.0,
+            "z": [0.052, 0.010],
+            "z0": [0.052, 0.010],
+            "user_data": {}
+        },
+        {
+            "id": "node_43",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_22",
+            "type": "Load",
+            "cons": [{
+                "node": "node_43",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[118.256, 11.825], [118.256, 11.825], [118.256, 11.825]],
+            "user_data": {}
+        },
+        {
+            "id": "line_35",
+            "type": "Line",
+            "cons": [{
+                "node": "node_42",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_44",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 19.0,
+            "z": [0.052, 0.010],
+            "z0": [0.052, 0.010],
+            "user_data": {}
+        },
+        {
+            "id": "node_44",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_23",
+            "type": "Load",
+            "cons": [{
+                "node": "node_44",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[80.617, 8.061], [80.617, 8.061], [80.617, 8.061]],
+            "user_data": {}
+        },
+        {
+            "id": "line_36",
+            "type": "Line",
+            "cons": [{
+                "node": "node_42",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_45",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 9.0,
+            "z": [0.052, 0.010],
+            "z0": [0.052, 0.010],
+            "user_data": {}
+        },
+        {
+            "id": "node_45",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_24",
+            "type": "Load",
+            "cons": [{
+                "node": "node_45",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[144.969, 14.496], [144.969, 14.496], [144.969, 14.496]],
+            "user_data": {}
+        },
+        {
+            "id": "node_46",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_25",
+            "type": "Load",
+            "cons": [{
+                "node": "node_46",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[79.175, 7.917], [79.175, 7.917], [79.175, 7.917]],
+            "user_data": {}
+        },
+        {
+            "id": "line_37",
+            "type": "Line",
+            "cons": [{
+                "node": "node_38",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_47",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 10.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_47",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_26",
+            "type": "Load",
+            "cons": [{
+                "node": "node_47",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[66.354, 6.635], [66.354, 6.635], [66.354, 6.635]],
+            "user_data": {}
+        },
+        {
+            "id": "line_38",
+            "type": "Line",
+            "cons": [{
+                "node": "node_38",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_48",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 24.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_48",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_27",
+            "type": "Load",
+            "cons": [{
+                "node": "node_48",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[208.072, 20.807], [208.072, 20.807], [208.072, 20.807]],
+            "user_data": {}
+        },
+        {
+            "id": "line_39",
+            "type": "Line",
+            "cons": [{
+                "node": "node_38",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_49",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 13.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_49",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_28",
+            "type": "Load",
+            "cons": [{
+                "node": "node_49",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[50.276, 5.027], [50.276, 5.027], [50.276, 5.027]],
+            "user_data": {}
+        },
+        {
+            "id": "line_40",
+            "type": "Line",
+            "cons": [{
+                "node": "node_37",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_50",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 18.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_50",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_29",
+            "type": "Load",
+            "cons": [{
+                "node": "node_50",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[49.247, 4.924], [49.247, 4.924], [49.247, 4.924]],
+            "user_data": {}
+        },
+        {
+            "id": "line_41",
+            "type": "Line",
+            "cons": [{
+                "node": "node_37",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_51",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 8.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_51",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_30",
+            "type": "Load",
+            "cons": [{
+                "node": "node_51",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[61.257, 6.125], [61.257, 6.125], [61.257, 6.125]],
+            "user_data": {}
+        },
+        {
+            "id": "line_42",
+            "type": "Line",
+            "cons": [{
+                "node": "node_37",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_52",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 19.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_52",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_31",
+            "type": "Load",
+            "cons": [{
+                "node": "node_52",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[145.085, 14.508], [145.085, 14.508], [145.085, 14.508]],
+            "user_data": {}
+        },
+        {
+            "id": "line_43",
+            "type": "Line",
+            "cons": [{
+                "node": "node_26",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_53",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 26.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_53",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_32",
+            "type": "Load",
+            "cons": [{
+                "node": "node_53",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[102.583, 10.258], [102.583, 10.258], [102.583, 10.258]],
+            "user_data": {}
+        },
+        {
+            "id": "line_44",
+            "type": "Line",
+            "cons": [{
+                "node": "node_6",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_54",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 0.001,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_54",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_33",
+            "type": "Load",
+            "cons": [{
+                "node": "node_54",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[89.573, 8.957], [89.573, 8.957], [89.573, 8.957]],
+            "user_data": {}
+        },
+        {
+            "id": "line_45",
+            "type": "Line",
+            "cons": [{
+                "node": "node_6",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_55",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 0.001,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_55",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_34",
+            "type": "Load",
+            "cons": [{
+                "node": "node_55",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[49.145, 4.914], [49.145, 4.914], [49.145, 4.914]],
+            "user_data": {}
+        },
+        {
+            "id": "node_56",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_46",
+            "type": "Line",
+            "cons": [{
+                "node": "node_56",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_57",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 9.0,
+            "z": [0.066, 0.004],
+            "z0": [0.066, 0.004],
+            "user_data": {}
+        },
+        {
+            "id": "node_57",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_35",
+            "type": "Load",
+            "cons": [{
+                "node": "node_57",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[73.449, 7.344], [73.449, 7.344], [73.449, 7.344]],
+            "user_data": {}
+        },
+        {
+            "id": "line_47",
+            "type": "Line",
+            "cons": [{
+                "node": "node_56",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_58",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 40.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_58",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_48",
+            "type": "Line",
+            "cons": [{
+                "node": "node_58",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_59",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 30.0,
+            "z": [0.066, 0.005],
+            "z0": [0.066, 0.005],
+            "user_data": {}
+        },
+        {
+            "id": "node_59",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_36",
+            "type": "Load",
+            "cons": [{
+                "node": "node_59",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[110.972, 11.097], [110.972, 11.097], [110.972, 11.097]],
+            "user_data": {}
+        },
+        {
+            "id": "line_49",
+            "type": "Line",
+            "cons": [{
+                "node": "node_58",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_60",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 13.0,
+            "z": [0.066, 0.005],
+            "z0": [0.066, 0.005],
+            "user_data": {}
+        },
+        {
+            "id": "node_60",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_37",
+            "type": "Load",
+            "cons": [{
+                "node": "node_60",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[90.826, 9.082], [90.826, 9.082], [90.826, 9.082]],
+            "user_data": {}
+        },
+        {
+            "id": "line_50",
+            "type": "Line",
+            "cons": [{
+                "node": "node_58",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_61",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 38.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_61",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_51",
+            "type": "Line",
+            "cons": [{
+                "node": "node_61",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_62",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 30.0,
+            "z": [0.066, 0.004],
+            "z0": [0.066, 0.004],
+            "user_data": {}
+        },
+        {
+            "id": "node_62",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_38",
+            "type": "Load",
+            "cons": [{
+                "node": "node_62",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[68.416, 6.841], [68.416, 6.841], [68.416, 6.841]],
+            "user_data": {}
+        },
+        {
+            "id": "line_52",
+            "type": "Line",
+            "cons": [{
+                "node": "node_61",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_63",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 9.0,
+            "z": [0.066, 0.005],
+            "z0": [0.066, 0.005],
+            "user_data": {}
+        },
+        {
+            "id": "node_63",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_39",
+            "type": "Load",
+            "cons": [{
+                "node": "node_63",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[106.979, 10.697], [106.979, 10.697], [106.979, 10.697]],
+            "user_data": {}
+        },
+        {
+            "id": "line_53",
+            "type": "Line",
+            "cons": [{
+                "node": "node_61",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_64",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 58.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_64",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_54",
+            "type": "Line",
+            "cons": [{
+                "node": "node_64",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_65",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 9.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_65",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_40",
+            "type": "Load",
+            "cons": [{
+                "node": "node_65",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[159.260, 15.926], [159.260, 15.926], [159.260, 15.926]],
+            "user_data": {}
+        },
+        {
+            "id": "line_55",
+            "type": "Line",
+            "cons": [{
+                "node": "node_64",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_66",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 16.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_66",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_56",
+            "type": "Line",
+            "cons": [{
+                "node": "node_66",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_67",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 19.0,
+            "z": [0.198, 0.012],
+            "z0": [0.198, 0.012],
+            "user_data": {}
+        },
+        {
+            "id": "node_67",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_41",
+            "type": "Load",
+            "cons": [{
+                "node": "node_67",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[29.510, 2.951], [29.510, 2.951], [29.510, 2.951]],
+            "user_data": {}
+        },
+        {
+            "id": "line_57",
+            "type": "Line",
+            "cons": [{
+                "node": "node_64",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_68",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 23.0,
+            "z": [0.066, 0.004],
+            "z0": [0.066, 0.004],
+            "user_data": {}
+        },
+        {
+            "id": "node_68",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_58",
+            "type": "Line",
+            "cons": [{
+                "node": "node_68",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_69",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 18.0,
+            "z": [0.066, 0.004],
+            "z0": [0.066, 0.004],
+            "user_data": {}
+        },
+        {
+            "id": "node_69",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_42",
+            "type": "Load",
+            "cons": [{
+                "node": "node_69",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[96.626, 9.662], [96.626, 9.662], [96.626, 9.662]],
+            "user_data": {}
+        },
+        {
+            "id": "node_70",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_43",
+            "type": "Load",
+            "cons": [{
+                "node": "node_70",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[142.886, 14.288], [142.886, 14.288], [142.886, 14.288]],
+            "user_data": {}
+        },
+        {
+            "id": "line_59",
+            "type": "Line",
+            "cons": [{
+                "node": "node_68",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_71",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 8.0,
+            "z": [0.066, 0.005],
+            "z0": [0.066, 0.005],
+            "user_data": {}
+        },
+        {
+            "id": "node_71",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_44",
+            "type": "Load",
+            "cons": [{
+                "node": "node_71",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[198.047, 19.804], [198.047, 19.804], [198.047, 19.804]],
+            "user_data": {}
+        },
+        {
+            "id": "line_60",
+            "type": "Line",
+            "cons": [{
+                "node": "node_61",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_72",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 18.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_72",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_61",
+            "type": "Line",
+            "cons": [{
+                "node": "node_72",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_73",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 17.0,
+            "z": [0.066, 0.004],
+            "z0": [0.066, 0.004],
+            "user_data": {}
+        },
+        {
+            "id": "node_73",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_45",
+            "type": "Load",
+            "cons": [{
+                "node": "node_73",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[189.950, 18.995], [189.950, 18.995], [189.950, 18.995]],
+            "user_data": {}
+        },
+        {
+            "id": "line_62",
+            "type": "Line",
+            "cons": [{
+                "node": "node_72",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_74",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 8.0,
+            "z": [0.066, 0.005],
+            "z0": [0.066, 0.005],
+            "user_data": {}
+        },
+        {
+            "id": "node_74",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_46",
+            "type": "Load",
+            "cons": [{
+                "node": "node_74",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[80.706, 8.070], [80.706, 8.070], [80.706, 8.070]],
+            "user_data": {}
+        },
+        {
+            "id": "node_75",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_47",
+            "type": "Load",
+            "cons": [{
+                "node": "node_75",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[27.374, 2.737], [27.374, 2.737], [27.374, 2.737]],
+            "user_data": {}
+        },
+        {
+            "id": "line_63",
+            "type": "Line",
+            "cons": [{
+                "node": "node_56",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_76",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 17.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "node_76",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "line_64",
+            "type": "Line",
+            "cons": [{
+                "node": "node_76",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_77",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 17.0,
+            "z": [0.066, 0.005],
+            "z0": [0.066, 0.005],
+            "user_data": {}
+        },
+        {
+            "id": "node_77",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_48",
+            "type": "Load",
+            "cons": [{
+                "node": "node_77",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[137.012, 13.701], [137.012, 13.701], [137.012, 13.701]],
+            "user_data": {}
+        },
+        {
+            "id": "line_65",
+            "type": "Line",
+            "cons": [{
+                "node": "node_76",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_78",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 7.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "node_78",
+            "type": "Node",
+            "phs": ["A", "B", "C"],
+            "v_base": 398.4,
+            "user_data": {}
+        },
+        {
+            "id": "load_49",
+            "type": "Load",
+            "cons": [{
+                "node": "node_78",
+                "phs": ["A", "B", "C"]
+            }],
+            "wiring": "wye",
+            "s": [[39.581, 3.958], [39.581, 3.958], [39.581, 3.958]],
+            "user_data": {}
+        },
+        {
+            "id": "line_66",
+            "type": "Line",
+            "cons": [{
+                "node": "node_14",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_16",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 130.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "line_67",
+            "type": "Line",
+            "cons": [{
+                "node": "node_38",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_46",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 68.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "line_68",
+            "type": "Line",
+            "cons": [{
+                "node": "node_32",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_33",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 35.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "line_69",
+            "type": "Line",
+            "cons": [{
+                "node": "node_5",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_6",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 1.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "line_70",
+            "type": "Line",
+            "cons": [{
+                "node": "node_21",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_22",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 147.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "line_71",
+            "type": "Line",
+            "cons": [{
+                "node": "node_6",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_7",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 49.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "line_72",
+            "type": "Line",
+            "cons": [{
+                "node": "node_58",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_75",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 25.0,
+            "z": [0.066, 0.004],
+            "z0": [0.066, 0.004],
+            "user_data": {}
+        },
+        {
+            "id": "line_73",
+            "type": "Line",
+            "cons": [{
+                "node": "node_68",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_70",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 22.0,
+            "z": [0.035, 0.003],
+            "z0": [0.035, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "line_74",
+            "type": "Line",
+            "cons": [{
+                "node": "node_28",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_31",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 78.0,
+            "z": [0.012, 0.017],
+            "z0": [0.012, 0.017],
+            "user_data": {}
+        },
+        {
+            "id": "line_75",
+            "type": "Line",
+            "cons": [{
+                "node": "node_1",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_2",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 126.0,
+            "z": [0.004, 0.007],
+            "z0": [0.004, 0.007],
+            "user_data": {}
+        },
+        {
+            "id": "line_76",
+            "type": "Line",
+            "cons": [{
+                "node": "node_5",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_56",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 29.0,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "line_77",
+            "type": "Line",
+            "cons": [{
+                "node": "node_48",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_59",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 30,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        },
+        {
+            "id": "line_78",
+            "type": "Line",
+            "cons": [{
+                "node": "node_15",
+                "phs": ["A", "B", "C"]
+            }, {
+                "node": "node_63",
+                "phs": ["A", "B", "C"]
+            }],
+            "length": 40,
+            "z": [0.018, 0.003],
+            "z0": [0.018, 0.003],
+            "user_data": {}
+        }
+    ]
+}
