@@ -81,16 +81,16 @@ pub fn y_branch_from_sym_seq(z_plus: c64, mut z_0: c64, n_phase: usize) -> Resul
         let a: c64 = (2.0 * z_0 + z_plus) / (3.0 * z_0 * z_plus);
         let b: c64 = (-z_0 + z_plus) / (3.0 * z_0 * z_plus);
         Ok(vec![
-            ((0, 0), a), ((0, 1), b), ((0, 1), b),
-            ((1, 0), b), ((1, 1), a), ((1, 1), b),
-            ((1, 0), b), ((1, 1), b), ((1, 1), a),
+            ((0, 0), a), ((0, 1), b), ((0, 2), b),
+            ((1, 0), b), ((1, 1), a), ((1, 2), b),
+            ((2, 0), b), ((2, 1), b), ((2, 2), a),
         ])
     } else if n_phase == 2 {
         let a = (z_0 + 2.0 * z_plus) / (2.0 * z_0 * z_plus + z_plus * z_plus);
         let b = (-z_0 + z_plus) / (2.0 * z_0 * z_plus + z_plus * z_plus);
         Ok(vec![
             ((0, 0), a), ((0, 1), b),
-            ((1, 0), b), ((0, 1), a),
+            ((1, 0), b), ((1, 1), a),
         ])
     } else if n_phase == 1 {
         let a = 3.0 / (z_0 + 2.0 * z_plus);
