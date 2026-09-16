@@ -53,10 +53,21 @@ impl SolverStatus {
             .iter()
             .map(|x| x.flags)
             .fold(SolverStatusFlags::SUCCESS, SolverStatusFlags::combine);
-        self.status.linear_solver_time_s = self.iteration_statuses.iter().map(|x| x.linear_solver_time_s).sum();
+
+        if !self.iteration_statuses.is_empty() {
+            self.status.linear_solver_time_s = self.iteration_statuses.iter().map(|x| x.linear_solver_time_s).sum();
+            self.status.initial_residual = self.iteration_statuses.first().unwrap().initial_residual;
+            self.status.final_residual = self.iteration_statuses.last().unwrap().final_residual;
+        } else {
+            self.status.linear_solver_time_s = 0.0;
+            self.status.initial_residual = 0.0;
+            self.status.final_residual = 0.0;
+        }
+
         if let Some(combine_final_flags) = maybe_combine_final_flags {
             self.status.flags = self.status.flags.combine(combine_final_flags);
         }
+
         self
     }
 }

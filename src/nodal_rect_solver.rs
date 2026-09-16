@@ -6,6 +6,7 @@ use log::{debug, info};
 use crate::foundation::*;
 use crate::klu::solve_klu;
 use crate::network::*;
+use crate::network_solvers::debug_csmat;
 use crate::{NetworkSolver, SolverPlugin, SolverStatus, SolverStatusFlags, SolverStatusItem};
 
 fn name_maybe_idx(idx: Option<usize>) -> String {
@@ -1001,13 +1002,14 @@ impl NetworkSolver for NodalRectSolver {
         let mut converged: bool = self.ndim() == 0; // It's possible to set up problems with no vars and eqs.
 
         if !converged {
-            for i in 0..self.params.max_iter {
+            let var_names: Vec<String> = self.var_infos.iter().map(|vi| vi.name()).collect();
+            let eqn_names: Vec<String> = self.eqn_kinds.iter().map(|ei| ei.name()).collect();
+
+            // We iterate one past the end so we end up with the final status in place.
+            for i in 0..=self.params.max_iter {
                 info!("Iteration {i}");
 
                 let start_iter = Instant::now();
-
-                status.iteration_statuses.push(SolverStatusItem::default());
-                let iter_status = status.iteration_statuses.last_mut().unwrap();
 
                 self.prepare_for_iter();
                 self.debug_node_infos();
@@ -1015,13 +1017,24 @@ impl NetworkSolver for NodalRectSolver {
                 self.debug_branch_gen_infos();
                 self.debug_vars();
                 self.debug_eqns();
+                debug_csmat(&self.jac_csc, Some("J"), Some(&eqn_names), Some(&var_names));
 
                 let (i_residual, residual) = self.rhs
                     .iter().copied().map(f64::abs).enumerate().max_by(|(_, a), (_, b)| a.total_cmp(b)).unwrap();
                 info!("residual = {} @ {}", residual, i_residual);
+                if let Some(prev_iter_status) = status.iteration_statuses.last_mut() {
+                    prev_iter_status.final_residual = residual;
+                }
+                status.iteration_statuses.push(SolverStatusItem::default());
+                let iter_status = status.iteration_statuses.last_mut().unwrap();
                 iter_status.initial_residual = residual;
+                iter_status.final_residual = residual; // Will get overwritten except for the end sentinel iteration.
 
-                if residual < self.params.tol {
+                if i == self.params.max_iter {
+                    info!("Exceeded max iter");
+                    iter_status.flags |= SolverStatusFlags::MAX_ITER_EXCEEDED;
+                    converged = false;
+                } else if residual < self.params.tol {
                     info!("Converged, with residual = {} vs tolerance {}", residual, self.params.tol);
                     iter_status.flags |= SolverStatusFlags::SUCCESS;
                     converged = true;
@@ -1043,10 +1056,10 @@ impl NetworkSolver for NodalRectSolver {
                         debug!("Updated vars:");
                         self.debug_vars();
                     }
-
-                    let end_iter = Instant::now();
-                    iter_status.total_time_s = (end_iter - start_iter).as_secs_f64();
                 }
+
+                let end_iter = Instant::now();
+                iter_status.total_time_s = (end_iter - start_iter).as_secs_f64();
 
                 if converged {
                     break;
@@ -1060,11 +1073,9 @@ impl NetworkSolver for NodalRectSolver {
             SolverStatusFlags::FAILURE | SolverStatusFlags::MAX_ITER_EXCEEDED
         };
         status = status.finalize(Some(combine_final_flags));
-        let iteration_residuals: Vec<_> = status.iteration_statuses.first()
-            .map(|x| x.initial_residual)
-            .into_iter()
-            .chain(status.iteration_statuses.iter().map(|x| x.final_residual))
-            .collect();
+
+        let iteration_residuals: Vec<_> = status.iteration_statuses.iter()
+            .map(|x| (x.initial_residual, x.final_residual)).collect();
 
         info!("Converged = {:?}", converged);
         info!("iteration_residuals = {:?}", iteration_residuals);
