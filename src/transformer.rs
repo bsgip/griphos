@@ -166,7 +166,7 @@ impl ElementSpec for Transformer {
     }
 
     fn n_terms(&self) -> usize {
-        2 * self.n_phase
+        self.n_term
     }
 
     fn n_branches(&self) -> usize {
@@ -181,10 +181,10 @@ impl ElementSpec for Transformer {
     fn y_const(&self) -> Vec<((usize, usize), c64)> {
         let mut y: Vec<((usize, usize), c64)> = Vec::with_capacity((2 * self.n_phase).pow(2));
         for i in 0..self.n_phase {
-            y.push(((i, i), (self.y_series + 0.5 * self.y_shunt) / self.turns_ratio(i).norm_sqr()));
-            y.push(((i, i + self.n_phase), -self.y_series / self.turns_ratio(i).conj()));
-            y.push(((i + self.n_phase, i), -self.y_series / self.turns_ratio(i)));
-            y.push(((i + self.n_phase, i + self.n_phase), self.y_series + 0.5 * self.y_shunt));
+            y.push(((2*i,   2*i  ), (self.y_series + 0.5 * self.y_shunt) / self.turns_ratio(i).norm_sqr()));
+            y.push(((2*i,   2*i+1), -self.y_series / self.turns_ratio(i).conj()));
+            y.push(((2*i+1, 2*i  ), -self.y_series / self.turns_ratio(i)));
+            y.push(((2*i+1, 2*i+1), self.y_series + 0.5 * self.y_shunt));
         }
         y
     }
