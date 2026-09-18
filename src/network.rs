@@ -208,7 +208,7 @@ impl Element {
     }
 
     pub fn element_type(&self) -> &str {
-        self.spec.element_type()
+        self.spec.type_str()
     }
 
     pub fn as_type<T: 'static>(&self) -> Option<&T> {
@@ -270,7 +270,7 @@ impl GSerDisp for Element {
     fn g_serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
         let mut state = serializer.serialize_struct("Element", 4)?;
         state.serialize_field("uid", &self.uid)?;
-        state.serialize_field("element_type", &self.spec.element_type())?;
+        state.serialize_field("element_type", &self.element_type())?;
         state.serialize_field("is_in_service", &self.is_in_service)?;
         state.serialize_field("bus_term_ids", &self.bus_term_ids)?;
         state.serialize_field("n_terms", &self.spec.n_terms())?;
@@ -289,14 +289,27 @@ impl GSerDisp for Element {
 impl_disp_from_wrap!(Element);
 impl_dbg_from_wrap!(Element);
 
+// Each ElementSpec must implement this by hand.
+pub trait TypeStrOf {
+    fn type_str_of() -> &'static str where Self: Sized;
+}
+
+// Bridge to allow calling on an instance; don't re-implement.
+pub trait TypeStr {
+    fn type_str(&self) -> &'static str;
+}
+
+impl<T: TypeStrOf> TypeStr for T {
+    fn type_str(&self) -> &'static str {
+        T::type_str_of()
+    }
+}
+
 /// An element_spec collects together electrical connections of various types such as constant y or constant s.
-pub trait ElementSpec: Any + Send + Sync {
+pub trait ElementSpec: Any + Send + Sync + TypeStrOf + TypeStr {
     fn element_generic(self, uid: &str, bus_term_ids: Vec<BusTermId>) -> Element where Self: Sized + 'static {
         Element::new(uid, bus_term_ids, self)
     }
-
-    /// Element type for display etc.
-    fn element_type(&self) -> &str;
 
     /// Number of branches (node-node connections)
     fn n_terms(&self) -> usize {0}

@@ -1,7 +1,8 @@
 use crate::foundation::c64;
 use crate::network::{BusTermId, Element, ElementSpec};
+use crate::TypeStrOf;
 
-#[derive(Debug)]
+#[derive(Debug, TypeStrOf)]
 pub struct Load {
     pub n_terms: usize,
     pub branches: Vec<(usize, usize)>,
@@ -89,27 +90,30 @@ impl Load {
 }
 
 impl ElementSpec for Load {
-    fn element_type(&self) -> &str {
-        "Load"
-    }
     fn n_terms(&self) -> usize {
         self.n_terms
     }
+
     fn n_branches(&self) -> usize {
         self.branches.len()
     }
+
     fn branch_wiring(&self) -> Vec<(usize, usize)> {
         self.branches.clone()
     }
+
     fn y_const(&self) -> Vec<((usize, usize), c64)> {
         self.y_const.clone()
     }
+
     fn i_const(&self) -> Vec<(usize, c64)> {
         self.i_const.clone()
     }
+
     fn s_const(&self) -> Vec<(usize, c64)> {
         self.s_const.clone()
     }
+
     fn grounding(&self) -> Vec<usize> {
         self.grounding.clone()
     }

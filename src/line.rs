@@ -2,8 +2,9 @@ use serde::Serialize;
 
 use crate::foundation::*;
 use crate::network::*;
+use crate::TypeStrOf;
 
-#[derive(Serialize)]
+#[derive(Serialize, TypeStrOf)]
 pub struct Line {
     pub n_phase: usize,
     pub y_const: Vec<((usize, usize), c64)>,
@@ -30,10 +31,6 @@ impl Line {
 }
 
 impl ElementSpec for Line {
-    fn element_type(&self) -> &str {
-        "Line"
-    }
-
     fn n_terms(&self) -> usize {
         2 * self.n_phase
     }

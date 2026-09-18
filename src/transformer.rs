@@ -4,6 +4,7 @@ use serde::Serialize;
 
 use crate::foundation::*;
 use crate::network::*;
+use crate::TypeStrOf;
 
 /// Specifies the side of the transformer, P = primary, S = secondary
 #[derive(Clone, Copy, Debug, Serialize)]
@@ -74,7 +75,7 @@ impl TransformerTaps {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, TypeStrOf)]
 pub struct Transformer {
     /// Number of terminals.
     ///
@@ -161,10 +162,6 @@ impl Transformer {
 }
 
 impl ElementSpec for Transformer {
-    fn element_type(&self) -> &str {
-        "Transformer"
-    }
-
     fn n_terms(&self) -> usize {
         self.n_term
     }
@@ -241,5 +238,9 @@ mod tests {
         }
 
         println!("y_const:\n{}", dense);
+    }
+
+    #[test]
+    fn test_transformer_3p_dyn11() {
     }
 }

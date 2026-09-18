@@ -22,6 +22,8 @@ pub mod e_json;
 pub mod test_networks;
 pub mod test_utils;
 
+pub use griphos_proc_macros::TypeStrOf;
+
 pub use foundation::*;
 pub use network::*;
 pub use connector::*;

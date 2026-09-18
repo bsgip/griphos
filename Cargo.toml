@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "python"]
+members = [".", "python", "griphos-proc-macros"]
 
 [package]
 name = "griphos"
@@ -30,6 +30,7 @@ clap = { version = "4.6", features = ["derive"] }
 regress = "0.11"
 regex = "1.12"
 bitflags = "2.13"
+griphos-proc-macros = { path = "griphos-proc-macros" }
 
 [build-dependencies]
 serde_json = "1.0"

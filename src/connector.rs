@@ -2,8 +2,9 @@ use serde::Serialize;
 
 use crate::foundation::*;
 use crate::network::*;
+use crate::TypeStrOf;
 
-#[derive(Serialize)]
+#[derive(Serialize, TypeStrOf)]
 pub struct Connector {
     pub n_term: usize,
     pub switch_state: SwitchState,
@@ -20,9 +21,13 @@ impl Connector {
 }
 
 impl ElementSpec for Connector {
-    fn element_type(&self) -> &str {"Connector"}
-    fn is_live(&self) -> bool {self.switch_state != SwitchState::Open}
-    fn copper_plate(&self) -> Vec<Vec<usize>> {vec![{(0..self.n_term).collect()}]}
+    fn is_live(&self) -> bool {
+        self.switch_state != SwitchState::Open
+    }
+
+    fn copper_plate(&self) -> Vec<Vec<usize>> {
+        vec![{(0..self.n_term).collect()}]
+    }
 }
 
 impl_g_ser_disp!(Connector);

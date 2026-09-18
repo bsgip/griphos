@@ -2,8 +2,9 @@ use serde::Serialize;
 
 use crate::foundation::*;
 use crate::network::*;
+use crate::TypeStrOf;
 
-#[derive(Serialize)]
+#[derive(Serialize, TypeStrOf)]
 pub struct Grounding {
     pub n_term: usize,
 }
@@ -19,7 +20,6 @@ impl Grounding {
 }
 
 impl ElementSpec for Grounding {
-    fn element_type(&self) -> &str {"Grounding"}
     fn grounding(&self) -> Vec<usize> {(0..self.n_term).collect()}
 }
 
