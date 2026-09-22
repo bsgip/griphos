@@ -1,4 +1,5 @@
 use log::warn;
+use sprs::vec;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use serde::Deserialize;
@@ -286,58 +287,12 @@ fn ejson_complex(value: &serde_json::Value) -> Option<c64> {
     }
 }
 
-fn transformer_vg_info(
-    vector_group: &str, n_winding_pairs: usize, bts: &[Vec<BusTermId>]
-) -> (Vec<WindingPair>, Vec<Vec<BusTermId>>) {
-    let ignore: Vec<char> = "nN0123456789".chars().collect();
-    let vg_mod: String = vector_group.chars().filter(|c| !ignore.contains(c)).collect();
-    let mut bts_mod: Vec<Vec<BusTermId>> = bts.to_vec();
-    (
-        match vg_mod.as_str() {
-            "dy" => {
-                bts_mod[1].insert(0, bt!("G", Phase::N));
-                match n_winding_pairs as u32 {
-                    1 => vec![WindingPair {p: (0, 1), s: (0, 1)}],
-                    3 => vec![WindingPair {p: (0, 1), s: (0, 1)}, WindingPair {p: (1, 2), s: (0, 2)}, WindingPair {p: (2, 0), s: (0, 3)}],
-                    _ => {
-                        panic!("Bad number of winding pairs {} for vector group {}", &n_winding_pairs, &vector_group);
-                    },
-                }
-            }
-            "yy" => {
-                bts_mod[0].insert(0, bt!("G", Phase::N));
-                bts_mod[1].insert(0, bt!("G", Phase::N));
-                match n_winding_pairs as u32 {
-                    1 => vec![WindingPair {p: (0, 1), s: (0, 1)}], //
-                    2 => vec![WindingPair {p: (0, 1), s: (0, 1)}, WindingPair {p: (0, 2), s: (0, 2)}],
-                    3 => vec![WindingPair {p: (0, 1), s: (0, 1)}, WindingPair {p: (0, 2), s: (0, 2)}, WindingPair {p: (0, 3), s: (0, 3)}],
-                    _ => {
-                        panic!("Bad number of winding pairs {} for vector group {}", &n_winding_pairs, &vector_group);
-                    },
-                }
-            }
-            "dd" => {
-                match n_winding_pairs as u32 {
-                    1 => vec![WindingPair {p: (0, 1), s: (0, 1)}], //
-                    3 => vec![WindingPair {p: (0, 1), s: (0, 1)}, WindingPair {p: (1, 2), s: (1, 2)}, WindingPair {p: (2, 0), s: (2, 0)}],
-                    _ => {
-                        panic!("Bad number of winding pairs {} for vector group {}", &n_winding_pairs, &vector_group);
-                    },
-                }
-            },
-            _ => {
-                panic!("Unimplemented or bad vector group {}", &vector_group);
-            },
-        },
-        bts_mod)
-}
-
 fn handle_transformer(
     netw: &mut Network, ejson_phase_map: &HashMap<String, Phase>,
     transformer: &ejt::Transformer
 ) -> Result<(), String> {
     let (
-        id, bts, vector_group, n_winding_pairs, nom_turns_ratio, z0_p, z0_s, tap_side, tap_factor, tap_range, taps,
+        id, mut bts, vector_group, n_winding_pairs, nom_turns_ratio, z0_p, z0_s, tap_side, tap_factor, tap_range, taps,
         user_data
     ) = match transformer {
         ejt::Transformer::Variant0 {
@@ -373,7 +328,16 @@ fn handle_transformer(
     assert!(z0_p.is_none(), "Currently can't handle z0_p in Transformer components");
     let y_shunt = match z0_s {Some(c) => 1.0 / convert_complex(c, Y_FACTOR), None => c!(0.0, 0.0)};
 
-    let (winding_pairs, mod_bts) = transformer_vg_info(vector_group, n_winding_pairs, &bts);
+    let vector_group: VectorGroup = vector_group.parse()?;
+
+    let winding_pairs = winding_pairs_from_vector_group(&vector_group, n_winding_pairs)?;
+
+    for (wt, btsi) in vector_group.winding_types.iter().zip(bts.iter_mut()) {
+        // For every Y winding, insert an extra grounded neutral.
+        if matches!(wt, WindingType::Y) {
+            btsi.push(bt!("G", Phase::N));
+        }
+    }
 
     let turns_ratio: Vec<c64> = vec![convert_complex(nom_turns_ratio, 1.0); n_winding_pairs];
 
@@ -392,7 +356,7 @@ fn handle_transformer(
     };
 
     netw.add_element(Transformer::new(&winding_pairs, turns_ratio, y_series, y_shunt, tx_taps)
-        .element(id, mod_bts[0].as_ref(), mod_bts[1].as_ref())).unwrap();
+        .element(id, bts[0].as_ref(), bts[1].as_ref())).unwrap();
 
     Ok(())
 }
