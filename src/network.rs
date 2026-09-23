@@ -45,20 +45,22 @@ pub enum Phase {
 }
 
 impl Phase {
+    /// Positive sequence phase angles.
     pub fn va_nom(&self) -> f64 {
         match self {
             Phase::A => 0.0,
-            Phase::B => 2.0 * std::f64::consts::PI / 3.0,
-            Phase::C => 4.0 * std::f64::consts::PI / 3.0,
+            Phase::B => 4.0 * std::f64::consts::PI / 3.0,
+            Phase::C => 2.0 * std::f64::consts::PI / 3.0,
             Phase::N => 0.0
         }
     }
 
+    /// Positive sequence pu phases.
     pub fn v_nom_pu(&self) -> c64 {
         match self {
             Phase::A => {p!(1.0, 0.0)},
-            Phase::B => {p!(1.0, 2.0 * std::f64::consts::PI / 3.0)},
-            Phase::C => {p!(1.0, 4.0 * std::f64::consts::PI / 3.0)},
+            Phase::B => {p!(1.0, 4.0 * std::f64::consts::PI / 3.0)},
+            Phase::C => {p!(1.0, 2.0 * std::f64::consts::PI / 3.0)},
             Phase::N => {c!(0.0, 0.0)},
         }
     }
