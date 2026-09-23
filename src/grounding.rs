@@ -3,16 +3,20 @@ use serde::Serialize;
 use crate::network::*;
 use crate::TypeStrOf;
 
+/// An element that grounds its bus terminals.
 #[derive(Debug, Serialize, TypeStrOf)]
 pub struct Grounding {
+    /// The number of terminals to ground.
     pub n_term: usize,
 }
 
 impl Grounding {
+    /// Creates a new [`Grounding`].
     pub fn new(n_term: usize) -> Grounding {
         Grounding {n_term}
     }
 
+    /// Wraps grounding in an [`Element`] with the given terminal mapping.
     pub fn element(self, id: &str, bus_term_ids: Vec<BusTermId>) -> Element {
         self.element_generic(id, bus_term_ids)
     }

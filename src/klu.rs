@@ -5,6 +5,7 @@ use klu_sys::*;
 
 use crate::foundation::PrettyPrint;
 
+/// Mirrors KLU's c-struct for the symbolic info.
 #[cfg(debug_assertions)]
 #[repr(C)]
 struct KluSymbolicFields {
@@ -26,6 +27,7 @@ struct KluSymbolicFields {
     structural_rank: i32,
 }
 
+/// Mirrors KLU's c-struct for the numeric info.
 #[cfg(debug_assertions)]
 #[repr(C)]
 struct KluNumericFields {
@@ -55,9 +57,8 @@ struct KluNumericFields {
     nzoff:          i32,
 }
 
+/// Solves the linear system mx - b = 0 using KLU.
 pub(crate) fn solve_klu(m: &mut CsMatI<f64, i32>, b: &mut Vec<f64>) -> Result<(), String> {
-    // pin_zero_columns(m);
-
     let n: i32 = m.cols() as i32;
 
     unsafe {

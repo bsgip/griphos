@@ -3,7 +3,8 @@ use petgraph::graph::{UnGraph, NodeIndex, EdgeIndex, GraphIndex};
 use petgraph::visit::{EdgeRef, GraphProp, IntoEdgeReferences, IntoNodeReferences, NodeIndexable, NodeRef};
 use std::collections::{HashMap, HashSet, VecDeque};
 
-// Computes a fundamental cycle basis for an undirected graph using a BFS spanning tree.
+/// Computes a fundamental cycle basis for an undirected graph using a BFS spanning tree.
+///
 /// Returns a vector of cycles, where each cycle is a vector of edge indices with orientation +-1.
 ///
 /// `start_node`, if given, is used as a seed: the actual spanning-tree root is chosen
@@ -42,9 +43,9 @@ pub fn fundamental_cycle_basis<N, E>(
     basis
 }
 
-/// Builds the BFS spanning tree used by `fundamental_cycle_basis`: picks a
-/// low-eccentricity root near `start_node` (or an arbitrary node if `None`), then
-/// BFS-explores its connected component.
+// Builds the BFS spanning tree used by `fundamental_cycle_basis`: picks a low-eccentricity root near `start_node` (or
+// an arbitrary node if `None`), then BFS-explores its connected component.
+#[allow(clippy::type_complexity)]
 fn build_spanning_tree<N, E>(
     graph: &UnGraph<N, E>,
     start_node: Option<NodeIndex>,
@@ -67,8 +68,8 @@ fn build_spanning_tree<N, E>(
     (start, visited, tree_edges, parent)
 }
 
-/// BFS distances (and BFS-tree parents) from `start`, restricted to `start`'s
-/// connected component. Used by `pick_root` to locate a low-eccentricity root.
+// BFS distances (and BFS-tree parents) from `start`, restricted to `start`'s
+// connected component. Used by `pick_root` to locate a low-eccentricity root.
 fn bfs_distances<N, E>(
     graph: &UnGraph<N, E>,
     start: NodeIndex,
@@ -89,8 +90,8 @@ fn bfs_distances<N, E>(
                 edge_ref.target()
             };
 
-            if !dist.contains_key(&neighbor) {
-                dist.insert(neighbor, d + 1);
+            if let std::collections::hash_map::Entry::Vacant(e) = dist.entry(neighbor) {
+                e.insert(d + 1);
                 parent.insert(neighbor, node);
                 queue.push_back(neighbor);
             }
@@ -100,11 +101,10 @@ fn bfs_distances<N, E>(
     (dist, parent)
 }
 
-/// Approximate the center of the component containing `seed` via double-sweep BFS:
-/// find a farthest node `a` from `seed`, then a farthest node `b` from `a`, then walk
-/// halfway back along the `a`-`b` path. Rooting the spanning tree here keeps
-/// tree-paths — and therefore fundamental cycles — short, compared to rooting at an
-/// arbitrary (possibly peripheral) node.
+// Approximates the center of the component containing `seed` via double-sweep BFS: find a farthest node `a` from
+// `seed`, then a farthest node `b` from `a`, then walk halfway back along the `a`-`b` path. Rooting the spanning tree
+// here keeps tree-paths — and therefore fundamental cycles — short, compared to rooting at an arbitrary (possibly
+// peripheral) node.
 fn pick_root<N, E>(graph: &UnGraph<N, E>, seed: NodeIndex) -> NodeIndex {
     let (dist_seed, _) = bfs_distances(graph, seed);
     let a = *dist_seed.iter().max_by_key(|&(_, &d)| d).unwrap().0;
@@ -120,7 +120,7 @@ fn pick_root<N, E>(graph: &UnGraph<N, E>, seed: NodeIndex) -> NodeIndex {
     node
 }
 
-/// BFS to build a spanning tree
+// BFS to build a spanning tree
 fn bfs_spanning_tree<N, E>(
     graph: &UnGraph<N, E>,
     start: NodeIndex,
@@ -154,8 +154,7 @@ fn bfs_spanning_tree<N, E>(
     }
 }
 
-/// Build a fundamental cycle by finding the tree path between u and v,
-/// then adding the chord edge
+// Builds a fundamental cycle by finding the tree path between u and v, then adding the chord edge
 fn build_fundamental_cycle(
     u: NodeIndex, v: NodeIndex, chord: EdgeIndex, parent: &HashMap<NodeIndex, (NodeIndex, EdgeIndex)>,
 ) -> Vec<EdgeIndex> {
@@ -239,6 +238,9 @@ fn oriented_cycle<N, E>(
     oriented
 }
 
+// Performs a depth-firsst search on an undirected graph, performing a function f on each node.
+//
+// The return value of f specifies whether to stop the search.
 pub fn dfs<N, E, F>(
     graph: &UnGraph<N, E>,
     start: NodeIndex,
@@ -270,6 +272,7 @@ where
     }
 }
 
+/// Outputs a graph in dot format.
 pub fn graph_dot<G>(g: G) -> String
 where
     G: IntoEdgeReferences + IntoNodeReferences + NodeIndexable + GraphProp + Copy,

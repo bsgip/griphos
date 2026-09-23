@@ -16,6 +16,7 @@ pub enum TransformerSide {
     // S1,
 }
 
+/// Winding type in a vector group, D, Y or Z.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 pub enum WindingType {
     D,
@@ -25,6 +26,7 @@ pub enum WindingType {
 }
 
 impl WindingType {
+    /// Converts the winding type into a character.
     pub fn as_char(self) -> char {
         match self {
             WindingType::D => 'd',
@@ -33,6 +35,7 @@ impl WindingType {
         }
     }
 
+    /// Creates the winding type from a character.
     pub fn from_char(c: char) -> Option<WindingType> {
         match c.to_ascii_lowercase() {
             'd' => Some(WindingType::D),
@@ -43,6 +46,7 @@ impl WindingType {
     }
 }
 
+/// Struct to hold a transformer's vector group information.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VectorGroup {
     pub winding_types: Vec<WindingType>,
@@ -51,6 +55,7 @@ pub struct VectorGroup {
 }
 
 impl VectorGroup {
+    /// Create a new VectorGroup, with the given winding types, clock shifts, and neutral brought out information.
     pub fn new(
         winding_types: Vec<WindingType>,
         secondary_clocks: Vec<u32>,
@@ -140,12 +145,10 @@ impl std::str::FromStr for VectorGroup {
     }
 }
 
-/// A transformer winding pair, i.e. a specification of a magnetically coupled
-/// pair of windings, one primary and one secondary. Each winding has a pair
-/// of terminal indexes, specifying the terminals between which the winding is
-/// connected. Note that the indexing starts at zero for both primary and
-/// secondary, so for a three phase DD transformer, p = (0, 1) and s = (2, 0)
-/// means the winding runs between the first and second terminals on the
+/// A transformer winding pair, i.e. a specification of a magnetically coupled pair of windings, one primary and one
+/// secondary. Each winding has a pair of terminal indexes, specifying the terminals between which the winding is
+/// connected. Note that the indexing starts at zero for both primary and secondary, so for a three phase DD
+/// transformer, p = (0, 1) and s = (2, 0) means the winding runs between the first and second terminals on the
 /// primary side and the third and first terminals on the secondary side.
 #[derive(Clone, Copy, Debug)]
 pub struct WindingPair {
@@ -156,6 +159,7 @@ pub struct WindingPair {
     pub s: (usize, usize),
 }
 
+/// Given a vector group and a phase count, recreate the [`WindingPair`]s.
 pub fn winding_pairs_from_vector_group(vg: &VectorGroup, n_phase: usize) -> Result<Vec<WindingPair>, String> {
     if vg.winding_types.len() != 2 {
         return Err(String::from(
@@ -275,23 +279,28 @@ pub struct TransformerTaps {
 }
 
 impl TransformerTaps {
+    /// Creates a new TransformerTaps.
     pub fn new(side: TransformerSide, factor: f64, min_tap: i32, max_tap: i32, n_phase: usize) -> Self {
         Self {side, factor, min_tap, max_tap, settings: vec![0; n_phase]}
     }
 
+    /// Get the tap setting for tap `i`.
     pub fn get(&self, i: usize) -> i32 {
         self.settings[i]
     }
 
+    /// Set tap `i`.
     pub fn set(&mut self, i: usize, setting: i32) {
         assert!(i < self.settings.len() && setting >= self.min_tap && setting <= self.max_tap);
         self.settings[i] = setting;
     }
 
+    /// Get all tap settings.
     pub fn get_all(&self) -> &Vec<i32> {
         &self.settings
     }
 
+    /// Set all tap settings.
     pub fn set_all(&mut self, settings: impl Iterator<Item = i32>) {
         for (targ, val) in self.settings.iter_mut().zip(settings) {
             assert!(val >= self.min_tap && val <= self.max_tap);
@@ -300,6 +309,9 @@ impl TransformerTaps {
     }
 }
 
+/// A power transformer.
+///
+/// Currently, we allow only two-windings transformers, with arbitrary numbers of phases.
 #[derive(Debug, Serialize, TypeStrOf)]
 pub struct Transformer {
     /// Number of terminals.
@@ -328,6 +340,7 @@ pub struct Transformer {
 }
 
 impl Transformer {
+    /// Creates a new [`Transformer`].
     pub fn new(
         winding_pairs: &[WindingPair],
         nom_turns_ratio: Vec<c64>,
@@ -364,6 +377,7 @@ impl Transformer {
         }
     }
 
+    /// Creates a new delta-wye connected [`Transformer`].
     pub fn new_dy(
         n_phase: usize,
         nom_turns_ratio: Vec<c64>,
@@ -378,6 +392,7 @@ impl Transformer {
         Ok(Self::new(&winding_pairs, nom_turns_ratio, y_series, y_shunt, taps))
     }
 
+    /// Creates a new delta-delta connected [`Transformer`].
     pub fn new_dd(
         n_phase: usize,
         nom_turns_ratio: Vec<c64>,
@@ -392,6 +407,7 @@ impl Transformer {
         Ok(Self::new(&winding_pairs, nom_turns_ratio, y_series, y_shunt, taps))
     }
 
+    /// Creates a new wye-wye connected [`Transformer`].
     pub fn new_yy(
         n_phase: usize,
         nom_turns_ratio: Vec<c64>,
@@ -406,6 +422,7 @@ impl Transformer {
         Ok(Self::new(&winding_pairs, nom_turns_ratio, y_series, y_shunt, taps))
     }
 
+    /// Wraps a transformer in an [`Element`], with the given bus terminal connections.
     pub fn element(
         self, id: &str,
         bus_term_ids_p: &[BusTermId],
@@ -415,6 +432,7 @@ impl Transformer {
         self.element_generic(id, bus_term_ids)
     }
 
+    /// Returns the turns ratio for the `i`th winding.
     pub fn turns_ratio(&self, i: usize) -> c64 {
         if let Some(taps) = &self.taps {
             let x = 1.0 + taps.factor * (taps.settings[i] as f64);

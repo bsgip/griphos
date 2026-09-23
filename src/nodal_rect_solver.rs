@@ -61,10 +61,12 @@ fn name_eqn_vm_c_br(idx: Option<usize>) -> String {
     format!("vmcb_{}", name_maybe_idx(idx))
 }
 
-/// Vc stands for Variable or Constant or None
+/// Vc stands for Variable or Constant
 #[derive(Clone, Debug)]
 pub enum Vc {
+    /// Variable with index i
     Var {i: usize},
+    /// Constant with value x
     Const {x: f64},
 }
 
@@ -94,46 +96,55 @@ pub enum CtrlType {
 /// Additional info all nodes.
 #[derive(Clone, Debug)]
 pub struct NodeInfo {
-    vr: Vc,
-    vi: Vc,
-    ieqn_kcl_re: Option<usize>,
-    ieqn_kcl_im: Option<usize>,
+    pub vr: Vc,
+    pub vi: Vc,
+    pub ieqn_kcl_re: Option<usize>,
+    pub ieqn_kcl_im: Option<usize>,
 }
 
 /// Additional info for PV or SL generators at branches.
 #[derive(Clone, Debug, Default)]
 pub struct BranchGenInfo {
-    pg: Vc,
-    qg: Vc,
-    ieqn_vr_c: Option<usize>,
-    ieqn_vi_c: Option<usize>,
-    ieqn_vm_c: Option<usize>,
+    pub pg: Vc,
+    pub qg: Vc,
+    pub ieqn_vr_c: Option<usize>,
+    pub ieqn_vi_c: Option<usize>,
+    pub ieqn_vm_c: Option<usize>,
 }
 
 /// Additional info for PV generators at nodes.
 #[derive(Clone, Debug, Default)]
 pub struct NodeGenInfo {
-    qg: Vc,
-    ieqn_vm_c: Option<usize>,
+    pub qg: Vc,
+    pub ieqn_vm_c: Option<usize>,
 }
 
 /// Enum for different kinds of variables.
 pub enum VarKind {
+    // A real voltage variable.
     Vr {nd_idx: usize},
+    // An imaginary voltage variable.
     Vi {nd_idx: usize},
+    // A real voltage-controlled generator power on a node.
     PgNd {nd_idx: usize},
+    // A reactive voltage-controlled generator power on a node.
     QgNd {nd_idx: usize},
+    // A real voltage-controlled generator power on a branch.
     PgBr {br_idx: usize},
+    // A reactive voltage-controlled generator power on a branch.
     QgBr {br_idx: usize},
 }
 
 /// Variable information.
 pub struct VarInfo {
+    /// The kind of the variable.
     kind: VarKind,
+    /// The starting or nominal value of the variable.
     x0: f64,
 }
 
 impl VarInfo {
+    /// Returns a display name for the variable.
     fn name(&self) -> String {
         match &self.kind {
             VarKind::Vr {nd_idx} => {name_vr(Some(*nd_idx))},
@@ -148,15 +159,22 @@ impl VarInfo {
 
 /// Enum for different kinds of equations.
 pub enum EqnKind {
+    /// Real part of the KCL equation, for a given node.
     KclRe {nd_idx: usize},
+    /// Imaginary part of the KCL equation, for a given node.
     KclIm {nd_idx: usize},
+    /// Constant voltage magnitude constraint at a node.
     VmConstNd {nd_idx: usize, vm: f64},
+    /// Real voltage constraint at a branch.
     VrConstBr {br_idx: usize, vr: f64},
+    /// Imaginary voltage constraint at a branch.
     ViConstBr {br_idx: usize, vi: f64},
+    /// Voltage magnitude constraint at a branch.
     VmConstBr {br_idx: usize, vm: f64},
 }
 
 impl EqnKind {
+    /// Returns the display name for an [`EqnKind`].
     fn name(&self) -> String {
         match self {
             EqnKind::KclRe {nd_idx} => {name_eqn_kcl_re(Some(*nd_idx))},
@@ -171,12 +189,16 @@ impl EqnKind {
 
 /// Solver parameters.
 pub struct Params {
+    /// Maximum iterations before giving up.
     pub max_iter: u32,
+    /// Allowable tolerance for solution.
     pub tol: f64,
+    /// Run in debug mode if true.
     pub debug_mode: bool,
 }
 
 impl Default for Params {
+    /// Default parameters.
     fn default() -> Self {
         Params {
             max_iter: 50,
@@ -190,23 +212,35 @@ impl Default for Params {
 pub struct NodalRectSolver {
     params: Params,
 
+    /// The [`NetworkModel`] for this solver.
     pub nmod: NetworkModel,
 
+    /// The [`NodeInfo`]s.
     pub node_infos: Vec<NodeInfo>,
 
+    /// The [`NodeGenInfo`]s.
     pub node_gen_infos: HashMap<usize, NodeGenInfo>,
+    /// The [`BranchGenInfo`]s.
     pub branch_gen_infos: HashMap<usize, BranchGenInfo>,
 
+    /// The variable infos.
     pub var_infos: Vec<VarInfo>,
+    /// The equation kinds.
     pub eqn_kinds: Vec<EqnKind>,
 
+    /// The variable values.
     pub vars: Vec<f64>,
+    /// The RHS (equality constraint) values.
     pub rhs: Vec<f64>,
+    /// CSC representation of the Jacobian matrix.
     pub jac_csc: CsMatI<f64, i32>, // i32 indexing for compatibility with KLU.
+    /// The ordered indices into the CSC storage, for more efficient re-creation of the Jacobian when re-using the
+    /// solver.
     pub jac_csc_idxs: Vec<usize>,
 }
 
 impl NodalRectSolver {
+    /// Creates a new solver with the given [`NetworkModel`].
     pub fn new(nmod: NetworkModel) -> NodalRectSolver {
         let mut solver = NodalRectSolver {
             params: Params::default(),
@@ -226,10 +260,12 @@ impl NodalRectSolver {
         solver
     }
 
+    /// Returns the number of variables or equivalently equations.
     pub fn ndim(&self) -> usize {
         self.vars.len()
     }
 
+    /// Initialize the solver to a starting state.
     pub fn init(&mut self) {
         if self.nmod.nodes.is_empty() {return;}
 
@@ -861,12 +897,14 @@ impl NodalRectSolver {
         }
     }
 
+    /// Prints the node infos to debug log.
     pub fn debug_node_infos(&self) {
         if log::log_enabled!(log::Level::Debug) {
             self.log_node_infos(|args| debug!("{}", args));
         }
     }
 
+    /// Prints the node infos to info log.
     pub fn info_node_infos(&self) {
         if log::log_enabled!(log::Level::Info) {
             self.log_node_infos(|args| info!("{}", args));
@@ -882,12 +920,14 @@ impl NodalRectSolver {
         }
     }
 
+    /// Prints the node-gen infos to debug log.
     pub fn debug_node_gen_infos(&self) {
         if log::log_enabled!(log::Level::Debug) {
             self.log_node_gen_infos(|args| debug!("{}", args));
         }
     }
 
+    /// Prints the node-gen infos to info log.
     pub fn info_node_gen_infos(&self) {
         if log::log_enabled!(log::Level::Info) {
             self.log_node_gen_infos(|args| info!("{}", args));
@@ -904,12 +944,14 @@ impl NodalRectSolver {
         }
     }
 
+    /// Prints the branch-gen infos to debug log.
     pub fn debug_branch_gen_infos(&self) {
         if log::log_enabled!(log::Level::Debug) {
             self.log_branch_gen_infos(|args| debug!("{}", args));
         }
     }
 
+    /// Prints the branch-gen infos to info log.
     pub fn info_branch_gen_infos(&self) {
         if log::log_enabled!(log::Level::Info) {
             self.log_branch_gen_infos(|args| info!("{}", args));
@@ -923,12 +965,14 @@ impl NodalRectSolver {
         }
     }
 
+    /// Prints the variable infos to debug log.
     pub fn debug_vars(&self) {
         if log::log_enabled!(log::Level::Debug) {
             self.log_vars(|args| debug!("{}", args));
         }
     }
 
+    /// Prints the variable infos to info log.
     pub fn info_vars(&self) {
         if log::log_enabled!(log::Level::Info) {
             self.log_vars(|args| info!("{}", args));
@@ -942,21 +986,23 @@ impl NodalRectSolver {
         }
     }
 
+    /// Prints the equation infos to debug log.
     pub fn debug_eqns(&self) {
         if log::log_enabled!(log::Level::Debug) {
             self.log_eqns(|args| debug!("{}", args));
         }
     }
 
+    /// Prints the equation infos to info log.
     pub fn info_eqns(&self) {
         if log::log_enabled!(log::Level::Info) {
             self.log_eqns(|args| info!("{}", args));
         }
     }
 
-    /// Using a small delta x, compare the delta rhs computed using jac with that computed directly from RHS
+    /// Using a small delta x, compares the delta rhs computed using jac with that computed directly from RHS
     ///
-    /// Return (delta_jac, delta_rhs, error)
+    /// Returns (delta_jac, delta_rhs, error)
     pub fn test_jac_against_rhs_ij(&mut self, i: usize, j: usize) -> (f64, f64, bool, f64) {
 
         let dxj = 1e-8;
@@ -1096,7 +1142,7 @@ impl NetworkSolver for NodalRectSolver {
 
 inventory::submit! {
     SolverPlugin {
-        name: "nodal_rect",
+        key: "nodal_rect",
         constructor: |nmod| Box::new(NodalRectSolver::new(nmod)),
     }
 }

@@ -51,7 +51,7 @@ struct Root {
     components: Vec<Component>,
 }
 
-/// Parse the e-JSON file at path, using the specified e-JSON -> griphos phase map.
+/// Parses the e-JSON file at path, using the specified e-JSON -> griphos phase map.
 ///
 /// # Examples
 ///
@@ -65,7 +65,7 @@ pub fn parse_ejson_file(path: &str, ejson_phase_map: &HashMap<String, Phase>) ->
     parse_ejson(reader, ejson_phase_map)
 }
 
-/// Parse the e-JSON file like object, using the specified e-JSON -> griphos phase map.
+/// Parses the e-JSON file like object, using the specified e-JSON -> griphos phase map.
 ///
 /// # Examples
 ///
@@ -106,7 +106,7 @@ fn fix_transformers_kludge(json_value: &mut serde_json::Value) {
     }
 }
 
-/// e-JSON to griphos phase mapping, A->A, B->B, C->C, N->N, G->N and lowercase variants.
+/// Returns an e-JSON to griphos phase mapping, A->A, B->B, C->C, N->N, G->N and lowercase variants.
 pub fn ejson_phase_map_abcng() -> HashMap<String, Phase> {
     HashMap::from_iter(vec![
         ("A".to_string(), Phase::A),
@@ -122,7 +122,7 @@ pub fn ejson_phase_map_abcng() -> HashMap<String, Phase> {
     ])
 }
 
-/// e-JSON to griphos phase mapping, R->A, W->B, B->C, N->N, G->N and lowercase variants.
+/// Returns an e-JSON to griphos phase mapping, R->A, W->B, B->C, N->N, G->N and lowercase variants.
 pub fn ejson_phase_map_rwbng() -> HashMap<String, Phase> {
     HashMap::from_iter(vec![
         ("R".to_string(), Phase::A),

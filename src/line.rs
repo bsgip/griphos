@@ -4,17 +4,36 @@ use crate::foundation::*;
 use crate::network::*;
 use crate::TypeStrOf;
 
+/// A line element, with given phase admittance matrix.
 #[derive(Debug, Serialize, TypeStrOf)]
 pub struct Line {
+    /// The number of phases (wires).
     pub n_phase: usize,
+    /// The phase admittance matrix, specified as ((term_0, term_1), y) triples.
     pub y_const: Vec<((usize, usize), c64)>,
 }
 
 impl Line {
+    /// Creates a new line, with the given number of phases and phase admittance matrix.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use griphos::line::Line;
+    /// let line = Line::new(3, y_branch_from_sym_seq(c!(1.0, 1.0), c!(1.0, 1.0)));
+    /// ```
     pub fn new(n_phase: usize, y_const: Vec<((usize, usize), c64)>) -> Line {
         Line {n_phase, y_const}
     }
 
+    /// Creates a new line, with the given z and z0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use griphos::line::Line;
+    /// let line = Line::new_from_sym_seq(3, c!(1.0, 1.0), c!(1.0, 1.0));
+    /// ```
     pub fn new_from_sym_seq(z_plus: c64, z_0: c64, n_phase: usize) -> Result<Line, String> {
         match y_branch_from_sym_seq(z_plus, z_0, n_phase) {
             Ok(y_const) => {
@@ -24,6 +43,7 @@ impl Line {
         }
     }
 
+    /// Wraps an existing [`Line`] in an [`Element`].
     pub fn element(self, uid: &str, bus_term_ids_0: Vec<BusTermId>, bus_term_ids_1: Vec<BusTermId>) -> Element {
         assert!(bus_term_ids_0.len() == bus_term_ids_1.len(), "Lines must have the same number of phases at each end");
         self.element_generic(uid, bus_term_ids_0.into_iter().chain(bus_term_ids_1).collect())
@@ -31,16 +51,20 @@ impl Line {
 }
 
 impl ElementSpec for Line {
+    /// n_phase terminals at the start and n_phase at the end.
     fn n_terms(&self) -> usize {
         2 * self.n_phase
     }
 
+    /// Each wire is a branch.
     fn n_branches(&self) -> usize {
         self.n_phase
     }
 
+    /// Each branch runs from the terminal at one end to the corresponding terminal at the other end.
+    ///
+    /// Terminals are ordered as, e.g., (a0, b0, c0, a1, b1, c1) where the ends are 0, 1 and phases a, b, c.
     fn branch_wiring(&self) -> Vec<(usize, usize)> {
-
         (0..self.n_phase).map(|i| (i, i + self.n_phase)).collect()
     }
 
@@ -51,7 +75,7 @@ impl ElementSpec for Line {
 
 impl_g_serialize!(Line);
 
-/// Branch admittance matrix from symmetric sequence components.
+/// Calculates the branch admittance matrix from symmetric sequence components.
 ///
 /// An implicit assumption is that z_plus == z_minus, which assumes certain
 /// symmnetry in the line geometry. This is why "sym" is used in the name. It
