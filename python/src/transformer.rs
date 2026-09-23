@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 
 use ::griphos as gr;
-use gr::{c64, Shared, SharedExt};
+use gr::{c64, Shared, IntoShared};
 
 use crate::plumbing::{element_subclass, py_enum, py_value};
 use crate::network::{BusTermId, bus_term_ids_to_gr};

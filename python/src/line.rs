@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 
 use ::griphos as gr;
-use gr::{c64, Shared, SharedExt};
+use gr::{c64, Shared, IntoShared};
 use crate::plumbing::element_subclass;
 use crate::network::{BusTermId, bus_term_ids_to_gr};
 

@@ -1,10 +1,12 @@
+use std::fmt::Debug;
+
 use serde::Serialize;
 
 use crate::foundation::*;
 use crate::network::*;
 use crate::TypeStrOf;
 
-#[derive(serde::Serialize)]
+#[derive(Debug, serde::Serialize)]
 pub enum GeneratorControl {
     SL {vmag: Vec<f64>, vang: Vec<f64>},
     PV {p: Vec<f64>, vmag: Vec<f64>},
@@ -26,7 +28,7 @@ impl GeneratorControl {
     }
 }
 
-#[derive(serde::Serialize, TypeStrOf)]
+#[derive(Debug, serde::Serialize, TypeStrOf)]
 pub struct Generator {
     pub n_terms: usize,
     pub branches: Vec<(usize, usize)>,
@@ -92,5 +94,4 @@ impl ElementSpec for Generator {
     }
 }
 
-impl_g_ser_disp!(Generator);
-impl_dbg_from_wrap!(Generator);
+impl_g_serialize!(Generator);

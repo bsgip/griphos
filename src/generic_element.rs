@@ -2,7 +2,7 @@ use crate::foundation::c64;
 use crate::network::{BusTermId, Element, ElementSpec};
 use crate::TypeStrOf;
 
-#[derive(Default, TypeStrOf)]
+#[derive(Debug, Default, TypeStrOf)]
 pub struct GenericElement {
     pub n_terms: usize,
     pub branches: Vec<(usize, usize)>,

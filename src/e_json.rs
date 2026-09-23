@@ -16,6 +16,7 @@ use crate::load::*;
 use crate::network::*;
 use crate::transformer::*;
 
+// Stores state for deserialization.
 struct EJsonParser<'a> {
     ejson_phase_map: &'a HashMap<String, Phase>,
 }
@@ -50,12 +51,32 @@ struct Root {
     components: Vec<Component>,
 }
 
+/// Parse the e-JSON file at path, using the specified e-JSON -> griphos phase map.
+///
+/// # Examples
+///
+/// ```
+/// # use griphos::{parse_ejson_file, ejson_phase_map_abcng};
+/// let netw = parse_ejson_file("test_data/netw-i1l1s1.json", &ejson_phase_map_abcng());
+/// ```
 pub fn parse_ejson_file(path: &str, ejson_phase_map: &HashMap<String, Phase>) -> serde_json::Result<Network> {
     let file = File::open(path).expect("Failed to open test file");
     let reader = BufReader::new(file);
     parse_ejson(reader, ejson_phase_map)
 }
 
+/// Parse the e-JSON file like object, using the specified e-JSON -> griphos phase map.
+///
+/// # Examples
+///
+/// ```
+/// # use griphos::{parse_ejson, ejson_phase_map_abcng};
+/// # use std::io::BufReader;
+/// # use std::fs::File;
+/// let file = File::open("test_data/netw-i1l1s1.json").expect("Failed to open test file");
+/// let reader = BufReader::new(file);
+/// let netw = parse_ejson(reader, &ejson_phase_map_abcng());
+/// ```
 pub fn parse_ejson<R: Read>(reader: R, ejson_phase_map: &HashMap<String, Phase>) -> serde_json::Result<Network> {
     let mut json_value: serde_json::Value = serde_json::from_reader(reader)?;
     fix_transformers_kludge(&mut json_value);
@@ -85,6 +106,7 @@ fn fix_transformers_kludge(json_value: &mut serde_json::Value) {
     }
 }
 
+/// e-JSON to griphos phase mapping, A->A, B->B, C->C, N->N, G->N and lowercase variants.
 pub fn ejson_phase_map_abcng() -> HashMap<String, Phase> {
     HashMap::from_iter(vec![
         ("A".to_string(), Phase::A),
@@ -100,6 +122,7 @@ pub fn ejson_phase_map_abcng() -> HashMap<String, Phase> {
     ])
 }
 
+/// e-JSON to griphos phase mapping, R->A, W->B, B->C, N->N, G->N and lowercase variants.
 pub fn ejson_phase_map_rwbng() -> HashMap<String, Phase> {
     HashMap::from_iter(vec![
         ("R".to_string(), Phase::A),

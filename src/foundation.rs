@@ -1,10 +1,10 @@
-use std::rc::Rc;
 use std::cell::{RefCell, Ref, RefMut};
 // use std::sync::Arc;
 // use parking_lot::{Mutex, MutexGuard};
 use std::collections::HashMap;
 use std::fmt;
-use std::ops::{Add};
+use std::ops::Add;
+use std::rc::Rc;
 use std::sync::LazyLock;
 use std::vec::Vec;
 
@@ -21,57 +21,65 @@ use serde::ser::{SerializeMap, SerializeSeq, SerializeTuple};
 // Shared thread safe data
 // -----------------------------------------------------------------------------
 
+/// Shared data storage through Rc<RefCell<...>>
 pub type Shared<T> = Rc<RefCell<T>>;
+/// Alias for borrowed shared data.
 pub type Borrowed<'a, T> = Ref<'a, T>;
+/// Alias for mutably borrowed shared data.
 pub type BorrowedMut<'a, T> = RefMut<'a, T>;
 
-pub trait SharedExt<T> {
+/// Trait to allow free conversion of a value into Shared.
+pub trait IntoShared<T> {
     fn into_shared(self) -> Shared<T>;
 }
 
-impl<T> SharedExt<T> for T {
+impl<T> IntoShared<T> for T {
+    /// Convert a value of type T into Shared<T>
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use griphos::{Bus, IntoShared};
+    /// let s: String = String::from("this is a string");
+    /// let shared = s.into_shared();
     fn into_shared(self) -> Shared<T> {
         Rc::new(RefCell::new(self))
     }
 }
 
 // -----------------------------------------------------------------------------
-// Utility unwrap for map iterators
-// -----------------------------------------------------------------------------
-pub trait KvIteratorUnwrap<'a, K: 'a, V: 'a>: Iterator<Item = (&'a K, &'a Option<V>)> + Sized + 'a {
-    fn kv_unwrapped(self) -> impl Iterator<Item = (&'a K, &'a V)> + 'a {
-        self.map(|(k, v)| (k, v.as_ref().unwrap()))
-    }
-}
-
-impl<'a, K: 'a, V: 'a, I> KvIteratorUnwrap<'a, K, V> for I
-where
-    I: Iterator<Item = (&'a K, &'a Option<V>)> + 'a,
-{
-}
-
-// -----------------------------------------------------------------------------
-// Serialization and Display
+// Serialization and Formatting
 // -----------------------------------------------------------------------------
 
-/// Trait for objects that are serializable via serde and displayable via the
-/// associated JSON serialization.
-pub trait GSerDisp {
+/// Trait for objects that are serializable via serde.
+pub trait GSerialize {
+    /// Serialize self with the given serde serializer.
     fn g_serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer;
-    fn g_fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result where Self: Sized {
-        g_fmt_json(self, f)
+}
+
+/// Trait for objects that are formattable via serde.
+pub trait GFormat {
+    /// Format self using a JSON serialization.
+    fn g_format(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result where Self: Sized;
+}
+
+impl<T> GFormat for T where T: GSerialize {
+    fn g_format(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result where Self: Sized {
+        g_format_yaml(self, f)
     }
 }
 
-pub fn g_fmt_yaml<T>(x: &T, f: &mut fmt::Formatter<'_>) -> fmt::Result where T: GSerDisp {
+/// Format a value using YAML.
+pub fn g_format_yaml<T>(x: &T, f: &mut fmt::Formatter<'_>) -> std::fmt::Result where T: GSerialize {
     let mut buf = Vec::new();
     let mut serializer = serde_yml::Serializer::new(&mut buf);
-    x.g_serialize(&mut serializer).map_err(|_| fmt::Error)?;
+    x.g_serialize(&mut serializer).map_err(|_| std::fmt::Error)?;
     let yaml_str = String::from_utf8(buf).map_err(|_| fmt::Error)?;
     write!(f, "{yaml_str}")
 }
 
-pub fn g_fmt_json<T>(x: &T, f: &mut fmt::Formatter<'_>) -> fmt::Result where T: GSerDisp {
+/// Format a value using JSON.
+pub fn g_format_json<T>(x: &T, f: &mut fmt::Formatter<'_>) -> std::fmt::Result where T: GSerialize {
     let mut buf = Vec::new();
     let formatter = serde_json::ser::PrettyFormatter::with_indent(b"    "); // 4 spaces
     let mut serializer = serde_json::Serializer::with_formatter(&mut buf, formatter);
@@ -80,10 +88,11 @@ pub fn g_fmt_json<T>(x: &T, f: &mut fmt::Formatter<'_>) -> fmt::Result where T: 
     write!(f, "{json_str}")
 }
 
+/// Implement GSerialize for a type, allowing it to be serialized using serde and displayed using its serialization.
 #[macro_export]
-macro_rules! impl_g_ser_disp {
+macro_rules! impl_g_serialize {
     ($($t:ty),+) => {
-        $(impl GSerDisp for $t {
+        $(impl $crate::GSerialize for $t {
             fn g_serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
                 self.serialize(serializer)
             }
@@ -91,23 +100,25 @@ macro_rules! impl_g_ser_disp {
     }
 }
 
+/// Implement Display for a type using g_format.
 #[macro_export]
-macro_rules! impl_disp_from_wrap {
+macro_rules! impl_disp_from_fmt {
     ($($t:ty),+) => {
-        $(impl fmt::Display for $t {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result where $t: GSerDisp {
-                write!(f, "{}", Wrap(self))
+        $(impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result where $t: GFormat {
+                self.g_format(f)
             }
         })*
     }
 }
 
+/// Implement Debug for a type using g_format.
 #[macro_export]
-macro_rules! impl_dbg_from_wrap {
+macro_rules! impl_dbg_from_fmt {
     ($($t:ty),+) => {
         $(impl std::fmt::Debug for $t {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result where $t: GSerDisp {
-                write!(f, "{}", Wrap(self))
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result where $t: GFormat {
+                write!(f, "{}", self)
             }
         })*
     }
@@ -124,29 +135,41 @@ macro_rules! impl_disp_from_dbg {
     }
 }
 
-impl_g_ser_disp!(i32, usize, f32, f64, bool, String);
+impl_g_serialize!(i32, usize, f32, f64, bool, String);
 
-pub struct Wrap<'a, T>(pub &'a T) where T: GSerDisp;
+/// A wrapper for (often) foreign types that we wish to use with GSerialize.
+pub struct Wrap<'a, T>(pub &'a T);
 
-impl<'a, T> GSerDisp for Wrap<'a, T> where T: GSerDisp {
+/// Forwards serialization to the wrapped value's own [`GSerialize`] impl.
+impl<'a, T> GSerialize for Wrap<'a, T> where T: GSerialize {
     fn g_serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         self.0.g_serialize(serializer)
     }
 }
 
-impl<'a, T> Serialize for Wrap<'a, T> where T: GSerDisp {
+/// Implement serde's Serialize for GSerialize wrapped values.
+impl<'a, T> Serialize for Wrap<'a, T> where T: GSerialize {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         self.g_serialize(serializer)
     }
 }
 
-impl<'a, T> fmt::Display for Wrap<'a, T> where T: GSerDisp {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result where Self: Sized {
-        self.g_fmt(f)
+/// Implement Debug for GFormat wrapped values.
+impl<'a, T> fmt::Debug for Wrap<'a, T> where T: GFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result where Self: Sized {
+        self.0.g_format(f)
     }
 }
 
-impl<T, U> GSerDisp for (T, U) where T: GSerDisp, U: GSerDisp {
+/// Implement Display for GFormat wrapped values.
+impl<'a, T> fmt::Display for Wrap<'a, T> where T: GFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result where Self: Sized {
+        self.0.g_format(f)
+    }
+}
+
+/// Implement GSerialize for tuples.
+impl<T, U> GSerialize for (T, U) where T: GSerialize, U: GSerialize {
     fn g_serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         let mut tup = serializer.serialize_tuple(2)?;
         tup.serialize_element(&Wrap(&self.0))?;
@@ -155,13 +178,15 @@ impl<T, U> GSerDisp for (T, U) where T: GSerDisp, U: GSerDisp {
     }
 }
 
-impl<T> GSerDisp for Shared<T> where T: GSerDisp {
+/// Implement GSerialize for `Shared` values.
+impl<T> GSerialize for Shared<T> where T: GSerialize {
     fn g_serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         self.borrow().g_serialize(serializer)
     }
 }
 
-impl<T> GSerDisp for Vec<T> where T: GSerDisp {
+/// Implement GSerialize for `Vec`s.
+impl<T> GSerialize for Vec<T> where T: GSerialize {
     fn g_serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         let mut seq = serializer.serialize_seq(Some(self.len()))?;
         for x in self {
@@ -171,7 +196,8 @@ impl<T> GSerDisp for Vec<T> where T: GSerDisp {
     }
 }
 
-impl<I, T> GSerDisp for IndexMap<I, T> where I: GSerDisp, T: GSerDisp {
+/// Implement GSerialize for `IndexMap`s.
+impl<I, T> GSerialize for IndexMap<I, T> where I: GSerialize, T: GSerialize {
     fn g_serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         let mut map = serializer.serialize_map(Some(self.len()))?;
         for (k, v) in self {
@@ -181,7 +207,8 @@ impl<I, T> GSerDisp for IndexMap<I, T> where I: GSerDisp, T: GSerDisp {
     }
 }
 
-impl<T> GSerDisp for HashMap<String, T> where T: GSerDisp {
+/// Implement GSerialize for `HashMap`s.
+impl<T> GSerialize for HashMap<String, T> where T: GSerialize {
     fn g_serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         let mut map = serializer.serialize_map(Some(self.len()))?;
         for (k, v) in self {
@@ -191,7 +218,8 @@ impl<T> GSerDisp for HashMap<String, T> where T: GSerDisp {
     }
 }
 
-impl<T> GSerDisp for Option<T> where T: GSerDisp {
+/// Implement GSerialize for `Option`s.
+impl<T> GSerialize for Option<T> where T: GSerialize {
     fn g_serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         match self {
             Some(x) => x.g_serialize(serializer),
@@ -200,7 +228,8 @@ impl<T> GSerDisp for Option<T> where T: GSerDisp {
     }
 }
 
-impl<T> GSerDisp for CsMat<T> where T: GSerDisp {
+/// Implement GSerialize for `CsMat`s.
+impl<T> GSerialize for CsMat<T> where T: GSerialize {
     fn g_serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         let mut seq = serializer.serialize_seq(Some(self.nnz()))?;
         for x in self.iter() {
@@ -210,7 +239,8 @@ impl<T> GSerDisp for CsMat<T> where T: GSerDisp {
     }
 }
 
-impl<T> GSerDisp for CsVec<T> where T: GSerDisp {
+/// Implement GSerialize for `CsVec`s.
+impl<T> GSerialize for CsVec<T> where T: GSerialize {
     fn g_serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         let mut seq = serializer.serialize_seq(Some(self.nnz()))?;
         for (i, v) in self.iter() {
@@ -220,14 +250,16 @@ impl<T> GSerDisp for CsVec<T> where T: GSerDisp {
     }
 }
 
-impl<T, U> GSerDisp for UnGraph<T, U> where T: Serialize, U: Serialize {
+/// Implement GSerialize for `UnGraph`s.
+impl<T, U> GSerialize for UnGraph<T, U> where T: Serialize, U: Serialize {
     fn g_serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         self.serialize(serializer)
     }
 }
 
+/// Serialize a value by wrapping it in a Wrap.
 pub fn serialize_with_wrap<'a, T, S>(x: &'a T, serializer: S) -> Result<S::Ok, S::Error>
-where Wrap<'a, T>: GSerDisp, T: GSerDisp, S: Serializer {
+where Wrap<'a, T>: GSerialize, T: GSerialize, S: Serializer {
     Wrap(x).g_serialize(serializer)
 }
 
@@ -235,6 +267,7 @@ where Wrap<'a, T>: GSerDisp, T: GSerDisp, S: Serializer {
 // Logging
 // -----------------------------------------------------------------------------
 
+/// Run this at the start of an executable to configure logging using the RUST_LOG environment variable.
 pub fn configure_logging() {
     use std::io::Write;
     let _ = env_logger::Builder::new()
@@ -251,16 +284,18 @@ pub fn configure_logging() {
 // Pretty Printer
 // -----------------------------------------------------------------------------
 
+/// Pretty printing wrapper. T is the type to pretty print, and U is config.
 pub struct PrettyPrint<'a, T, U = ()>(pub &'a T, pub U);
 
 // -----------------------------------------------------------------------------
 // linear algebra / sparse stuff
 // -----------------------------------------------------------------------------
 
+/// Complex type, alias of na::Complex<c64>
 #[allow(non_camel_case_types)]
 pub type c64 = na::Complex<f64>;
 
-impl GSerDisp for c64 {
+impl GSerialize for c64 {
     fn g_serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         let s = format!("{:}{:+}j", self.re, self.im);
         serializer.serialize_str(s.as_str())
@@ -271,6 +306,7 @@ static COMPLEX_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^(?P<re>[+-]?[\d.]+(?:[eE][+-]?\d+)?)?(?P<im>[+-][\d.]+(?:[eE][+-]?\d+)?i)?$").unwrap()
 });
 
+/// Creates a [`c64`] from a string.
 pub fn parse_complex(s: &str) -> Result<c64, String> {
     let s = s.replace(" ", "");
     let caps = COMPLEX_RE.captures(&s)
@@ -284,6 +320,7 @@ pub fn parse_complex(s: &str) -> Result<c64, String> {
     Ok(c64::new(re_part, im_part))
 }
 
+/// Macro to create a [`c64`] from real and imaginary parts.
 #[macro_export]
 macro_rules! c {
     ($re:expr, $im:expr) => {
@@ -297,6 +334,7 @@ macro_rules! c {
     };
 }
 
+/// Macro to create a [`c64`] from polar abs and arg.
 #[macro_export]
 macro_rules! p {
     ($mag:expr, $ang:expr) => {
@@ -304,23 +342,36 @@ macro_rules! p {
     };
 }
 
+/// Matrix of type T.
 pub type Mat<T> = na::DMatrix<T>;
+/// f64 matrix.
 pub type MatF64 = Mat<f64>;
+/// c64 matrix.
 pub type MatC64 = Mat<c64>;
+/// bool matrix.
 pub type MatBool = Mat<bool>;
 
+/// Column vector of type `T`.
 pub type Col<T> = na::DVector<T>;
+/// Column vector of `f64`.
 pub type ColF64 = Col<f64>;
+/// Column vector of `c64`.
 pub type ColC64 = Col<c64>;
+/// Column vector of `bool`.
 pub type ColBool = Col<bool>;
 
+/// Row vector of type `T`.
 pub type Row<T> = na::Matrix<T, na::U1, na::Dyn, na::VecStorage<T, na::U1, na::Dyn>>;
+/// Column vector of `f64`.
 pub type RowF64 = Row<f64>;
+/// Column vector of `c64`.
 pub type RowC64 = Row<c64>;
+/// Column vector of `bool`.
 pub type RowBool = Row<bool>;
 
-impl_g_ser_disp!(MatF64, MatC64, MatBool, ColF64, ColC64, ColBool, RowF64, RowC64, RowBool);
+impl_g_serialize!(MatF64, MatC64, MatBool, ColF64, ColC64, ColBool, RowF64, RowC64, RowBool);
 
+/// Trait to get a value at an index.
 trait GetAt {
     fn get_at(&self, i: usize) -> Option<usize>;
 }
@@ -338,6 +389,7 @@ impl GetAt for HashMap<usize, usize> {
 }
 
 /// Given a sparse matrix, and a map from old to new indices, create another mapped sparse CSC matrix.
+///
 /// Any indices missing from the map will be omitted.
 #[allow(private_bounds)]
 pub fn map_spmat<T: Copy + Add<Output=T>, M: GetAt>(mat: &CsMat<T>, n: usize, map: &M) -> CsMat<T> {
@@ -381,15 +433,17 @@ pub fn map_csmat_outer<T, F>(mat: &mut CsMat<T>, i: usize, f: F) where F: Fn(&mu
     }
 }
 
+/// Sum rows i (for a row major CSMat) or column i (for a column major CSMat).
 pub fn outer_sum<T>(mat: &CsMat<T>, i: usize) -> T where T: num_traits::Zero + Copy + std::ops::Add<Output = T> {
     mat.outer_view(i).unwrap().iter().fold(T::zero(), |acc, (_, &val)| acc + val)
 }
 
+/// Pretty printing for `CsMat`s.
 impl<'a, T, I, IptrStorage, IndStorage, DataStorage> fmt::Display
     for PrettyPrint<'a, CsMatBase<T, I, IptrStorage, IndStorage, DataStorage>,
     (Option<&[String]>, Option<&[String]>)>
 where
-    T: std::fmt::Display + Copy,
+    T: fmt::Display + Copy,
     I: sprs::SpIndex,
     IptrStorage: std::ops::Deref<Target = [I]>,
     IndStorage:  std::ops::Deref<Target = [I]>,
@@ -460,22 +514,14 @@ where
 }
 
 // -----------------------------------------------------------------------------
-// Ordering
-// -----------------------------------------------------------------------------
-pub fn ord_ij<T>(i: T, j: T) -> ((T, T), i32) where T: PartialOrd {
-    if j >= i {((i, j), 1)} else {((j, i), -1)}
-}
-
-pub fn maybe_reverse<T>(ij: (T, T), orientation: i32) -> (T, T) {
-    if orientation == 1 {(ij.0, ij.1)} else {(ij.1, ij.0)}
-}
-
-// -----------------------------------------------------------------------------
 // Constants
 // -----------------------------------------------------------------------------
 
+/// Complex zero.
 pub const C_ZERO: c64 = c!(0.0, 0.0);
+/// Complex i.
 pub const C_I: c64 = c!(0.0, 1.0);
+/// Complex 1.
 pub const C_ONE: c64 = c!(1.0, 0.0);
 
 #[cfg(test)]

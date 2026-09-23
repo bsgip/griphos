@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pymethods};
 
 use ::griphos as gr;
-use gr::{c64, HasUid, Shared, SharedExt};
+use gr::{c64, HasUid, Shared, IntoShared};
 
 use crate::plumbing::{py_enum, py_value, py_wrapper};
 

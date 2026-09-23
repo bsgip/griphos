@@ -4,7 +4,7 @@ use crate::foundation::*;
 use crate::network::*;
 use crate::TypeStrOf;
 
-#[derive(Serialize, TypeStrOf)]
+#[derive(Debug, Serialize, TypeStrOf)]
 pub struct Line {
     pub n_phase: usize,
     pub y_const: Vec<((usize, usize), c64)>,
@@ -49,7 +49,7 @@ impl ElementSpec for Line {
     }
 }
 
-impl_g_ser_disp!(Line);
+impl_g_serialize!(Line);
 
 /// Branch admittance matrix from symmetric sequence components.
 ///

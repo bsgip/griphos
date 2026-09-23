@@ -202,10 +202,10 @@ pub fn winding_pairs_from_vector_group(vg: &VectorGroup, n_phase: usize) -> Resu
             }
         }
 
-        return Ok(vec![WindingPair {
+        Ok(vec![WindingPair {
             p: single_phase_winding(primary_type),
             s: single_phase_winding(secondary_type),
-        }]);
+        }])
     } else if n_phase == 3 {
         fn natural_winding(t: WindingType, i: usize, n: usize) -> (usize, usize) {
             match t {
@@ -248,9 +248,9 @@ pub fn winding_pairs_from_vector_group(vg: &VectorGroup, n_phase: usize) -> Resu
             base_clock
         ))
     } else {
-        return Err(String::from(
+        Err(String::from(
             "only single-phase and three-phase transformers are supported for now",
-        ));
+        ))
     }
 }
 
@@ -300,7 +300,7 @@ impl TransformerTaps {
     }
 }
 
-#[derive(Serialize, TypeStrOf)]
+#[derive(Debug, Serialize, TypeStrOf)]
 pub struct Transformer {
     /// Number of terminals.
     ///
@@ -373,7 +373,7 @@ impl Transformer {
     ) -> Result<Self, String> {
         let windings_p = delta_connection(n_phase)?;
         let windings_s = wye_connection(n_phase)?;
-        let winding_pairs: Vec<WindingPair> = windings_p.into_iter().zip(windings_s.into_iter())
+        let winding_pairs: Vec<WindingPair> = windings_p.into_iter().zip(windings_s)
             .map(|(p, s)| WindingPair { p, s }).collect();
         Ok(Self::new(&winding_pairs, nom_turns_ratio, y_series, y_shunt, taps))
     }
@@ -387,7 +387,7 @@ impl Transformer {
     ) -> Result<Self, String> {
         let windings_p = delta_connection(n_phase)?;
         let windings_s = delta_connection(n_phase)?;
-        let winding_pairs: Vec<WindingPair> = windings_p.into_iter().zip(windings_s.into_iter())
+        let winding_pairs: Vec<WindingPair> = windings_p.into_iter().zip(windings_s)
             .map(|(p, s)| WindingPair { p, s }).collect();
         Ok(Self::new(&winding_pairs, nom_turns_ratio, y_series, y_shunt, taps))
     }
@@ -401,7 +401,7 @@ impl Transformer {
     ) -> Result<Self, String> {
         let windings_p = wye_connection(n_phase)?;
         let windings_s = wye_connection(n_phase)?;
-        let winding_pairs: Vec<WindingPair> = windings_p.into_iter().zip(windings_s.into_iter())
+        let winding_pairs: Vec<WindingPair> = windings_p.into_iter().zip(windings_s)
             .map(|(p, s)| WindingPair { p, s }).collect();
         Ok(Self::new(&winding_pairs, nom_turns_ratio, y_series, y_shunt, taps))
     }
@@ -454,7 +454,7 @@ impl ElementSpec for Transformer {
     }
 }
 
-impl_g_ser_disp!(Transformer);
+impl_g_serialize!(Transformer);
 
 #[cfg(test)]
 mod tests {

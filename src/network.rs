@@ -26,7 +26,7 @@ pub enum SwitchState {
     Open,
 }
 
-impl_g_ser_disp!(SwitchState);
+impl_g_serialize!(SwitchState);
 
 impl fmt::Display for SwitchState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -64,7 +64,7 @@ impl Phase {
     }
 }
 
-impl_g_ser_disp!(Phase);
+impl_g_serialize!(Phase);
 
 impl fmt::Display for Phase {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -99,8 +99,13 @@ pub struct BusTermId {
     pub p: Phase
 }
 
-impl_g_ser_disp!(BusTermId);
-impl_disp_from_wrap!(BusTermId);
+impl_g_serialize!(BusTermId);
+impl fmt::Display for BusTermId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Remove quotation marks
+        write!(f, "{}:{}", self.b, self.p)
+    }
+}
 
 #[macro_export]
 macro_rules! bt {
@@ -115,8 +120,14 @@ pub struct ElemBranchId {
     pub b: usize
 }
 
-impl_g_ser_disp!(ElemBranchId);
-impl_disp_from_wrap!(ElemBranchId);
+impl_g_serialize!(ElemBranchId);
+
+impl fmt::Display for ElemBranchId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Remove quotation marks
+        write!(f, "{}:{}", self.e, self.b)
+    }
+}
 
 #[macro_export]
 macro_rules! eb {
@@ -131,8 +142,15 @@ pub enum Wiring {
     WYE,
 }
 
-impl_g_ser_disp!(Wiring);
-impl_disp_from_wrap!(Wiring);
+impl_g_serialize!(Wiring);
+
+impl fmt::Display for Wiring {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Remove quotation marks
+        let s = serde_json::to_string(self).map_err(|_| fmt::Error)?;
+        write!(f, "{}", &s[1..s.len()-1])
+    }
+}
 
 pub trait HasUid {
     fn uid(&self) -> String;
@@ -145,8 +163,8 @@ pub struct BusTerm {
     pub v: c64,
 }
 
-impl_g_ser_disp!(BusTerm);
-impl_disp_from_wrap!(BusTerm);
+impl_g_serialize!(BusTerm);
+impl_disp_from_fmt!(BusTerm);
 
 /// A bus is a collection of one or more nodes, each distinguished by a different phase.
 #[derive(Clone, Debug, Serialize)]
@@ -191,7 +209,8 @@ impl Bus {
 
 impl HasUid for Bus {fn uid(&self) -> String {self.uid.clone()}}
 
-impl_g_ser_disp!(Bus);
+impl_g_serialize!(Bus);
+impl_disp_from_fmt!(Bus);
 
 /// Element per branch data
 #[derive(Clone, Debug, Serialize)]
@@ -200,11 +219,12 @@ pub struct ElemBranch {
     pub i: c64,
 }
 
-impl_g_ser_disp!(ElemBranch);
-impl_disp_from_wrap!(ElemBranch);
+impl_g_serialize!(ElemBranch);
+impl_disp_from_fmt!(ElemBranch);
 
 /// An element is a set of current carrying connections netween nodes. It can include several different types of
 /// connection, such as constant y or constant s.
+#[derive(std::fmt::Debug)]
 pub struct Element {
     pub uid: String,
     pub is_in_service: bool,
@@ -285,7 +305,7 @@ impl Element {
 
 impl HasUid for Element {fn uid(&self) -> String {self.uid.clone()}}
 
-impl GSerDisp for Element {
+impl GSerialize for Element {
     fn g_serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
         let mut state = serializer.serialize_struct("Element", 4)?;
         state.serialize_field("uid", &self.uid)?;
@@ -305,8 +325,7 @@ impl GSerDisp for Element {
     }
 }
 
-impl_disp_from_wrap!(Element);
-impl_dbg_from_wrap!(Element);
+impl_disp_from_fmt!(Element);
 
 // Each ElementSpec must implement this by hand.
 pub trait TypeStrOf {
@@ -325,7 +344,7 @@ impl<T: TypeStrOf> TypeStr for T {
 }
 
 /// An element_spec collects together electrical connections of various types such as constant y or constant s.
-pub trait ElementSpec: Any + Send + Sync + TypeStrOf + TypeStr {
+pub trait ElementSpec: Any + std::fmt::Debug + Send + Sync + TypeStrOf + TypeStr {
     fn element_generic(self, uid: &str, bus_term_ids: Vec<BusTermId>) -> Element where Self: Sized + 'static {
         Element::new(uid, bus_term_ids, self)
     }
@@ -528,8 +547,8 @@ impl Default for Network {
     }
 }
 
-impl_g_ser_disp!(Network);
-impl_disp_from_wrap!(Network);
+impl_g_serialize!(Network);
+impl_disp_from_fmt!(Network);
 
 /// A node is a single phase of a bus. It has a complex voltage.
 #[derive(Clone, Debug, Serialize)]
@@ -557,8 +576,8 @@ impl Node {
     }
 }
 
-impl_g_ser_disp!(Node);
-impl_disp_from_dbg!(Node);
+impl_g_serialize!(Node);
+impl_disp_from_fmt!(Node);
 
 /// A branch is an ordered connection between two nodes. It has a current and a voltage.
 #[derive(Clone, Debug, Serialize)]
@@ -585,8 +604,8 @@ impl Branch {
     }
 }
 
-impl_g_ser_disp!(Branch);
-impl_disp_from_dbg!(Branch);
+impl_g_serialize!(Branch);
+impl_disp_from_fmt!(Branch);
 
 #[derive(Debug)]
 pub struct NetworkModel {
@@ -907,7 +926,7 @@ impl NetworkModel {
     fn elem_sparse_vec<F, T>(&self, netw: &Network, f: F) -> Result<CsVec<T>, String>
     where
         F: Fn(&Element) -> Vec<(usize, T)>,
-        T: GSerDisp + Clone + Add<Output = T> + MulAssign<f64> + std::fmt::Debug
+        T: Clone + Add<Output = T> + MulAssign<f64>
     {
         let n_branches = self.branches.len();
         let mut entries: Vec<(usize, T)> = Vec::with_capacity(n_branches);
@@ -925,7 +944,9 @@ impl NetworkModel {
     }
 
     fn elem_sparse_mat<F, T>(&self, netw: &Network, f: F) -> Result<CsMat<T>, String>
-    where F: Fn(&Element) -> Vec<((usize, usize), T)>, T: GSerDisp + Clone + Add<Output = T> + std::fmt::Debug
+    where
+        F: Fn(&Element) -> Vec<((usize, usize), T)>,
+        T: Clone + Add<Output = T>
     {
         let n_branches = self.branches.len();
         let mut tri = TriMat::<T>::new((n_branches, n_branches));
@@ -1122,7 +1143,7 @@ mod tests {
             .expect("Failed to parse e-JSON");
         let mods = NetworkModels::new(&netw);
 
-        println!("Network:\n{}", Wrap(&netw));
+        println!("Network:\n{}", &netw);
 
         println!("{:?}", mods.master.y_const.to_dense());
         println!("{}", graph_dot(&mods.master.structure_graph));
