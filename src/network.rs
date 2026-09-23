@@ -243,11 +243,11 @@ impl Element {
     }
 
     pub fn n_branches(&self) -> usize {
-        self.spec.n_branches()
+        if self.is_live() {self.spec.n_branches()} else {0}
     }
 
     pub fn branch_wiring(&self) -> Vec<(usize, usize)> {
-        self.spec.branch_wiring()
+        if self.is_live() {self.spec.branch_wiring()} else {vec![]}
     }
 
     pub fn is_live(&self) -> bool {
@@ -255,31 +255,31 @@ impl Element {
     }
 
     pub fn y_const(&self) -> Vec<((usize, usize), c64)> {
-        self.spec.y_const()
+        if self.is_live() {self.spec.y_const()} else {vec![]}
     }
 
     pub fn i_const(&self) -> Vec<(usize, c64)> {
-        self.spec.i_const()
+        if self.is_live() {self.spec.i_const()} else {vec![]}
     }
 
     pub fn s_const(&self) -> Vec<(usize, c64)> {
-        self.spec.s_const()
+        if self.is_live() {self.spec.s_const()} else {vec![]}
     }
 
     pub fn vmag_const(&self) -> Vec<(usize, f64)> {
-        self.spec.vmag_const()
+        if self.is_live() {self.spec.vmag_const()} else {vec![]}
     }
 
     pub fn vang_const(&self) -> Vec<(usize, f64)> {
-        self.spec.vang_const()
+        if self.is_live() {self.spec.vang_const()} else {vec![]}
     }
 
     pub fn copper_plate(&self) -> Vec<Vec<usize>> {
-        self.spec.copper_plate()
+        if self.is_live() {self.spec.copper_plate()} else {vec![]}
     }
 
     pub fn grounding(&self) -> Vec<usize> {
-        self.spec.grounding()
+        if self.is_live() {self.spec.grounding()} else {vec![]}
     }
 }
 
