@@ -27,8 +27,11 @@ jobs:
       with:
         python-version: "3.12"
 
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+
     - name: Install Python bindings and test dependencies
-      run: pip install . pytest
+      run: uv pip install --system . pytest
 
     - name: Run Python tests
       run: pytest
