@@ -126,7 +126,8 @@ impl fmt::Display for BusTermId {
 /// # Examples
 ///
 /// ```
-/// bus_term = bt!("bus_1", Phase::A);
+/// # use griphos::{bt, BusTermId, Phase};
+/// let bus_term = bt!("bus_1", Phase::A);
 /// ```
 #[macro_export]
 macro_rules! bt {
@@ -158,7 +159,8 @@ impl fmt::Display for ElemBranchId {
 /// # Examples
 ///
 /// ```
-/// elem_branch = eb!("element_1", 3);
+/// # use griphos::{eb, ElemBranchId};
+/// let elem_branch = eb!("element_1", 3);
 /// ```
 #[macro_export]
 macro_rules! eb {

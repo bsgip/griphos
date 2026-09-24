@@ -19,8 +19,8 @@ impl Line {
     /// # Examples
     ///
     /// ```
-    /// # use griphos::line::Line;
-    /// let line = Line::new(3, y_branch_from_sym_seq(c!(1.0, 1.0), c!(1.0, 1.0)));
+    /// # use griphos::{c, c64, Line, y_branch_from_sym_seq};
+    /// let line = Line::new(3, y_branch_from_sym_seq(c!(1.0, 1.0), c!(1.0, 1.0), 3).unwrap());
     /// ```
     pub fn new(n_phase: usize, y_const: Vec<((usize, usize), c64)>) -> Line {
         Line {n_phase, y_const}
@@ -31,8 +31,8 @@ impl Line {
     /// # Examples
     ///
     /// ```
-    /// # use griphos::line::Line;
-    /// let line = Line::new_from_sym_seq(3, c!(1.0, 1.0), c!(1.0, 1.0));
+    /// # use griphos::{c, c64, Line};
+    /// let line = Line::new_from_sym_seq(c!(1.0, 1.0), c!(1.0, 1.0), 3);
     /// ```
     pub fn new_from_sym_seq(z_plus: c64, z_0: c64, n_phase: usize) -> Result<Line, String> {
         match y_branch_from_sym_seq(z_plus, z_0, n_phase) {

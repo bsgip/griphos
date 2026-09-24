@@ -249,11 +249,11 @@ pub struct SolveNetworkResult {
 /// # Examples
 ///
 /// ```
-/// # use griphos::{parse_ejson_file, ejson_phase_map_abcng};
-/// let netw = parse_ejson_file("test_data/netw-i1l1s1.json", &ejson_phase_map_abcng());
-/// let SolveNetworkResult { statuses, solvers } = solve_network(netw, "nodal_rect", None);
+/// # use griphos::{parse_ejson_file, ejson_phase_map_abcng, solve_network, SolveNetworkResult};
+/// let mut netw = parse_ejson_file("test_data/netw-i1l1s1.json", &ejson_phase_map_abcng()).unwrap();
+/// let SolveNetworkResult { statuses, solvers } = solve_network(&mut netw, "nodal_rect", None).unwrap();
 /// // Can modify the network here...
-/// let SolveNetworkResult { statuses_b, solvers } = solve_network(netw, "nodal_rect", solvers); // Reuse solvers.
+/// let SolveNetworkResult { statuses, solvers } = solve_network(&mut netw, "nodal_rect", Some(solvers)).unwrap(); // Reuse solvers.
 /// ```
 pub fn solve_network(
     netw: &mut Network,
