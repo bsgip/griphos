@@ -2,20 +2,36 @@ use crate::foundation::c64;
 use crate::network::{BusTermId, Element, ElementSpec};
 use crate::TypeStrOf;
 
+/// A generic element that can have various functions.
 #[derive(Debug, Default, TypeStrOf)]
 pub struct GenericElement {
+    /// Number of bus terminals.
     pub n_terms: usize,
+    /// Branches, as a vector of `(term_0, term_1)` tuples.
     pub branches: Vec<(usize, usize)>,
+    /// Constant admittance component, as branch admittance matrix elements.
+    ///
+    /// Mostly, the admittance matrix will be diagonal, with indices indicating which branch has the given admittance.
+    /// However, we can also have off-diagonal terms `(i, j)` (e.g. for transformers), where the current in branch `i`
+    /// depends on the voltage across branch `j`.
     pub y_const: Vec<((usize, usize), c64)>,
+    /// Constant current component per branch.
     pub i_const: Vec<(usize, c64)>,
+    /// Constant complex power component per branch.
     pub s_const: Vec<(usize, c64)>,
+    /// Constant voltage magnitude per branch.
     pub vmag_const: Vec<(usize, f64)>,
+    /// Constant voltage angle per branch.
     pub vang_const: Vec<(usize, f64)>,
+    /// Copper-plated (shorted) branches
     pub copper_plate: Vec<Vec<usize>>,
+    /// Grounded bus terminals.
     pub grounding: Vec<usize>,
 }
 
 impl GenericElement {
+    /// Creates a new GenericElement.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         n_terms: usize, branches: Vec<(usize, usize)>, y_const: Vec<((usize, usize), c64)>, i_const: Vec<(usize, c64)>,
         s_const: Vec<(usize, c64)>, vmag_const: Vec<(usize, f64)>, vang_const: Vec<(usize, f64)>,
@@ -24,6 +40,7 @@ impl GenericElement {
         GenericElement {n_terms, branches, y_const, i_const, s_const, vmag_const, vang_const, copper_plate, grounding}
     }
 
+    /// Wraps a GenericElement in an Element, with given bus terminal connections.
     pub fn element(self, id: &str, bus_term_ids: Vec<BusTermId>) -> Element {
         self.element_generic(id, bus_term_ids)
     }

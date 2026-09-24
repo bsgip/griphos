@@ -67,10 +67,10 @@ fn discover_networks(dir: &Path, name_regex: &Regex) -> Vec<PathBuf> {
     netws
 }
 
-fn all_solver_names() -> Vec<&'static str> {
-    let mut solver_names: Vec<&str> = inventory::iter::<SolverPlugin>().map(|p| p.name).collect();
-    solver_names.sort();
-    solver_names
+fn all_solver_keys() -> Vec<&'static str> {
+    let mut solver_keys: Vec<&str> = inventory::iter::<SolverPlugin>().map(|p| p.key).collect();
+    solver_keys.sort();
+    solver_keys
 }
 
 fn main() {
@@ -85,7 +85,7 @@ fn main() {
 
     let networks = discover_networks(&args.dir, &network_regex);
 
-    let mut solvers = all_solver_names();
+    let mut solvers = all_solver_keys();
     solvers.retain(|s| solver_regex.is_match(s));
 
     assert!(

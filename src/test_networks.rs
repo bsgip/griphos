@@ -6,15 +6,20 @@ use crate::network::*;
 use crate::e_json::*;
 use crate::test_utils::*;
 
+/// Returns the path to the test_data directory.
 pub fn test_data_path(filename: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("test_data").join(filename)
 }
 
+/// Returns a network by parsing the e-JSON file with the given filename.
+///
+/// The file is assumed to live in the test_data directory.
 pub fn test_netw_ejson(filename: &str, ejson_phase_map: Option<HashMap<String, Phase>>) -> Network {
     let ejson_phase_map = ejson_phase_map.unwrap_or_else(ejson_phase_map_abcng);
     parse_ejson_file(test_data_path(filename).to_str().unwrap(), &ejson_phase_map).unwrap()
 }
 
+/// Returns a simple test network with a single constant Y connection.
 pub fn test_netw_y(y: c64) -> Network {
     let mut netw = Network::new();
 
@@ -28,6 +33,7 @@ pub fn test_netw_y(y: c64) -> Network {
     netw
 }
 
+/// Returns a simple test network with a single constant S connection.
 pub fn test_netw_s(s: c64) -> Network {
     let mut netw = Network::new();
 
@@ -42,6 +48,7 @@ pub fn test_netw_s(s: c64) -> Network {
     netw
 }
 
+/// Returns a simple test network with two constant Y connections.
 pub fn test_netw_yy(y: c64) -> Network {
     let mut netw = Network::new();
 
@@ -58,6 +65,7 @@ pub fn test_netw_yy(y: c64) -> Network {
     netw
 }
 
+/// Returns a simple test network with a constant Y connection and a constant S connection.
 pub fn test_netw_ys(y: c64, s: c64) -> Network {
     let mut netw = Network::new();
 
@@ -74,6 +82,7 @@ pub fn test_netw_ys(y: c64, s: c64) -> Network {
     netw
 }
 
+/// Returns a simple test network with a one-phase transformer.
 pub fn test_netw_tx() -> Network {
     let mut netw = Network::new();
 
@@ -94,6 +103,7 @@ pub fn test_netw_tx() -> Network {
     netw
 }
 
+/// Returns a simple test network that includes cycles.
 pub fn test_netw_cycles() -> Network {
     let mut netw = Network::new();
 
@@ -117,6 +127,7 @@ pub fn test_netw_cycles() -> Network {
     netw
 }
 
+/// Returns a medium sized test network.
 pub fn test_netw_large_a() -> Network {
     let mut netw = Network::new();
 
@@ -143,6 +154,7 @@ pub fn test_netw_large_a() -> Network {
     netw
 }
 
+/// Returns a larger test network.
 pub fn test_netw_large_b() -> Network {
     let mut netw = Network::new();
 

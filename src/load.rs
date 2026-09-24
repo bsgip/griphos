@@ -2,17 +2,25 @@ use crate::foundation::c64;
 use crate::network::{BusTermId, Element, ElementSpec};
 use crate::TypeStrOf;
 
+/// A load element, using a ZIP load model.
 #[derive(Debug, TypeStrOf)]
 pub struct Load {
+    /// The number of terminals.
     pub n_terms: usize,
+    /// The branches, each in the form (term_0_idx, term_1_idx)
     pub branches: Vec<(usize, usize)>,
+    /// constant Y component of ZIP model, equivalent to Z in ZIP.
     pub y_const: Vec<((usize, usize), c64)>,
+    /// constant I component of ZIP model, equivalent to I in ZIP.
     pub i_const: Vec<(usize, c64)>,
+    /// constant S component of ZIP model, equivalent to P in ZIP.
     pub s_const: Vec<(usize, c64)>,
+    /// Index of any grounded terminal(s), normally the neutral terminal of the load if there is one.
     pub grounding: Vec<usize>,
 }
 
 impl Load {
+    /// Creates a new load.
     pub fn new(
         n_terms: usize,
         branches: Vec<(usize, usize)>,
@@ -31,6 +39,7 @@ impl Load {
         }
     }
 
+    /// Creates a new wye connected load.
     pub fn new_wye(
         n_phases: usize, y_const: Option<Vec<c64>>, i_const: Option<Vec<c64>>, s_const: Option<Vec<c64>>,
         is_grounded: bool
@@ -59,6 +68,7 @@ impl Load {
         }
     }
 
+    /// Creates a new delta connected load.
     pub fn new_delta(
         n_phases: usize, y_const: Option<Vec<c64>>, i_const: Option<Vec<c64>>, s_const: Option<Vec<c64>>
     ) -> Load {
@@ -84,6 +94,7 @@ impl Load {
         }
     }
 
+    /// Wraps a [`Load`] in a new [`Element`], with the given terminal mapping.
     pub fn element(self, id: &str, bus_term_ids: Vec<BusTermId>) -> Element {
         self.element_generic(id, bus_term_ids)
     }

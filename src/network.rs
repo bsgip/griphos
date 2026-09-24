@@ -19,10 +19,14 @@ use serde::Serialize;
 use crate::foundation::*;
 use crate::graph::*;
 
+/// Encodes the state of a switch if present, or the lack of any switch.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum SwitchState {
+    /// There is no switch.
     NoSwitch,
+    /// There is a switch and it is closed (on).
     Closed,
+    /// There is a switch and it is open (off).
     Open,
 }
 
@@ -36,6 +40,9 @@ impl fmt::Display for SwitchState {
     }
 }
 
+/// Line or bus terminal phase, A, B, C or N.
+///
+/// A, B, C are assumed to form a positive sequence, and N is assumed to be a (possibly grounded) neutral.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum Phase {
     A,
@@ -45,7 +52,9 @@ pub enum Phase {
 }
 
 impl Phase {
-    /// Positive sequence phase angles.
+    /// Returns the standard phase angle of a phase, assuming ABC form a positive sequence set and A is the reference.
+    ///
+    /// N is arbitrarily assumed to have a standard phase angle of zero.
     pub fn va_nom(&self) -> f64 {
         match self {
             Phase::A => 0.0,
@@ -55,7 +64,7 @@ impl Phase {
         }
     }
 
-    /// Positive sequence pu phases.
+    /// Returns the standard pu voltage of a phase, assuming ABC form a positive sequence set and A is the reference.
     pub fn v_nom_pu(&self) -> c64 {
         match self {
             Phase::A => {p!(1.0, 0.0)},
@@ -76,7 +85,7 @@ impl fmt::Display for Phase {
     }
 }
 
-/// The terminal connections for a standard wye connection. Neutral is always considered to come last by convention.
+/// Returns terminal connections for a standard wye connection. Neutral is always considered to come last by convention.
 pub fn wye_connection(n_phase: usize) -> Result<Vec<(usize, usize)>, String> {
     match n_phase {
         1 => Ok(vec![(0, 1)]),
@@ -86,7 +95,7 @@ pub fn wye_connection(n_phase: usize) -> Result<Vec<(usize, usize)>, String> {
     }
 }
 
-/// The terminal connections for a standard wye connection. Neutral is always considered to come last by convention.
+/// Returns terminal connections for a standard wye connection. Neutral is always considered to come last by convention.
 pub fn delta_connection(n_phase: usize) -> Result<Vec<(usize, usize)>, String> {
     match n_phase {
         1 => Ok(vec![(0, 1)]),
@@ -95,9 +104,12 @@ pub fn delta_connection(n_phase: usize) -> Result<Vec<(usize, usize)>, String> {
     }
 }
 
+/// A bus UID / phase pair, that together serve to identify which phase of which bus a terminal is connected to.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct BusTermId {
+    /// Bus uid.
     pub b: String,
+    /// Bus phase.
     pub p: Phase
 }
 
@@ -109,6 +121,14 @@ impl fmt::Display for BusTermId {
     }
 }
 
+/// Macro to create a [`BusTermId`]
+///
+/// # Examples
+///
+/// ```
+/// # use griphos::{bt, BusTermId, Phase};
+/// let bus_term = bt!("bus_1", Phase::A);
+/// ```
 #[macro_export]
 macro_rules! bt {
     ($b:expr, $p:expr) => {
@@ -116,9 +136,12 @@ macro_rules! bt {
     }
 }
 
+/// An element UID / branch index pair, that together serve to identify a particular branch of a particular element.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ElemBranchId {
+    /// Element uid.
     pub e: String,
+    /// Branch index.
     pub b: usize
 }
 
@@ -131,6 +154,14 @@ impl fmt::Display for ElemBranchId {
     }
 }
 
+/// Macro to create an [`ElemBranchId`]
+///
+/// # Examples
+///
+/// ```
+/// # use griphos::{eb, ElemBranchId};
+/// let elem_branch = eb!("element_1", 3);
+/// ```
 #[macro_export]
 macro_rules! eb {
     ($e:expr, $b:expr) => {
@@ -138,6 +169,7 @@ macro_rules! eb {
     }
 }
 
+/// Identifies a delta or wye connection.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum Wiring {
     DELTA,
@@ -154,14 +186,18 @@ impl fmt::Display for Wiring {
     }
 }
 
+/// Trait for objects that have a uid (unique ID)
 pub trait HasUid {
+    /// UID of an object.
     fn uid(&self) -> String;
 }
 
-/// Bus per phase data
+/// Per-phase data of a bus.
 #[derive(Clone, Debug, Serialize)]
 pub struct BusTerm {
+    /// The phase
     pub phase: Phase,
+    /// Voltage
     pub v: c64,
 }
 
@@ -182,28 +218,34 @@ pub struct Bus {
 }
 
 impl Bus {
+    /// Creates a new [`Bus`].
     pub fn new(uid: &str, phases: Vec<Phase>, v_base: f64) -> Bus {
         let terms: Vec<BusTerm> = phases.iter()
             .map(|phase| BusTerm {phase: *phase, v: v_base * phase.v_nom_pu()}).collect();
         Bus {uid: uid.to_string(), v_base, terms}
     }
 
+    /// Searches for the terminal of a bus that has phase `p`.
     pub fn term_p(&self, p: Phase) -> Option<&BusTerm> {
         self.terms.iter().find(|x| x.phase == p)
     }
 
+    /// Searches for the terminal of a bus that has phase `p`, mutable version.
     pub fn term_p_mut(&mut self, p: Phase) -> Option<&mut BusTerm> {
         self.terms.iter_mut().find(|x| x.phase == p)
     }
 
+    /// Searches for the terminal index of a bus that has phase `p`.
     pub fn i_term_p(&self, p: Phase) -> Option<usize> {
         self.terms.iter().position(|x| x.phase == p)
     }
 
+    /// Returns the terminal voltages as an [`Iterator`].
     pub fn vs(&self) -> impl Iterator<Item = c64> {
         self.terms.iter().map(|t| t.v)
     }
 
+    /// Sets the terminal voltages using an [`Iterator`].
     pub fn set_vs(&mut self, vs: impl Iterator<Item=c64>) {
         self.terms.iter_mut().zip(vs).for_each(|(t, v)| t.v = v);
     }
@@ -214,29 +256,37 @@ impl HasUid for Bus {fn uid(&self) -> String {self.uid.clone()}}
 impl_g_serialize!(Bus);
 impl_disp_from_fmt!(Bus);
 
-/// Element per branch data
+/// Per-branch data of an element
 #[derive(Clone, Debug, Serialize)]
 pub struct ElemBranch {
+    /// Branch voltage. For branch (i, j), v is defined v_i - v_j.
     pub v: c64,
+    /// Branch current. For branch (i, j), i has directionality i -> j.
     pub i: c64,
 }
 
 impl_g_serialize!(ElemBranch);
 impl_disp_from_fmt!(ElemBranch);
 
-/// An element is a set of current carrying connections netween nodes. It can include several different types of
+/// An element is a set of current carrying connections netween terminals. It can include several different types of
 /// connection, such as constant y or constant s.
 #[derive(std::fmt::Debug)]
 pub struct Element {
+    /// Unique ID
     pub uid: String,
+    /// Is the element in service / operational.
     pub is_in_service: bool,
+    /// Key of which bus/phases the terminals are connected to.
     pub bus_term_ids: Vec<BusTermId>,
-    spec: Box<dyn ElementSpec>,
+    /// The branch info, a vector of [`ElemBranch`] of the element.
+    pub branches: Vec<ElemBranch>,
 
-    branches: Vec<ElemBranch>,
+    // The specialized behaviour of the element, an object that implements ElementSpec.
+    spec: Box<dyn ElementSpec>,
 }
 
 impl Element {
+    /// Creates a new element.
     pub fn new<T: ElementSpec + 'static>(uid: &str, bus_term_ids: Vec<BusTermId>, spec: T) -> Element {
         let n_branches = spec.n_branches();
         Element {
@@ -248,58 +298,79 @@ impl Element {
         }
     }
 
+    /// Type string of an element, corresponding to the dynamic type of its `spec`.
     pub fn element_type(&self) -> &str {
         self.spec.type_str()
     }
 
+    /// Downcasts an element's `spec` to the given type, which must implement [`ElementSpec`].
     pub fn as_type<T: 'static>(&self) -> Option<&T> {
         self.spec.downcast_ref::<T>()
     }
 
+    /// Downcasts an element's `spec` to the given type, which must implement [`ElementSpec`], mutable version.
     pub fn as_type_mut<T: 'static>(&mut self) -> Option<&mut T> {
         self.spec.downcast_mut::<T>()
     }
 
+    /// Returns the number of terminals of the element.
     pub fn n_terms(&self) -> usize {
         self.spec.n_terms()
     }
 
+    /// Returns the number of branches of the element.
     pub fn n_branches(&self) -> usize {
         if self.is_live() {self.spec.n_branches()} else {0}
     }
 
+    /// Returns the branch wiring as a vector of (i, j) terminal connections.
     pub fn branch_wiring(&self) -> Vec<(usize, usize)> {
         if self.is_live() {self.spec.branch_wiring()} else {vec![]}
     }
 
+    /// Is the element live (in service and switched on if there is a swtich).
     pub fn is_live(&self) -> bool {
         self.is_in_service && self.spec.is_live()
     }
 
+    /// Returns the constant y branch impedance matrix.
+    ///
+    /// The row and column indices correspond to branch indices. Off diagonal elements can occur e.g. due to magnetic
+    /// coupling in lines for example. In a line, y_const is the phase impedance matrix, as distinct from the nodal
+    /// impedance matrix. For a three-phase line, the former is a 3x3 matrix, and the latter is a 6x6 matrix.
     pub fn y_const(&self) -> Vec<((usize, usize), c64)> {
         if self.is_live() {self.spec.y_const()} else {vec![]}
     }
 
+    /// Returns the constant I component, where the indices are branch indices and the value is the constant current
+    /// component.
     pub fn i_const(&self) -> Vec<(usize, c64)> {
         if self.is_live() {self.spec.i_const()} else {vec![]}
     }
 
+    /// Returns the constant S component, where the indices are branch indices and the value is the constant S
+    /// component.
     pub fn s_const(&self) -> Vec<(usize, c64)> {
         if self.is_live() {self.spec.s_const()} else {vec![]}
     }
 
+    /// Returns the constant voltage magnitude, where the indices are branch indices and the values are the voltage
+    /// magnitudes.
     pub fn vmag_const(&self) -> Vec<(usize, f64)> {
         if self.is_live() {self.spec.vmag_const()} else {vec![]}
     }
 
+    /// Returns the constant voltage angle, where the indices are branch indices and the values are the voltage angles.
     pub fn vang_const(&self) -> Vec<(usize, f64)> {
         if self.is_live() {self.spec.vang_const()} else {vec![]}
     }
 
+    /// Returns indices of copper-plated branches, where the terminals of each such branch are shorted together.
     pub fn copper_plate(&self) -> Vec<Vec<usize>> {
         if self.is_live() {self.spec.copper_plate()} else {vec![]}
     }
 
+    /// Returns the indices of grounded terminals.
     pub fn grounding(&self) -> Vec<usize> {
         if self.is_live() {self.spec.grounding()} else {vec![]}
     }
@@ -329,16 +400,17 @@ impl GSerialize for Element {
 
 impl_disp_from_fmt!(Element);
 
-// Each ElementSpec must implement this by hand.
+/// Trait for types that have an associated type_str string. Each ElementSpec must implement this by hand.
 pub trait TypeStrOf {
     fn type_str_of() -> &'static str where Self: Sized;
 }
 
-// Bridge to allow calling on an instance; don't re-implement.
+/// Bridge to allow calling on an instance; don't re-implement, machinery to allow dynamic type strings.
 pub trait TypeStr {
     fn type_str(&self) -> &'static str;
 }
 
+/// Blanket implementation of TypeStr for all types, machinery to allow dynamic type strings.
 impl<T: TypeStrOf> TypeStr for T {
     fn type_str(&self) -> &'static str {
         T::type_str_of()
@@ -351,38 +423,41 @@ pub trait ElementSpec: Any + std::fmt::Debug + Send + Sync + TypeStrOf + TypeStr
         Element::new(uid, bus_term_ids, self)
     }
 
-    /// Number of branches (node-node connections)
+    /// Returns the number of terminals (connection points).
     fn n_terms(&self) -> usize {0}
 
-    /// Number of branches (node-node connections)
+    /// Returns the number of branches (node-node connections)
     fn n_branches(&self) -> usize {0}
 
-    /// Branch wiring, [term_idx_i -> term_idx_j]
+    /// Branch wiring, term_idx_i -> term_idx_j.
     fn branch_wiring(&self) -> Vec<(usize, usize)> {vec![]}
 
+    /// Is the element live (e.g. switched on)?
     fn is_live(&self) -> bool {true}
 
     /// Branch impedance matrix; I_i = y_ij V_j where i and j index branches.
     fn y_const(&self) -> Vec<((usize, usize), c64)> {vec![]}
 
-    /// Branch constant currents.
+    /// Branch constant currents, where the index is a branch index.
     fn i_const(&self) -> Vec<(usize, c64)> {vec![]}
 
-    /// Branch constant power.
+    /// Branch constant power, where the index is a branch index.
     fn s_const(&self) -> Vec<(usize, c64)> {vec![]}
 
-    /// Branch voltage magnitude setpoint.
+    /// Branch voltage magnitude setpoint, where the index is a branch index.
     fn vmag_const(&self) -> Vec<(usize, f64)> {vec![]}
 
-    /// Branch voltage angle setpoint.
+    /// Branch voltage angle setpoint, where the index is a branch index.
     fn vang_const(&self) -> Vec<(usize, f64)> {vec![]}
 
-    /// List of (list of terminals that are copper plated together)
+    /// List of (list of terminals that are copper plated together).
     fn copper_plate(&self) -> Vec<Vec<usize>> {vec![]}
 
-    /// Node grounding.
+    /// Terminal grounding as a list of indices of grounded terminals.
     fn grounding(&self) -> Vec<usize> {vec![]}
 
+    /// Generic element validation code.
+    // TODO: actually use this!
     fn validate(&self) -> Result<(), String> {
         let n_terms = self.n_terms();
         let branch_wiring = self.branch_wiring();
@@ -435,17 +510,23 @@ pub trait ElementSpec: Any + std::fmt::Debug + Send + Sync + TypeStrOf + TypeStr
 }
 
 impl dyn ElementSpec {
+    /// Downcasts an [`ElementSpec`] to type `T`.
     fn downcast_ref<T: Any>(&self) -> Option<&T> {
         let any: &dyn Any = self;
         any.downcast_ref::<T>()
     }
 
+    /// Mutably downcasts an [`ElementSpec`] to type `T`.
     fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
         let any: &mut dyn Any = self;
         any.downcast_mut::<T>()
     }
 }
 
+/// An electricity network.
+///
+/// Modelled as a list of [`Bus`]es and a list of [`Element`]s of differing types. The elements provide various types
+/// of connections (e.g. constant admittance, constant voltage magnitude) between the phases of the buses.
 #[derive(Debug, Serialize)]
 pub struct Network {
     /// Master list of buses.
@@ -458,6 +539,7 @@ pub struct Network {
 }
 
 impl Network {
+    /// Creates an new empty [`Network`].
     pub fn new() -> Network {
         Network {
             buses: IndexMap::new(),
@@ -465,57 +547,86 @@ impl Network {
         }
     }
 
+    /// Returns the number of [`Bus`]es in the network.
     pub fn n_buses(&self) -> usize {
         self.buses.len()
     }
+
+    /// Returns the [`Bus`]es as an iterator.
     pub fn buses(&self) -> impl Iterator<Item = &Shared<Bus>> {
         self.buses.values()
     }
+
+    /// Executes `f` for each bus in the network.
     pub fn foreach_bus<F>(&self, mut f: F) where F: FnMut(&Bus) {
         for b in self.buses.values() {f(&b.borrow());}
     }
+
+    /// Executes `f` for each bus in the network, where `f` may mutate the buses.
     pub fn foreach_bus_mut<F>(&self, mut f: F) where F: FnMut(&mut Bus) {
         for b in self.buses.values() {f(&mut b.borrow_mut());}
     }
-    pub fn bus(&self, bus_id: &str) -> Option<&Shared<Bus>> {
-        self.buses.get(&bus_id.to_string())
+
+    /// Returns the bus with the given uid.
+    pub fn bus(&self, bus_uid: &str) -> Option<&Shared<Bus>> {
+        self.buses.get(&bus_uid.to_string())
     }
+
+    /// Returns the bus at the given index.
     pub fn bus_i(&self, bus_idx: usize) -> Option<&Shared<Bus>> {
         self.buses.get_index(bus_idx).map(|x| x.1)
     }
 
+    /// Returns the number of elements in the network.
     pub fn n_elements(&self) -> usize {
         self.elements.len()
     }
+
+    /// Returns the elements in the network as an iterator.
     pub fn elements(&self) -> impl Iterator<Item = &Shared<Element>> {
         self.elements.values()
     }
-    pub fn elements_filtered<T: ElementSpec + 'static>(&self) -> impl Iterator<Item = &Shared<Element>> + '_ {
+
+    /// Returns the elements of type `T` in the network as an iterator.
+    pub fn elements_of_type<T: ElementSpec + 'static>(&self) -> impl Iterator<Item = &Shared<Element>> + '_ {
         self.elements().filter(|elem| elem.borrow().as_type::<T>().is_some())
     }
+
+    /// Executes `f` for each element in the network.
     pub fn foreach_element<F>(&self, mut f: F) where F: FnMut(&Element) {
         for e in self.elements.values() {f(&e.borrow());}
     }
+
+    /// Executes `f` for each element in the network, where `f` may mutate the elements.
     pub fn foreach_element_mut<F>(&self, mut f: F) where F: FnMut(&mut Element) {
         for e in self.elements.values() {f(&mut e.borrow_mut());}
     }
+
+    /// Executes `f` for each element of type `T` in the network.
     pub fn foreach_element_of_type<F, T>(&self, mut f: F) where F: FnMut(&Element), T: ElementSpec {
         for e in self.elements.values().filter(|e| e.borrow().as_type::<T>().is_some()) {
             f(&e.borrow());
         }
     }
+
+    /// Executes `f` for each element of type `T` in the network, where `f` may mutate the elements.
     pub fn foreach_element_of_type_mut<F, T>(&self, mut f: F) where F: FnMut(&mut Element), T: ElementSpec {
         for e in self.elements.values().filter(|e| e.borrow().as_type::<T>().is_some()) {
             f(&mut e.borrow_mut());
         }
     }
-    pub fn element(&self, elem_id: &str) -> Option<&Shared<Element>> {
-        self.elements.get(&elem_id.to_string())
+
+    /// Retrns the element with the given uid.
+    pub fn element(&self, elem_uid: &str) -> Option<&Shared<Element>> {
+        self.elements.get(&elem_uid.to_string())
     }
+
+    /// Returns the element with the given index.
     pub fn element_i(&self, elem_idx: usize) -> Option<&Shared<Element>> {
         self.elements.get_index(elem_idx).map(|x| x.1)
     }
 
+    /// Adds a bus to the network.
     pub fn add_bus(&mut self, bus: Bus) -> Result<Shared<Bus>, String> {
         let existing = self.buses.entry(bus.uid.to_string());
         match existing {
@@ -529,6 +640,7 @@ impl Network {
         }
     }
 
+    /// Adds an element to the network.
     pub fn add_element(&mut self, element: Element) -> Result<Shared<Element>, String> {
         let existing = self.elements.entry(element.uid.to_string());
         match existing {
@@ -552,7 +664,7 @@ impl Default for Network {
 impl_g_serialize!(Network);
 impl_disp_from_fmt!(Network);
 
-/// A node is a single phase of a bus. It has a complex voltage.
+/// A node is a single phase of a bus, to be used in a NetworkModel. It has a complex voltage.
 #[derive(Clone, Debug, Serialize)]
 pub struct Node {
     /// Nominal voltage
@@ -569,10 +681,12 @@ pub struct Node {
 }
 
 impl Node {
+    /// Creates a new [`Node`].
     fn new(v_nom: c64, is_grounded: bool) -> Node {
         Node {v_nom, is_grounded, bus_term_ids: vec![], v: None}
     }
 
+    /// Display name for the node.
     pub fn name(&self) -> String {
         self.bus_term_ids.iter().map(|bt| bt.to_string()).collect::<Vec<_>>().join("|")
     }
@@ -601,6 +715,7 @@ pub struct Branch {
 }
 
 impl Branch {
+    /// Creates a new branch.
     fn new(nd_0_idx: usize, nd_1_idx: usize, v_nom: c64) -> Branch {
         Branch {nd_0_idx, nd_1_idx, v_nom, v_01: None, i_01: None}
     }
@@ -609,6 +724,11 @@ impl Branch {
 impl_g_serialize!(Branch);
 impl_disp_from_fmt!(Branch);
 
+/// # [`NetworkModel`]s
+///
+/// A [`NetworkModel`] is a lower level representation of the network, which breaks apart the grouping into [`Bus`]es
+/// with phases and [`Element`]s with branches, and instead works with [`Node`]s (each corresponding to a single phase
+/// of a bus) and [`Branch`]es (each corresponding to a single connection between two nodes).
 #[derive(Debug)]
 pub struct NetworkModel {
     // Distinct nodes (wrt copperplating), keys are uid
@@ -641,6 +761,7 @@ impl Default for NetworkModel {
 }
 
 impl NetworkModel {
+    /// Creates an netw empty NetworkModel.
     pub fn new() -> NetworkModel {
         NetworkModel {
             nodes: vec![],
@@ -656,6 +777,10 @@ impl NetworkModel {
         }
     }
 
+    /// Creates an netw master NetworkModel from a [`Network`].
+    ///
+    /// The master model contains all nodes and branches in the network, as distinct from island models, which split the
+    /// network into electrically isolated islands.
     pub fn new_master(netw: &Network) -> Result<NetworkModel, String> {
         let mut nmod = NetworkModel::new();
         nmod.make_nodes(netw)?;
@@ -671,6 +796,7 @@ impl NetworkModel {
         Ok(nmod)
     }
 
+    /// Splits a master NetworkModel into islands.
     pub fn islands(&self) -> Result<Vec<NetworkModel>, String> {
         // Ensure that transformers don't separate out two components that should be together.
         // We do this by adding extra edges to the structure.
@@ -964,7 +1090,7 @@ impl NetworkModel {
         Ok(tri.to_csc())
     }
 
-    /// Set the node voltages based on branch voltages.
+    /// Sets the node voltages based on branch voltages.
     pub fn propagate_branch_voltages_to_nodes(&mut self) {
         // TODO: for now we're only using ground to propagate the voltages.
         let mut somes: Vec<usize> = self.nodes.iter().enumerate()
@@ -1014,7 +1140,7 @@ impl NetworkModel {
         }
     }
 
-    /// Set the bus voltages based on nodes. Set element voltages and currents based on branches.
+    /// Sets the bus voltages based on nodes, and the element voltages and currents based on branches.
     pub fn propagate_to_network(&self, netw: &mut Network) {
         for (bt, nd_idx) in self.bp_to_nd_idx.iter() {
             if let Some(nd_v) = self.nodes[*nd_idx].v {
@@ -1038,6 +1164,7 @@ impl NetworkModel {
     }
 }
 
+/// Convenience struct to store master and island [`NetworkModel`]s.
 #[derive(Debug)]
 pub struct NetworkModels {
     pub master: NetworkModel,
@@ -1045,6 +1172,7 @@ pub struct NetworkModels {
 }
 
 impl NetworkModels {
+    /// Creates a new [`NetworkModels`].
     pub fn new(netw: &Network) -> NetworkModels {
         let master = NetworkModel::new_master(netw).unwrap();
         let islands = master.islands().unwrap();

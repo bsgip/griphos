@@ -9,6 +9,7 @@ use crate::foundation::PrettyPrint;
 use crate::network::{Network, NetworkModel, NetworkModels};
 
 bitflags! {
+    /// Flags for generic network solver status.
     #[derive(Default, Debug, Clone, Copy, PartialEq)]
     pub struct SolverStatusFlags : u8 {
         const SUCCESS = 0b0000_0001;
@@ -23,6 +24,7 @@ const SOLVER_STATUS_ORS: SolverStatusFlags = SolverStatusFlags::from_bits(0b0001
 const SOLVER_STATUS_ANDS: SolverStatusFlags = SolverStatusFlags::from_bits(0b0000_0001).unwrap();
 
 impl SolverStatusFlags {
+    /// Combines two flag sets into a joint flags.
     pub fn combine(self, other: Self) -> Self {
         let self_ands = self.intersection(SOLVER_STATUS_ANDS);
         let other_ands = other.intersection(SOLVER_STATUS_ANDS);
@@ -32,6 +34,7 @@ impl SolverStatusFlags {
     }
 }
 
+/// The solver status for a single iteration or the result of all iterations.
 #[derive(Default, Debug, Clone)]
 pub struct SolverStatusItem {
     pub flags: SolverStatusFlags,
@@ -41,6 +44,7 @@ pub struct SolverStatusItem {
     pub linear_solver_time_s: f64,
 }
 
+/// The solver status, including all iterations and the end result.
 #[derive(Default, Debug, Clone)]
 pub struct SolverStatus {
     pub status: SolverStatusItem,
@@ -48,6 +52,7 @@ pub struct SolverStatus {
 }
 
 impl SolverStatus {
+    /// Creates the final overall solver status based on the combined iterations.
     pub fn finalize(mut self, maybe_combine_final_flags: Option<SolverStatusFlags>) -> Self {
         self.status.flags = self.iteration_statuses
             .iter()
@@ -72,6 +77,7 @@ impl SolverStatus {
     }
 }
 
+/// Utility function that logs a CsMat sparse matrix, along with row and column names.
 #[allow(unused)]
 pub(crate) fn log_csmat<T, I, IptrStorage, IndStorage, DataStorage>(
     mat: &CsMatBase<T, I, IptrStorage, IndStorage, DataStorage>,
@@ -90,6 +96,7 @@ pub(crate) fn log_csmat<T, I, IptrStorage, IndStorage, DataStorage>(
     log(format_args!("{mat_name}{}", PrettyPrint(mat, (row_names, col_names))));
 }
 
+/// Utility function that logs a CsMat sparse matrix to debug, along with row and column names.
 #[allow(unused)]
 pub(crate) fn debug_csmat<T, I, IptrStorage, IndStorage, DataStorage>(
     mat: &CsMatBase<T, I, IptrStorage, IndStorage, DataStorage>,
@@ -106,6 +113,7 @@ pub(crate) fn debug_csmat<T, I, IptrStorage, IndStorage, DataStorage>(
     log_csmat(mat, mat_name, row_names, col_names, |args| debug!("{}", args));
 }
 
+/// Utility function that logs a CsMat sparse matrix to info, along with row and column names.
 #[allow(unused)]
 pub(crate) fn info_csmat<T, I, IptrStorage, IndStorage, DataStorage>(
     mat: &CsMatBase<T, I, IptrStorage, IndStorage, DataStorage>,
@@ -122,6 +130,7 @@ pub(crate) fn info_csmat<T, I, IptrStorage, IndStorage, DataStorage>(
     log_csmat(mat, mat_name, row_names, col_names, |args| info!("{}", args));
 }
 
+/// Utility function that logs a CsVec sparse vector, along with index names.
 #[allow(unused)]
 pub(crate) fn log_csvec<T, IStorage, DStorage>(
     vec: &CsVecBase<IStorage, DStorage, T>,
@@ -137,6 +146,7 @@ pub(crate) fn log_csvec<T, IStorage, DStorage>(
     log_csmat(&mat, vec_name, row_names, None, log)
 }
 
+/// Utility function that logs a CsVec sparse vector to debug, along with index names.
 #[allow(unused)]
 pub(crate) fn debug_csvec<T, IStorage, DStorage>(
     vec: &CsVecBase<IStorage, DStorage, T>,
@@ -150,6 +160,7 @@ pub(crate) fn debug_csvec<T, IStorage, DStorage>(
     log_csvec(vec, vec_name, row_names, |args| debug!("{}", args));
 }
 
+/// Utility function that logs a CsVec sparse vector to info, along with index names.
 #[allow(unused)]
 pub(crate) fn info_csvec<T, IStorage, DStorage>(
     vec: &CsVecBase<IStorage, DStorage, T>,
@@ -163,26 +174,35 @@ pub(crate) fn info_csvec<T, IStorage, DStorage>(
     log_csvec(vec, vec_name, row_names, |args| info!("{}", args));
 }
 
+/// A [`NetworkSolver`] specifies assumed behaviour of a solver, incluing solving and modifying the network based on the
+/// solution.
 pub trait NetworkSolver {
+    /// Solves power flow (or whatever).
     fn solve(&mut self) -> SolverStatus;
+    /// Propagates the solution to the network after solving.
     fn propagate_to_network(&self, netw: &mut Network);
 }
 
+/// A funtion used to autoregister solvers that will be chosen and constructed using a key.
 pub type SolverConstructor = fn(NetworkModel) -> Box<dyn NetworkSolver>;
 
+/// Struct that allows solvers to autoregister themselves.
 pub struct SolverPlugin {
-    pub name: &'static str,
+    pub key: &'static str,
     pub constructor: SolverConstructor,
 }
 
+// Creates the means to autoregister solvers.
 inventory::collect!(SolverPlugin);
 
+/// Lists all the autoregistered solvers.
 pub fn list_solvers() -> Vec<&'static str> {
-    let mut names: Vec<&'static str> = inventory::iter::<SolverPlugin>.into_iter().map(|e| e.name).collect();
-    names.sort_unstable();
-    names
+    let mut keys: Vec<&'static str> = inventory::iter::<SolverPlugin>.into_iter().map(|e| e.key).collect();
+    keys.sort_unstable();
+    keys
 }
 
+/// Error type for unknown solver error.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnknownSolver(pub String);
 
@@ -200,19 +220,41 @@ impl fmt::Display for UnknownSolver {
 
 impl std::error::Error for UnknownSolver {}
 
-pub fn solver_constructor(name: &str) -> Result<SolverConstructor, UnknownSolver> {
+/// Constructs the correct solver that matches the supplied key.
+pub fn solver_constructor(key: &str) -> Result<SolverConstructor, UnknownSolver> {
     inventory::iter::<SolverPlugin>
         .into_iter()
-        .find(|e| e.name == name)
+        .find(|e| e.key == key)
         .map(|e| e.constructor)
-        .ok_or_else(|| UnknownSolver(name.to_owned()))
+        .ok_or_else(|| UnknownSolver(key.to_owned()))
 }
 
+/// Return value for solve_network.
+///
+/// [`solve_network`] splits the problem into network into islands, and records results for each island. It also returns
+/// the solvers that were created by the [`solve_network`] call, for possible later reuse.
 pub struct SolveNetworkResult {
+    /// The solve statuses, per island.
     pub statuses: Vec<SolverStatus>,
+    /// The solvers that were created by the call, one per island.
     pub solvers: Vec<Box<dyn NetworkSolver>>,
 }
 
+/// Solves the network using the given solver (specified as a key).
+///
+/// Accepts as the `solvers` argument an optional vector of [`NetworkSolver`]s, which, if supplied, will be used for the
+/// new solve call, meaning that we don't need to do the work of creating solvers from scratch. This makes it much more
+/// efficient to perform multiple solve calls, e.g. solve the network every five minutes during a day long horizon.
+///
+/// # Examples
+///
+/// ```
+/// # use griphos::{parse_ejson_file, ejson_phase_map_abcng, solve_network, SolveNetworkResult};
+/// let mut netw = parse_ejson_file("test_data/netw-i1l1s1.json", &ejson_phase_map_abcng()).unwrap();
+/// let SolveNetworkResult { statuses, solvers } = solve_network(&mut netw, "nodal_rect", None).unwrap();
+/// // Can modify the network here...
+/// let SolveNetworkResult { statuses, solvers } = solve_network(&mut netw, "nodal_rect", Some(solvers)).unwrap(); // Reuse solvers.
+/// ```
 pub fn solve_network(
     netw: &mut Network,
     solver_name: &str,

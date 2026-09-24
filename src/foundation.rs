@@ -34,7 +34,7 @@ pub trait IntoShared<T> {
 }
 
 impl<T> IntoShared<T> for T {
-    /// Convert a value of type T into Shared<T>
+    /// Converts a value of type T into Shared<T>
     ///
     /// # Examples
     ///
@@ -53,23 +53,24 @@ impl<T> IntoShared<T> for T {
 
 /// Trait for objects that are serializable via serde.
 pub trait GSerialize {
-    /// Serialize self with the given serde serializer.
+    /// Serializes self with the given serde serializer.
     fn g_serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer;
 }
 
 /// Trait for objects that are formattable via serde.
 pub trait GFormat {
-    /// Format self using a JSON serialization.
+    /// Formats self for display.
     fn g_format(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result where Self: Sized;
 }
 
+/// Blanket implementation of [`GFormat`] via YAML for any type that implements [`GSerialize`].
 impl<T> GFormat for T where T: GSerialize {
     fn g_format(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result where Self: Sized {
         g_format_yaml(self, f)
     }
 }
 
-/// Format a value using YAML.
+/// Formats a value using YAML.
 pub fn g_format_yaml<T>(x: &T, f: &mut fmt::Formatter<'_>) -> std::fmt::Result where T: GSerialize {
     let mut buf = Vec::new();
     let mut serializer = serde_yml::Serializer::new(&mut buf);
