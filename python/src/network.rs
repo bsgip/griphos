@@ -10,11 +10,11 @@ py_enum!(SwitchState, gr::SwitchState { NoSwitch, Closed, Open });
 
 py_enum!(Phase, gr::Phase { A, B, C, N });
 
-py_value!(BusTermId, gr::BusTermId { pub b: String, pub p: Phase });
+py_value!(BusPhaseId, gr::BusPhaseId { pub b: String, pub p: Phase });
 
-/// Utility function to map a Vec of BusTermIds to griphos equivalent.
-pub(crate) fn bus_term_ids_to_gr(bus_term_ids: Vec<BusTermId>) -> Vec<gr::BusTermId> {
-    bus_term_ids.into_iter().map(|x| x.into()).collect()
+/// Utility function to map a Vec of BusPhaseIds to griphos equivalent.
+pub(crate) fn bus_phase_ids_to_gr(bus_phase_ids: Vec<BusPhaseId>) -> Vec<gr::BusPhaseId> {
+    bus_phase_ids.into_iter().map(|x| x.into()).collect()
 }
 
 py_value!(ElemBranchId, gr::ElemBranchId { pub e: String, pub b: usize });

@@ -5,7 +5,7 @@ use ::griphos as gr;
 use gr::{c64, Shared, IntoShared};
 
 use crate::plumbing::{element_subclass, py_enum, py_value};
-use crate::network::{BusTermId, bus_term_ids_to_gr};
+use crate::network::{BusPhaseId, bus_phase_ids_to_gr};
 
 py_enum!(TransformerSide, gr::TransformerSide {P, S});
 
@@ -98,8 +98,8 @@ impl Transformer {
     #[allow(clippy::too_many_arguments)]
     pub fn new_raw(
         uid: &str,
-        bus_term_ids_0: Vec<BusTermId>,
-        bus_term_ids_1: Vec<BusTermId>,
+        bus_phase_ids_0: Vec<BusPhaseId>,
+        bus_phase_ids_1: Vec<BusPhaseId>,
         winding_pairs: &[WindingPair],
         nom_turns_ratio: Vec<c64>,
         y_series: c64,
@@ -115,8 +115,8 @@ impl Transformer {
                 taps.n_phases,
             )
         );
-        let gr_bts_0 = bus_term_ids_to_gr(bus_term_ids_0);
-        let gr_bts_1 = bus_term_ids_to_gr(bus_term_ids_1);
+        let gr_bps_0 = bus_phase_ids_to_gr(bus_phase_ids_0);
+        let gr_bps_1 = bus_phase_ids_to_gr(bus_phase_ids_1);
         let wps_gr: Vec<gr::WindingPair> = winding_pairs.iter().map(|wp| wp.into()).collect();
         let gr_tx = gr::Transformer::new(
             &wps_gr,
@@ -125,7 +125,7 @@ impl Transformer {
             y_shunt,
             gr_taps
         );
-        let elem = gr_tx.element(uid, &gr_bts_0, &gr_bts_1).into_shared();
+        let elem = gr_tx.element(uid, &gr_bps_0, &gr_bps_1).into_shared();
         Transformer::from_elem(elem)
     }
 }
@@ -136,8 +136,8 @@ impl Transformer {
     #[new]
     pub fn new(
         uid: &str,
-        bus_term_ids_0: Vec<BusTermId>,
-        bus_term_ids_1: Vec<BusTermId>,
+        bus_phase_ids_0: Vec<BusPhaseId>,
+        bus_phase_ids_1: Vec<BusPhaseId>,
         winding_pairs: Vec<WindingPair>,
         nom_turns_ratio: Vec<c64>,
         y_series: c64,
@@ -145,7 +145,7 @@ impl Transformer {
         taps: Option<TransformerTapsData>,
     ) -> PyClassInitializer<Self> {
         Self::new_raw(
-            uid, bus_term_ids_0, bus_term_ids_1, &winding_pairs, nom_turns_ratio, y_series, y_shunt, taps
+            uid, bus_phase_ids_0, bus_phase_ids_1, &winding_pairs, nom_turns_ratio, y_series, y_shunt, taps
         ).into_initializer()
     }
 

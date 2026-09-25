@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 use ::griphos as gr;
 use gr::{c64, Shared, IntoShared};
 use crate::plumbing::element_subclass;
-use crate::network::{BusTermId, bus_term_ids_to_gr};
+use crate::network::{BusPhaseId, bus_phase_ids_to_gr};
 
 element_subclass!(GenericElement, gr::GenericElement);
 
@@ -12,7 +12,7 @@ impl GenericElement {
     #[allow(clippy::too_many_arguments)]
     pub fn new_raw(
         uid: &str,
-        bus_term_ids: Vec<BusTermId>,
+        bus_phase_ids: Vec<BusPhaseId>,
         branches: Vec<(usize, usize)>,
         y_const: Option<Vec<((usize, usize), c64)>>,
         i_const: Option<Vec<(usize, c64)>>,
@@ -23,7 +23,7 @@ impl GenericElement {
         grounding: Option<Vec<usize>>,
     ) -> Self {
         let gr_generic_element = gr::GenericElement::new(
-            bus_term_ids.len(),
+            bus_phase_ids.len(),
             branches,
             y_const.unwrap_or_default(),
             i_const.unwrap_or_default(),
@@ -33,8 +33,8 @@ impl GenericElement {
             copper_plate.unwrap_or_default(),
             grounding.unwrap_or_default(),
         );
-        let gr_bts = bus_term_ids_to_gr(bus_term_ids);
-        let elem = gr_generic_element.element(uid, gr_bts).into_shared();
+        let gr_bps = bus_phase_ids_to_gr(bus_phase_ids);
+        let elem = gr_generic_element.element(uid, gr_bps).into_shared();
         GenericElement::from_elem(elem)
     }
 }
@@ -46,7 +46,7 @@ impl GenericElement {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         uid: &str,
-        bus_term_ids: Vec<BusTermId>,
+        bus_phase_ids: Vec<BusPhaseId>,
         branches: Vec<(usize, usize)>,
         y_const: Option<Vec<((usize, usize), c64)>>,
         i_const: Option<Vec<(usize, c64)>>,
@@ -57,7 +57,7 @@ impl GenericElement {
         grounding: Option<Vec<usize>>,
     ) -> PyClassInitializer<Self> {
         Self::new_raw(
-            uid, bus_term_ids, branches, y_const, i_const, s_const,
+            uid, bus_phase_ids, branches, y_const, i_const, s_const,
             vmag_const, vang_const, copper_plate, grounding
         ).into_initializer()
     }
@@ -71,11 +71,11 @@ mod tests {
 
     #[test]
     fn test_new_generic_element() {
-        let bts = vec![
-            BusTermId {b: "bus_1".to_string(), p: Phase::N},
-            BusTermId {b: "bus_1".to_string(), p: Phase::A},
-            BusTermId {b: "bus_1".to_string(), p: Phase::B},
-            BusTermId {b: "bus_1".to_string(), p: Phase::C},
+        let bps = vec![
+            BusPhaseId {b: "bus_1".to_string(), p: Phase::N},
+            BusPhaseId {b: "bus_1".to_string(), p: Phase::A},
+            BusPhaseId {b: "bus_1".to_string(), p: Phase::B},
+            BusPhaseId {b: "bus_1".to_string(), p: Phase::C},
         ];
         let branches = vec![(0, 1), (0, 2), (0, 3)];
         let y_const = vec![
@@ -100,7 +100,7 @@ mod tests {
         ];
 
         let generic_element = GenericElement::new_raw(
-            "new_generic_element", bts, branches, Some(y_const), Some(i_const), Some(s_const),
+            "new_generic_element", bps, branches, Some(y_const), Some(i_const), Some(s_const),
             Some(vmag_const), None, None, None
         );
         assert!(generic_element.uid() == "new_generic_element");

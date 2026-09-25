@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 use ::griphos as gr;
 use gr::{c64, Shared, IntoShared};
 use crate::plumbing::{element_subclass};
-use crate::network::{BusTermId, bus_term_ids_to_gr};
+use crate::network::{BusPhaseId, bus_phase_ids_to_gr};
 
 #[pyclass(eq, from_py_object)]
 #[derive(Clone, PartialEq)]
@@ -59,13 +59,13 @@ impl Generator {
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
     pub fn new_raw(
         uid: &str,
-        bus_term_ids: Vec<BusTermId>,
+        bus_phase_ids: Vec<BusPhaseId>,
         branches: Vec<(usize, usize)>,
         control: GeneratorControl
     ) -> Self {
-        let gr_generator = gr::Generator::new(bus_term_ids.len(), branches, control.into());
-        let bts = bus_term_ids_to_gr(bus_term_ids);
-        let elem = gr_generator.element(uid, bts).into_shared();
+        let gr_generator = gr::Generator::new(bus_phase_ids.len(), branches, control.into());
+        let bps = bus_phase_ids_to_gr(bus_phase_ids);
+        let elem = gr_generator.element(uid, bps).into_shared();
         Generator::from_elem(elem)
     }
 }
@@ -76,11 +76,11 @@ impl Generator {
     #[new]
     pub fn new(
         uid: &str,
-        bus_term_ids: Vec<BusTermId>,
+        bus_phase_ids: Vec<BusPhaseId>,
         branches: Vec<(usize, usize)>,
         control: GeneratorControl,
     ) -> PyClassInitializer<Self> {
-        Self::new_raw(uid, bus_term_ids, branches, control).into_initializer()
+        Self::new_raw(uid, bus_phase_ids, branches, control).into_initializer()
     }
 }
 
@@ -91,14 +91,14 @@ mod tests {
 
     #[test]
     fn test_new_generator() {
-        let bts = vec![
-            BusTermId {b: "bus_1".to_string(), p: Phase::A},
-            BusTermId {b: "bus_1".to_string(), p: Phase::B},
-            BusTermId {b: "bus_1".to_string(), p: Phase::C},
+        let bps = vec![
+            BusPhaseId {b: "bus_1".to_string(), p: Phase::A},
+            BusPhaseId {b: "bus_1".to_string(), p: Phase::B},
+            BusPhaseId {b: "bus_1".to_string(), p: Phase::C},
         ];
         let branches = vec![(0, 1), (1, 2), (2, 0)];
         let generator = Generator::new_raw(
-            "new_generator", bts, branches, GeneratorControl::SL {vmag: vec![1.0], vang: vec![0.0]}
+            "new_generator", bps, branches, GeneratorControl::SL {vmag: vec![1.0], vang: vec![0.0]}
         );
         assert!(generator.uid() == "new_generator");
         assert!(generator.elem.borrow().copper_plate() == vec![vec![0, 1, 2]]);
