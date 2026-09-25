@@ -1,4 +1,86 @@
 //! Network modelling.
+//!
+//! [`Network`]s comprise a list of [`Bus`]es and a list of [`Element`]s.
+//!
+//! Buses are nodes of the network, and consist of one or more blobs or bars of conductor with negligible resistance,
+//! the bus phases. Each [`Bus`] object has one or more [`BusPhase`]s. [`BusPhase`]s contain a [`Phase`] label and a
+//! voltage. Each [`BusPhase`] is uniquely labelled by a [`BusPhaseId`], recording the bus's UID and the phase.
+//!
+//! Buses are connected together by elements, which provide conductive pathways (termed *branches* in griphos
+//! terminology) between bus phases. Each [`Element`] has a given number of *terminals* (connection points), and is
+//! connected to the [`Network`] by assigning to each terminal a particular [`BusPhaseId`]. Each of the element's
+//! branches then provides a conductive pathway between a start terminal and an end terminal.
+//!
+//! For example, a three phase line with no neutral wire will have six terminals: three at the start of the line, and
+//! three at the end. It will have three branches, each corresponding to a wire of the line. For the griphos terminal
+//! ordering found in [`Line`](crate::Line) elements, the first branch will connect terminal 0 to terminal 3, the second
+//! will connect terminal 1 to terminal 4, and the third will connect terminal 2 to terminal 5. Thus the [`Element`]'s
+//! branches can be specified as `[(0, 3), (1, 4), (2, 5)]`
+//!
+//! The impedance of an [`Element`]'s branches can depend in various ways on the voltages at the terminals. For example,
+//! branches can have a constant admittance (*y_const*) component, or a constant complex power (*s_const*) component. In
+//! addition, they can apply voltage control across some or all of their branches, or ground some or all of their
+//! terminals. The configuration and behaviour of the element with respect to its terminals and branches depends on the
+//! *element type*. This is technically handled by [`Element`] having a private dynamic `spec` member, implementing a
+//! special [`ElementSpec`] trait. There are several structs, such as [`Line`](crate::Line) and
+//! [`Transformer`](crate::Transformer) that implement [`ElementSpec`], and each [`Element`] derives its polymorphic
+//! behaviour from its own particular [`ElementSpec`], be it a line, transformer, or whatever. Thus, we can talk about
+//! e.g. transformer elements, or line elements, meaning that the `spec` is either a [`Transformer`](crate::Transformer)
+//! or [`Line`](crate::Line) respectively
+//!
+//! # Examples
+//!
+//! The example below shows construction of a new network, and the creation and assignment to the network of several
+//! buses and elements. It will show details of how various elements are constructed and joined to the network.
+//! ```
+//! # use griphos::{bp, Bus, BusPhaseId, c, c64, Generator, GeneratorControl, Grounding, Line, Phase, Network};
+//! # fn main() {
+//! // Create a new, empty network.
+//! let mut netw = Network::new();
+//!
+//! // Add a neutral bus, with phase N and base voltage 1.
+//! let bus_n = netw.add_bus(Bus::new("bus_ground", vec![Phase::N], 1.0)).unwrap();
+//!
+//! // Add two three-phase buses, with phases ABC and base voltage 1.
+//! let bus_abc_1 = netw.add_bus(Bus::new("bus_abc_1", vec![Phase::A, Phase::B, Phase::C], 1.0)).unwrap();
+//! let bus_abc_2 = netw.add_bus(Bus::new("bus_abc_2", vec![Phase::A, Phase::B, Phase::C], 1.0)).unwrap();
+//!
+//! // Ground the neutral bus, using a `Grounding` element. Note that each element type will normally have its own
+//! // `element(...)` member function to conveniently connect it to the network. The signatures of these `element`
+//! // functions will typically vary depending on the details of the element type.
+//! netw.add_element(
+//! Grounding::new(1)                           // Create a `Grounding` object with 1 terminal
+//!     .element(                               // Wrap it in it's own element...
+//!         "grounding",                        // with UID "grounding"...
+//!         vec![bp!("bus_ground", Phase::N)]   // and connect to phase N of bus "bus_ground".
+//!     )).unwrap();
+//!
+//! // Add a wye-connected generator on bus_abc_1
+//! netw.add_element(
+//!     Generator::new(
+//!         3, // Voltage magnitude setpoint
+//!         vec![(0, 3), (1, 3), (2, 3)], // Wye-connected branches, with neutral last
+//!         GeneratorControl::new_wye_slack_with_std_phase_angles(
+//!             1.0, // Setpoint voltage = 1.0
+//!             &[Phase::A, Phase::B, Phase::C]), // Phase angles calculated based on these live phases.
+//!     ).element("generator", vec![
+//!         bp!("bus_abc_1", Phase::A),
+//!         bp!("bus_abc_1", Phase::B),
+//!         bp!("bus_abc_1", Phase::C),
+//!         bp!("bus_abc_1", Phase::N), // Neutral comes last
+//!     ])).unwrap();
+//!
+//! // Add a line between the two live buses.
+//! netw.add_element(
+//!     Line::new_from_sym_seq(c!(1.0, 0.0), c!(1.0, 0.0), 3) // z = 1.0+0j, z0 = 1.0+0j, n_phase = 3
+//!         .unwrap()
+//!         .element(
+//!             "line",
+//!             vec![bp!("bus_abc_1", Phase::A), bp!("bus_abc_1", Phase::B), bp!("bus_abc_1", Phase::C)],
+//!             vec![bp!("bus_abc_2", Phase::A), bp!("bus_abc_2", Phase::B), bp!("bus_abc_2", Phase::C)],
+//!         )).unwrap();
+//! # }
+//! ```
 
 use std::any::Any;
 use std::collections::{BTreeSet, HashSet, HashMap};
