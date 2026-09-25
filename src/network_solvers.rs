@@ -8,7 +8,8 @@ use log::{debug, info};
 use sprs::{CsMat, CsMatBase, CsVecBase};
 
 use crate::foundation::PrettyPrint;
-use crate::network::{Network, NetworkModel, NetworkModels};
+use crate::network::{Network};
+use crate::network_model::{NetworkModel, NetworkModels};
 
 bitflags! {
     /// Flags for generic network solver status.

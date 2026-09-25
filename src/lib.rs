@@ -27,6 +27,7 @@ pub mod foundation;
 mod graph;
 #[macro_use]
 pub mod network;
+pub mod network_model;
 pub mod connector;
 pub mod generator;
 pub mod generic_element;
@@ -50,6 +51,8 @@ pub use griphos_proc_macros::TypeStrOf;
 pub use foundation::*;
 #[doc(inline)]
 pub use network::*;
+#[doc(inline)]
+pub use network_model::*;
 #[doc(inline)]
 pub use connector::*;
 #[doc(inline)]

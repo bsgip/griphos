@@ -8,6 +8,7 @@ use log::{debug, info};
 use crate::foundation::*;
 use crate::klu::solve_klu;
 use crate::network::*;
+use crate::network_model::*;
 use crate::network_solvers::debug_csmat;
 use crate::{NetworkSolver, SolverPlugin, SolverStatus, SolverStatusFlags, SolverStatusItem};
 
