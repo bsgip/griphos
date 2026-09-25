@@ -26,7 +26,7 @@
 //! [`Transformer`](crate::Transformer) that implement [`ElementSpec`], and each [`Element`] derives its polymorphic
 //! behaviour from its own particular [`ElementSpec`], be it a line, transformer, or whatever. Thus, we can talk about
 //! e.g. transformer elements, or line elements, meaning that the `spec` is either a [`Transformer`](crate::Transformer)
-//! or [`Line`](crate::Line) respectively
+//! or [`Line`](crate::Line) respectively.
 //!
 //! # Examples
 //!
@@ -58,17 +58,20 @@
 //! // Add a wye-connected generator on bus_abc_1
 //! netw.add_element(
 //!     Generator::new(
-//!         3, // Voltage magnitude setpoint
-//!         vec![(0, 3), (1, 3), (2, 3)], // Wye-connected branches, with neutral last
+//!         4, // 4 terminals: 3 phases + neutral.
+//!         vec![(0, 3), (1, 3), (2, 3)], // Wye-connected branches, with neutral last.
 //!         GeneratorControl::new_wye_slack_with_std_phase_angles(
-//!             1.0, // Setpoint voltage = 1.0
+//!             1.0, // Setpoint voltage = 1.0.
 //!             &[Phase::A, Phase::B, Phase::C]), // Phase angles calculated based on these live phases.
-//!     ).element("generator", vec![
-//!         bp!("bus_abc_1", Phase::A),
-//!         bp!("bus_abc_1", Phase::B),
-//!         bp!("bus_abc_1", Phase::C),
-//!         bp!("bus_abc_1", Phase::N), // Neutral comes last
-//!     ])).unwrap();
+//!     ).element(
+//!         "generator", // The UID of the element.
+//!         vec![
+//!             bp!("bus_abc_1", Phase::A),
+//!             bp!("bus_abc_1", Phase::B),
+//!             bp!("bus_abc_1", Phase::C),
+//!             bp!("bus_abc_1", Phase::N), // Neutral comes last
+//!         ]
+//!     )).unwrap();
 //!
 //! // Add a line between the two live buses.
 //! netw.add_element(
