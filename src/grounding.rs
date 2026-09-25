@@ -19,8 +19,8 @@ impl Grounding {
     }
 
     /// Wraps grounding in an [`Element`] with the given terminal mapping.
-    pub fn element(self, id: &str, bus_term_ids: Vec<BusTermId>) -> Element {
-        self.element_generic(id, bus_term_ids)
+    pub fn element(self, id: &str, bus_phase_ids: Vec<BusPhaseId>) -> Element {
+        self.element_generic(id, bus_phase_ids)
     }
 }
 

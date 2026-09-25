@@ -427,11 +427,11 @@ impl Transformer {
     /// Wraps a transformer in an [`Element`], with the given bus terminal connections.
     pub fn element(
         self, id: &str,
-        bus_term_ids_p: &[BusTermId],
-        bus_term_ids_s: &[BusTermId],
+        bus_phase_ids_p: &[BusPhaseId],
+        bus_phase_ids_s: &[BusPhaseId],
     ) -> Element {
-        let bus_term_ids: Vec<BusTermId> = bus_term_ids_p.iter().chain(bus_term_ids_s.iter()).cloned().collect();
-        self.element_generic(id, bus_term_ids)
+        let bus_phase_ids: Vec<BusPhaseId> = bus_phase_ids_p.iter().chain(bus_phase_ids_s.iter()).cloned().collect();
+        self.element_generic(id, bus_phase_ids)
     }
 
     /// Returns the turns ratio for the `i`th winding.
@@ -491,8 +491,8 @@ mod tests {
             Some(TransformerTaps::new(TransformerSide::P, 0.02, 1, -5, 5))
         ).element(
                 "transformer",
-                &[bt!("bus_1", Phase::A), bt!("bus_g", Phase::N)],
-                &[bt!("bus_2", Phase::A), bt!("bus_g", Phase::N)],
+                &[bp!("bus_1", Phase::A), bp!("bus_g", Phase::N)],
+                &[bp!("bus_2", Phase::A), bp!("bus_g", Phase::N)],
         );
 
         let n = e.n_terms();
@@ -514,8 +514,8 @@ mod tests {
             Some(TransformerTaps::new(TransformerSide::P, 0.02, 3, -5, 5)),
         ).element(
                 "transformer",
-                &[bt!("bus_1", Phase::A), bt!("bus_1", Phase::B), bt!("bus_1", Phase::C)],
-                &[bt!("bus_2", Phase::A), bt!("bus_2", Phase::B), bt!("bus_2", Phase::C)],
+                &[bp!("bus_1", Phase::A), bp!("bus_1", Phase::B), bp!("bus_1", Phase::C)],
+                &[bp!("bus_2", Phase::A), bp!("bus_2", Phase::B), bp!("bus_2", Phase::C)],
         );
 
         let n = e.n_terms();

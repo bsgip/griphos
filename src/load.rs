@@ -1,7 +1,7 @@
 //! Load elements.
 
 use crate::foundation::c64;
-use crate::network::{BusTermId, Element, ElementSpec};
+use crate::network::{BusPhaseId, Element, ElementSpec};
 use crate::TypeStrOf;
 
 /// A load element, using a ZIP load model.
@@ -97,8 +97,8 @@ impl Load {
     }
 
     /// Wraps a [`Load`] in a new [`Element`], with the given terminal mapping.
-    pub fn element(self, id: &str, bus_term_ids: Vec<BusTermId>) -> Element {
-        self.element_generic(id, bus_term_ids)
+    pub fn element(self, id: &str, bus_phase_ids: Vec<BusPhaseId>) -> Element {
+        self.element_generic(id, bus_phase_ids)
     }
 }
 

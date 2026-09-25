@@ -108,33 +108,33 @@ pub fn delta_connection(n_phase: usize) -> Result<Vec<(usize, usize)>, String> {
 
 /// A bus UID / phase pair, that together serve to identify which phase of which bus a terminal is connected to.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct BusTermId {
+pub struct BusPhaseId {
     /// Bus uid.
     pub b: String,
     /// Bus phase.
     pub p: Phase
 }
 
-impl_g_serialize!(BusTermId);
-impl fmt::Display for BusTermId {
+impl_g_serialize!(BusPhaseId);
+impl fmt::Display for BusPhaseId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Remove quotation marks
         write!(f, "{}:{}", self.b, self.p)
     }
 }
 
-/// Macro to create a [`BusTermId`]
+/// Macro to create a [`BusPhaseId`]
 ///
 /// # Examples
 ///
 /// ```
-/// # use griphos::{bt, BusTermId, Phase};
-/// let bus_term = bt!("bus_1", Phase::A);
+/// # use griphos::{bp, BusPhaseId, Phase};
+/// let bus_phase = bp!("bus_1", Phase::A);
 /// ```
 #[macro_export]
-macro_rules! bt {
+macro_rules! bp {
     ($b:expr, $p:expr) => {
-        BusTermId {b: $b.to_string(), p: $p}
+        BusPhaseId {b: $b.to_string(), p: $p}
     }
 }
 
@@ -196,15 +196,15 @@ pub trait HasUid {
 
 /// Per-phase data of a bus.
 #[derive(Clone, Debug, Serialize)]
-pub struct BusTerm {
+pub struct BusPhase {
     /// The phase
     pub phase: Phase,
     /// Voltage
     pub v: c64,
 }
 
-impl_g_serialize!(BusTerm);
-impl_disp_from_fmt!(BusTerm);
+impl_g_serialize!(BusPhase);
+impl_disp_from_fmt!(BusPhase);
 
 /// A bus is a collection of one or more nodes, each distinguished by a different phase.
 #[derive(Clone, Debug, Serialize)]
@@ -216,29 +216,29 @@ pub struct Bus {
     pub v_base: f64,
 
     /// Terminals
-    pub terms: Vec<BusTerm>,
+    pub terms: Vec<BusPhase>,
 }
 
 impl Bus {
     /// Creates a new [`Bus`].
     pub fn new(uid: &str, phases: Vec<Phase>, v_base: f64) -> Bus {
-        let terms: Vec<BusTerm> = phases.iter()
-            .map(|phase| BusTerm {phase: *phase, v: v_base * phase.v_nom_pu()}).collect();
+        let terms: Vec<BusPhase> = phases.iter()
+            .map(|phase| BusPhase {phase: *phase, v: v_base * phase.v_nom_pu()}).collect();
         Bus {uid: uid.to_string(), v_base, terms}
     }
 
     /// Searches for the terminal of a bus that has phase `p`.
-    pub fn term_p(&self, p: Phase) -> Option<&BusTerm> {
+    pub fn bus_phase(&self, p: Phase) -> Option<&BusPhase> {
         self.terms.iter().find(|x| x.phase == p)
     }
 
     /// Searches for the terminal of a bus that has phase `p`, mutable version.
-    pub fn term_p_mut(&mut self, p: Phase) -> Option<&mut BusTerm> {
+    pub fn bus_phase_mut(&mut self, p: Phase) -> Option<&mut BusPhase> {
         self.terms.iter_mut().find(|x| x.phase == p)
     }
 
     /// Searches for the terminal index of a bus that has phase `p`.
-    pub fn i_term_p(&self, p: Phase) -> Option<usize> {
+    pub fn i_bus_phase(&self, p: Phase) -> Option<usize> {
         self.terms.iter().position(|x| x.phase == p)
     }
 
@@ -279,7 +279,7 @@ pub struct Element {
     /// Is the element in service / operational.
     pub is_in_service: bool,
     /// Key of which bus/phases the terminals are connected to.
-    pub bus_term_ids: Vec<BusTermId>,
+    pub bus_phase_ids: Vec<BusPhaseId>,
     /// The branch info, a vector of [`ElemBranch`] of the element.
     pub branches: Vec<ElemBranch>,
 
@@ -289,12 +289,12 @@ pub struct Element {
 
 impl Element {
     /// Creates a new element.
-    pub fn new<T: ElementSpec + 'static>(uid: &str, bus_term_ids: Vec<BusTermId>, spec: T) -> Element {
+    pub fn new<T: ElementSpec + 'static>(uid: &str, bus_phase_ids: Vec<BusPhaseId>, spec: T) -> Element {
         let n_branches = spec.n_branches();
         Element {
             uid: uid.to_string(),
             is_in_service: true,
-            bus_term_ids,
+            bus_phase_ids,
             spec: Box::new(spec),
             branches: vec![ElemBranch {v: c!(0.0, 0.0), i: c!(0.0, 0.0)}; n_branches],
         }
@@ -386,7 +386,7 @@ impl GSerialize for Element {
         state.serialize_field("uid", &self.uid)?;
         state.serialize_field("element_type", &self.element_type())?;
         state.serialize_field("is_in_service", &self.is_in_service)?;
-        state.serialize_field("bus_term_ids", &self.bus_term_ids)?;
+        state.serialize_field("bus_phase_ids", &self.bus_phase_ids)?;
         state.serialize_field("n_terms", &self.spec.n_terms())?;
         state.serialize_field("branch_wiring", &self.branch_wiring())?;
         state.serialize_field("y_const", &self.spec.y_const())?;
@@ -421,8 +421,8 @@ impl<T: TypeStrOf> TypeStr for T {
 
 /// An element_spec collects together electrical connections of various types such as constant y or constant s.
 pub trait ElementSpec: Any + std::fmt::Debug + Send + Sync + TypeStrOf + TypeStr {
-    fn element_generic(self, uid: &str, bus_term_ids: Vec<BusTermId>) -> Element where Self: Sized + 'static {
-        Element::new(uid, bus_term_ids, self)
+    fn element_generic(self, uid: &str, bus_phase_ids: Vec<BusPhaseId>) -> Element where Self: Sized + 'static {
+        Element::new(uid, bus_phase_ids, self)
     }
 
     /// Returns the number of terminals (connection points).
@@ -675,8 +675,8 @@ pub struct Node {
     /// Is the node grounded?
     pub is_grounded: bool,
 
-    /// There can be more than one BusTermId due to the possibility of copperplating.
-    pub bus_term_ids: Vec<BusTermId>,
+    /// There can be more than one BusPhaseId due to the possibility of copperplating.
+    pub bus_phase_ids: Vec<BusPhaseId>,
 
     /// Voltage, in chosen units, if known.
     pub v: Option<c64>,
@@ -685,12 +685,12 @@ pub struct Node {
 impl Node {
     /// Creates a new [`Node`].
     fn new(v_nom: c64, is_grounded: bool) -> Node {
-        Node {v_nom, is_grounded, bus_term_ids: vec![], v: None}
+        Node {v_nom, is_grounded, bus_phase_ids: vec![], v: None}
     }
 
     /// Display name for the node.
     pub fn name(&self) -> String {
-        self.bus_term_ids.iter().map(|bt| bt.to_string()).collect::<Vec<_>>().join("|")
+        self.bus_phase_ids.iter().map(|bp| bp.to_string()).collect::<Vec<_>>().join("|")
     }
 }
 
@@ -739,8 +739,8 @@ pub struct NetworkModel {
     // Branches, keys are uid
     pub branches: Vec<Branch>,
 
-    // BusTermId to Node map
-    pub bp_to_nd_idx: HashMap<BusTermId, usize>,
+    // BusPhaseId to Node map
+    pub bp_to_nd_idx: HashMap<BusPhaseId, usize>,
 
     // ElemTerm to Branch map
     pub eb_to_br_idx: HashMap<ElemBranchId, usize>,
@@ -854,7 +854,7 @@ impl NetworkModel {
 
             let bp_to_nd_idx = self.bp_to_nd_idx.iter()
                 .filter(|(_, nd_idx)| nd_idx_set.contains(*nd_idx))
-                .map(|(bt, nd_idx)| (bt.clone(), *nd_idx)).collect();
+                .map(|(bp, nd_idx)| (bp.clone(), *nd_idx)).collect();
 
             let eb_to_br_idx = self.eb_to_br_idx.iter()
                 .filter(|(_, br_idx)| br_idx_set.contains(*br_idx))
@@ -911,18 +911,18 @@ impl NetworkModel {
         // into a single node.
 
         // Create a graph of copper plate connected bus/phase pairs
-        let mut copper = UnGraph::<BusTermId, ()>::new_undirected();
+        let mut copper = UnGraph::<BusPhaseId, ()>::new_undirected();
 
         // Insert all bus/phase pairs as graph nodes while noting the mapping between bus/phase and
         // node index.
-        let mut bp_to_gnode = HashMap::<BusTermId, NodeIndex>::new();
+        let mut bp_to_gnode = HashMap::<BusPhaseId, NodeIndex>::new();
         for (_, bus) in netw.buses.iter() {
             let bus = bus.borrow();
             for t in bus.terms.iter() {
-                let bt = bt!(&bus.uid(), t.phase);
-                if !bp_to_gnode.contains_key(&bt) {
-                    let idx = copper.add_node(bt.clone());
-                    bp_to_gnode.insert(bt.clone(), idx);
+                let bp = bp!(&bus.uid(), t.phase);
+                if !bp_to_gnode.contains_key(&bp) {
+                    let idx = copper.add_node(bp.clone());
+                    bp_to_gnode.insert(bp.clone(), idx);
                 }
             }
         }
@@ -932,9 +932,9 @@ impl NetworkModel {
             let e = e.borrow();
             let cps = e.copper_plate();
             for cp in cps {
-                let gnodei = bp_to_gnode[&e.bus_term_ids[cp[0]]];
+                let gnodei = bp_to_gnode[&e.bus_phase_ids[cp[0]]];
                 for j in &cp[1..] {
-                    let gnodej = bp_to_gnode[&e.bus_term_ids[cp[*j]]];
+                    let gnodej = bp_to_gnode[&e.bus_phase_ids[cp[*j]]];
                     copper.update_edge(gnodei, gnodej, ());
                 }
             }
@@ -947,7 +947,7 @@ impl NetworkModel {
             let e = e.borrow();
             let gnd = e.grounding();
             for i in gnd {
-                let gnodei = bp_to_gnode[&e.bus_term_ids[i]];
+                let gnodei = bp_to_gnode[&e.bus_phase_ids[i]];
                 if let Some(g0) = first_ground {
                     copper.update_edge(gnodei, g0, ());
                 } else {
@@ -964,10 +964,10 @@ impl NetworkModel {
         let mut nodes: Vec<(usize, Node)> = Vec::with_capacity(ccs.len());
 
         {
-            let mut bp_to_nd_idx: HashMap<BusTermId, usize> = HashMap::new();
+            let mut bp_to_nd_idx: HashMap<BusPhaseId, usize> = HashMap::new();
             for cc in ccs.iter() {
                 // Get v_base by looking at the first bus that has this node.
-                let BusTermId {b: b0, p: p0} = &copper.node_weight(cc[0]).unwrap();
+                let BusPhaseId {b: b0, p: p0} = &copper.node_weight(cc[0]).unwrap();
                 let v_base = netw.buses[b0].borrow().v_base;
                 let v_nom = v_base * p0.v_nom_pu();
 
@@ -977,18 +977,18 @@ impl NetworkModel {
 
                 for &cc_i in cc.iter() {
                     // TODO: Think about what happens if two nodes with different v_base are copperplated.
-                    let bt = copper.node_weight(cc_i).unwrap();
-                    assert!(bt.p == *p0, "Can't copperplate two bus/phase pairs with different phases");
-                    node.bus_term_ids.push(bt.clone());
-                    bp_to_nd_idx.insert(bt.clone(), *nd_idx);
+                    let bp = copper.node_weight(cc_i).unwrap();
+                    assert!(bp.p == *p0, "Can't copperplate two bus/phase pairs with different phases");
+                    node.bus_phase_ids.push(bp.clone());
+                    bp_to_nd_idx.insert(bp.clone(), *nd_idx);
                 }
-                node.bus_term_ids.sort();
+                node.bus_phase_ids.sort();
             }
 
             // Set grounding flag
             for (_eid, e) in netw.elements.iter() {
                 for i in e.borrow().grounding() {
-                    let nd = &mut nodes[bp_to_nd_idx[&e.borrow().bus_term_ids[i]]];
+                    let nd = &mut nodes[bp_to_nd_idx[&e.borrow().bus_phase_ids[i]]];
                     nd.1.is_grounded = true;
                     nd.1.v = Some(c!(0.0, 0.0));
                 }
@@ -999,8 +999,8 @@ impl NetworkModel {
             let mut i = 0usize;
             for b in netw.buses.values() {
                 for t in b.borrow().terms.iter() {
-                    let bt = bt!(b.borrow().uid, t.phase);
-                    let (nd_idx, _) = &mut nodes[bp_to_nd_idx[&bt]];
+                    let bp = bp!(b.borrow().uid, t.phase);
+                    let (nd_idx, _) = &mut nodes[bp_to_nd_idx[&bp]];
                     if seen.insert(*nd_idx) {
                         *nd_idx = i;
                         i += 1;
@@ -1014,8 +1014,8 @@ impl NetworkModel {
         self.nodes = nodes.into_iter().map(|(_, nd)| nd).collect();
 
         for (nd_idx, nd) in self.nodes.iter().enumerate() {
-            for bt in nd.bus_term_ids.iter() {
-                self.bp_to_nd_idx.insert(bt.clone(), nd_idx);
+            for bp in nd.bus_phase_ids.iter() {
+                self.bp_to_nd_idx.insert(bp.clone(), nd_idx);
             }
         }
 
@@ -1029,8 +1029,8 @@ impl NetworkModel {
         for (_, elem) in netw.elements.iter() {
             let elem = elem.borrow();
             for (ibr, (i, j)) in elem.branch_wiring().iter().enumerate() {
-                let indi = self.bp_to_nd_idx[&elem.bus_term_ids[*i]];
-                let indj = self.bp_to_nd_idx[&elem.bus_term_ids[*j]];
+                let indi = self.bp_to_nd_idx[&elem.bus_phase_ids[*i]];
+                let indj = self.bp_to_nd_idx[&elem.bus_phase_ids[*j]];
                 let v_nom = self.nodes[indi].v_nom - self.nodes[indj].v_nom;
                 self.eb_to_br_idx.insert(eb!(elem.uid, ibr), self.branches.len());
                 self.branches.push(Branch::new(indi, indj, v_nom));
@@ -1144,10 +1144,10 @@ impl NetworkModel {
 
     /// Sets the bus voltages based on nodes, and the element voltages and currents based on branches.
     pub fn propagate_to_network(&self, netw: &mut Network) {
-        for (bt, nd_idx) in self.bp_to_nd_idx.iter() {
+        for (bp, nd_idx) in self.bp_to_nd_idx.iter() {
             if let Some(nd_v) = self.nodes[*nd_idx].v {
-                let bus = netw.buses.get_mut(&bt.b).unwrap();
-                bus.borrow_mut().term_p_mut(bt.p).unwrap().v = nd_v;
+                let bus = netw.buses.get_mut(&bp.b).unwrap();
+                bus.borrow_mut().bus_phase_mut(bp.p).unwrap().v = nd_v;
             }
         }
 
@@ -1218,11 +1218,11 @@ mod tests {
 
         netw.add_element(
             (GenericElement {n_terms: 2, branches: vec![(0, 1)], y_const, ..Default::default()})
-                .element("y01", vec![bt!("bus_0", Phase::A), bt!("bus_1", Phase::A)])).unwrap();
+                .element("y01", vec![bp!("bus_0", Phase::A), bp!("bus_1", Phase::A)])).unwrap();
 
         netw.add_element(
             (GenericElement {n_terms: 2, copper_plate, ..Default::default()})
-                .element("cp12", vec![bt!("bus_1", Phase::A), bt!("bus_2", Phase::A)])).unwrap();
+                .element("cp12", vec![bp!("bus_1", Phase::A), bp!("bus_2", Phase::A)])).unwrap();
 
         let mods = NetworkModels::new(&netw);
         assert!(mods.master.nodes.len() == 2);
@@ -1240,10 +1240,10 @@ mod tests {
         // Function to connect two buses with a constant y connection
         let y_const = vec![((0, 0), c!(1.0, 0.0))];
 
-        fn bts(i: usize, j: usize) -> Vec<BusTermId> {
+        fn bps(i: usize, j: usize) -> Vec<BusPhaseId> {
             vec![
-                bt!(&format!("bus_{i}"), Phase::A),
-                bt!(&format!("bus_{j}"), Phase::A),
+                bp!(&format!("bus_{i}"), Phase::A),
+                bp!(&format!("bus_{j}"), Phase::A),
             ]
         }
 
@@ -1252,16 +1252,16 @@ mod tests {
         // should be 0, 1, 1, 2
         netw.add_element(
             (GenericElement {n_terms: 2, branches: vec![(0, 1)], y_const: y_const.clone(), ..Default::default()})
-                .element("y01", bts(0, 1))).unwrap();
+                .element("y01", bps(0, 1))).unwrap();
         netw.add_element(
             (GenericElement {n_terms: 2, branches: vec![(0, 1)], y_const: y_const.clone(), ..Default::default()})
-                .element("y12", bts(1, 2))).unwrap();
+                .element("y12", bps(1, 2))).unwrap();
         netw.add_element(
             (GenericElement {n_terms: 2, grounding: vec![0, 1], ..Default::default()})
-            .element("g12", bts(1, 2))).unwrap();
+            .element("g12", bps(1, 2))).unwrap();
         netw.add_element(
             (GenericElement {n_terms: 2, branches: vec![(0, 1)], y_const, ..Default::default()})
-            .element("y23", bts(2, 3))).unwrap();
+            .element("y23", bps(2, 3))).unwrap();
         let mods = NetworkModels::new(&netw);
         assert!(mods.master.nodes.len() == 3);
     }

@@ -46,9 +46,9 @@ impl Line {
     }
 
     /// Wraps an existing [`Line`] in an [`Element`].
-    pub fn element(self, uid: &str, bus_term_ids_0: Vec<BusTermId>, bus_term_ids_1: Vec<BusTermId>) -> Element {
-        assert!(bus_term_ids_0.len() == bus_term_ids_1.len(), "Lines must have the same number of phases at each end");
-        self.element_generic(uid, bus_term_ids_0.into_iter().chain(bus_term_ids_1).collect())
+    pub fn element(self, uid: &str, bus_phase_ids_0: Vec<BusPhaseId>, bus_phase_ids_1: Vec<BusPhaseId>) -> Element {
+        assert!(bus_phase_ids_0.len() == bus_phase_ids_1.len(), "Lines must have the same number of phases at each end");
+        self.element_generic(uid, bus_phase_ids_0.into_iter().chain(bus_phase_ids_1).collect())
     }
 }
 

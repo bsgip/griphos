@@ -62,9 +62,9 @@ impl Generator {
         Generator {n_terms, branches, control}
     }
 
-    /// Wraps a [`Generator`] in a new [`Element`], with the given [`BusTermId`]s.
-    pub fn element(self, id: &str, bus_term_ids: Vec<BusTermId>) -> Element {
-        self.element_generic(id, bus_term_ids)
+    /// Wraps a [`Generator`] in a new [`Element`], with the given [`BusPhaseId`]s.
+    pub fn element(self, id: &str, bus_phase_ids: Vec<BusPhaseId>) -> Element {
+        self.element_generic(id, bus_phase_ids)
     }
 }
 
