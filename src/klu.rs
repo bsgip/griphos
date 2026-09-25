@@ -1,3 +1,5 @@
+//! Interface to the KLU linear solver through the klu_sys crate.
+
 pub use log::debug;
 pub use sprs::CsMatI;
 

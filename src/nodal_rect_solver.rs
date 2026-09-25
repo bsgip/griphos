@@ -1,3 +1,5 @@
+//! Nodal Rect Solver - a particular power flow solver.
+
 use std::collections::HashMap;
 use std::time::Instant;
 

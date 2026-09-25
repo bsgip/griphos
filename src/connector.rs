@@ -1,3 +1,5 @@
+//! Connector elements.
+
 use serde::Serialize;
 
 use crate::network::*;

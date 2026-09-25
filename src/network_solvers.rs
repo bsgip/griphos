@@ -1,3 +1,5 @@
+//! Generic network solver code.
+
 use std::fmt;
 use std::ops::Deref;
 

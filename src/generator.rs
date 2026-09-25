@@ -1,3 +1,5 @@
+//! Generator elements.
+
 use std::fmt::Debug;
 
 use serde::Serialize;

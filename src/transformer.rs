@@ -1,3 +1,5 @@
+//! Transformer elements.
+
 use std::collections::HashSet;
 
 use serde::Serialize;

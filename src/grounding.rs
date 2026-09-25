@@ -1,3 +1,5 @@
+//! Grounding elements that ground bus terminals.
+
 use serde::Serialize;
 
 use crate::network::*;

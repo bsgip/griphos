@@ -1,3 +1,5 @@
+//! Functions to help with testing network generation and testing.
+
 use crate::foundation::*;
 use crate::generic_element::*;
 use crate::generator::*;
@@ -7,27 +9,27 @@ use crate::load::*;
 use crate::transformer::*;
 use crate::network::*;
 
-/// Phases [A].
+/// Phases \[A\].
 pub const PHASES_A: &[Phase; 1] = &[Phase::A];
-/// Phases [B].
+/// Phases \[B\].
 pub const PHASES_B: &[Phase; 1] = &[Phase::B];
-/// Phases [C].
+/// Phases \[C\].
 pub const PHASES_C: &[Phase; 1] = &[Phase::C];
-/// Phases [A, N]
+/// Phases \[A, N\]
 pub const PHASES_AN: &[Phase; 2] = &[Phase::A, Phase::N];
-/// Phases [B, N]
+/// Phases \[B, N\]
 pub const PHASES_BN: &[Phase; 2] = &[Phase::B, Phase::N];
-/// Phases [C, N]
+/// Phases \[C, N\]
 pub const PHASES_CN: &[Phase; 2] = &[Phase::C, Phase::N];
-/// Phases [A, B]
+/// Phases \[A, B\]
 pub const PHASES_AB: &[Phase; 2] = &[Phase::A, Phase::B];
-/// Phases [B, C]
+/// Phases \[B, C\]
 pub const PHASES_BC: &[Phase; 2] = &[Phase::B, Phase::C];
-/// Phases [C, A]
+/// Phases \[C, A\]
 pub const PHASES_CA: &[Phase; 2] = &[Phase::C, Phase::A];
-/// Phases [A, B, C]
+/// Phases \[A, B, C\]
 pub const PHASES_ABC: &[Phase; 3] = &[Phase::A, Phase::B, Phase::C];
-/// Phases [A, B, C, N]
+/// Phases \[A, B, C, N\]
 pub const PHASES_ABCN: &[Phase; 4] = &[Phase::A, Phase::B, Phase::C, Phase::N];
 
 /// Returns the bus reference and all phases of the given bus_uid.

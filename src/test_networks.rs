@@ -1,3 +1,5 @@
+//! Functions to generate simple networks for testing.
+
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 

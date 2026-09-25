@@ -1,3 +1,5 @@
+//! Parsing the e-JSON data network format.
+
 use log::warn;
 use sprs::vec;
 use std::fs::File;

@@ -1,8 +1,9 @@
+//! A generic element that can have various functions.
+
 use crate::foundation::c64;
 use crate::network::{BusTermId, Element, ElementSpec};
 use crate::TypeStrOf;
 
-/// A generic element that can have various functions.
 #[derive(Debug, Default, TypeStrOf)]
 pub struct GenericElement {
     /// Number of bus terminals.

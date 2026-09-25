@@ -1,5 +1,27 @@
 #![doc = include_str!("../README.md")]
 
+//! # Getting Started
+//! Griphos is a network modelling and power flow solver (with OPF to come) that is written in rust, with additional
+//! python bindings.
+//!
+//! Documentation is WIP. Start by taking a look at the documentation for the following modules:
+//! - [`mod@network`]: The main network modelling module.
+//! - [`mod@foundation`]: General purpose code that is used throughout griphos.
+//!
+//! For specific network elements, [`mod@generic_element`] show all possible generic functionality of elements. You can
+//! then look at the following:
+//! - [`mod@line`]: Lines and cables.
+//! - [`mod@generator`]: Generation sources with optional voltage control.
+//! - [`mod@load`]: ZIP load model for loads and uncontrolled generation.
+//! - [`mod@transformer`]: Varous transformers.
+//! - [`mod@connector`]: Switches and short circuits.
+//! - [`mod@grounding`]: Solid grounding of nodes.
+//!
+//! Also look at the executables
+//! [`run_ejson_network`](../src/run_ejson_network/run_ejson_network.rs.html) source and
+//! [`run_test_network`](../src/run_test_network/run_test_network.rs.html) source for simple examples of using griphos
+//! to solve power flow.
+
 #[macro_use]
 pub mod foundation;
 mod graph;

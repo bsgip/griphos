@@ -1,3 +1,5 @@
+//! Network modelling.
+
 use std::any::Any;
 use std::collections::{BTreeSet, HashSet, HashMap};
 use std::fmt;

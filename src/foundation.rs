@@ -1,3 +1,5 @@
+//! Various foundational code that can be used throughout griphos.
+
 use std::cell::{RefCell, Ref, RefMut};
 // use std::sync::Arc;
 // use parking_lot::{Mutex, MutexGuard};
@@ -34,7 +36,7 @@ pub trait IntoShared<T> {
 }
 
 impl<T> IntoShared<T> for T {
-    /// Converts a value of type T into Shared<T>
+    /// Converts a value of type T into Shared\<T\>
     ///
     /// # Examples
     ///
@@ -292,7 +294,7 @@ pub struct PrettyPrint<'a, T, U = ()>(pub &'a T, pub U);
 // linear algebra / sparse stuff
 // -----------------------------------------------------------------------------
 
-/// Complex type, alias of na::Complex<c64>
+/// Complex type, alias of na::Complex\<c64\>
 #[allow(non_camel_case_types)]
 pub type c64 = na::Complex<f64>;
 

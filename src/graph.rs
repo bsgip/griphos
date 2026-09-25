@@ -1,3 +1,5 @@
+//! Graph utilities, based on petgraph.
+
 use petgraph::dot::{Config, Dot}; // Useful for debugging
 use petgraph::graph::{UnGraph, NodeIndex, EdgeIndex, GraphIndex};
 use petgraph::visit::{EdgeRef, GraphProp, IntoEdgeReferences, IntoNodeReferences, NodeIndexable, NodeRef};

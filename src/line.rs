@@ -1,3 +1,5 @@
+//! Line elements.
+
 use serde::Serialize;
 
 use crate::foundation::*;

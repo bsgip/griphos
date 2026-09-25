@@ -1,3 +1,5 @@
+//! Load elements.
+
 use crate::foundation::c64;
 use crate::network::{BusTermId, Element, ElementSpec};
 use crate::TypeStrOf;
