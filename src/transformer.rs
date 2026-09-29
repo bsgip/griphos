@@ -346,7 +346,7 @@ impl Transformer {
     pub fn new(
         winding_pairs: &[WindingPair],
         nom_turns_ratio: Vec<c64>,
-        y_series: c64,
+        z_series: c64,
         y_shunt: c64,
         taps: Option<TransformerTaps>,
     ) -> Self {
@@ -375,15 +375,15 @@ impl Transformer {
         }
         assert!(nom_turns_ratio.len() == n_phase);
         Transformer {
-            n_term, n_phase, branches, nom_turns_ratio, y_series, y_shunt, taps
+            n_term, n_phase, branches, nom_turns_ratio, y_series: 1.0 / z_series, y_shunt, taps
         }
     }
 
     /// Creates a new delta-wye connected [`Transformer`].
     pub fn new_dy(
         n_phase: usize,
-        nom_turns_ratio: Vec<c64>,
-        y_series: c64,
+        nom_turns_ratio: c64,
+        z_series: c64,
         y_shunt: c64,
         taps: Option<TransformerTaps>,
     ) -> Result<Self, String> {
@@ -391,14 +391,14 @@ impl Transformer {
         let windings_s = wye_connection(n_phase)?;
         let winding_pairs: Vec<WindingPair> = windings_p.into_iter().zip(windings_s)
             .map(|(p, s)| WindingPair { p, s }).collect();
-        Ok(Self::new(&winding_pairs, nom_turns_ratio, y_series, y_shunt, taps))
+        Ok(Self::new(&winding_pairs, vec![nom_turns_ratio; winding_pairs.len()], z_series, y_shunt, taps))
     }
 
     /// Creates a new delta-delta connected [`Transformer`].
     pub fn new_dd(
         n_phase: usize,
-        nom_turns_ratio: Vec<c64>,
-        y_series: c64,
+        nom_turns_ratio: c64,
+        z_series: c64,
         y_shunt: c64,
         taps: Option<TransformerTaps>,
     ) -> Result<Self, String> {
@@ -406,14 +406,14 @@ impl Transformer {
         let windings_s = delta_connection(n_phase)?;
         let winding_pairs: Vec<WindingPair> = windings_p.into_iter().zip(windings_s)
             .map(|(p, s)| WindingPair { p, s }).collect();
-        Ok(Self::new(&winding_pairs, nom_turns_ratio, y_series, y_shunt, taps))
+        Ok(Self::new(&winding_pairs, vec![nom_turns_ratio; winding_pairs.len()], z_series, y_shunt, taps))
     }
 
     /// Creates a new wye-wye connected [`Transformer`].
     pub fn new_yy(
         n_phase: usize,
-        nom_turns_ratio: Vec<c64>,
-        y_series: c64,
+        nom_turns_ratio: c64,
+        z_series: c64,
         y_shunt: c64,
         taps: Option<TransformerTaps>,
     ) -> Result<Self, String> {
@@ -421,7 +421,7 @@ impl Transformer {
         let windings_s = wye_connection(n_phase)?;
         let winding_pairs: Vec<WindingPair> = windings_p.into_iter().zip(windings_s)
             .map(|(p, s)| WindingPair { p, s }).collect();
-        Ok(Self::new(&winding_pairs, nom_turns_ratio, y_series, y_shunt, taps))
+        Ok(Self::new(&winding_pairs, vec![nom_turns_ratio; winding_pairs.len()], z_series, y_shunt, taps))
     }
 
     /// Wraps a transformer in an [`Element`], with the given bus terminal connections.
