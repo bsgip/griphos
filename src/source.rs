@@ -16,7 +16,7 @@ pub enum SourceControl {
     PQ {s: Vec<c64>},
 }
 
-/// A source or infeeder that may be voltage controlled.
+/// A generation source or infeeder that may be voltage controlled.
 #[derive(Debug, serde::Serialize, TypeStrOf)]
 pub struct Source {
     /// Number of terminals on the source.
