@@ -125,7 +125,7 @@ impl Transformer {
             y_shunt,
             gr_taps
         );
-        let elem = gr_tx.element(uid, &gr_bps_0, &gr_bps_1).into_shared();
+        let elem = gr_tx.element(uid, gr_bps_0, gr_bps_1).into_shared();
         Transformer::from_elem(elem)
     }
 }
@@ -133,6 +133,7 @@ impl Transformer {
 #[pymethods]
 impl Transformer {
 
+    #[allow(clippy::too_many_arguments)]
     #[new]
     pub fn new(
         uid: &str,
