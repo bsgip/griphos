@@ -30,57 +30,14 @@
 //!
 //! # Examples
 //!
-//! The example below shows construction of a new network, and the creation and assignment to the network of several
-//! buses and elements. It will show details of how various elements are constructed and joined to the network.
+//! <details>
+//! <summary>Network tutorial example</summary>
+//!
 //! ```
-//! # use griphos::{bp, Bus, BusPhaseId, c, c64, Source, SourceControl, Grounding, Line, Phase, Network};
-//! # fn main() {
-//! // Create a new, empty network.
-//! let mut netw = Network::new();
-//!
-//! // Add a neutral bus, with phase N and base voltage 1.
-//! let bus_n = netw.add_bus(Bus::new("bus_ground", vec![Phase::N], 1.0)).unwrap();
-//!
-//! // Add two three-phase buses, with phases ABC and base voltage 1.
-//! let bus_abc_1 = netw.add_bus(Bus::new("bus_abc_1", vec![Phase::A, Phase::B, Phase::C], 1.0)).unwrap();
-//! let bus_abc_2 = netw.add_bus(Bus::new("bus_abc_2", vec![Phase::A, Phase::B, Phase::C], 1.0)).unwrap();
-//!
-//! // Ground the neutral bus, using a `Grounding` element. Note that each element type will normally have its own
-//! // `element(...)` member function to conveniently connect it to the network. The signatures of these `element`
-//! // functions will typically vary depending on the details of the element type.
-//! netw.add_element(
-//! Grounding::new(1)                           // Create a `Grounding` object with 1 terminal
-//!     .element(                               // Wrap it in it's own element...
-//!         "grounding",                        // with UID "grounding"...
-//!         vec![bp!("bus_ground", Phase::N)]   // and connect to phase N of bus "bus_ground".
-//!     )).unwrap();
-//!
-//! // Add a wye-connected source on bus_abc_1
-//! netw.add_element(
-//!     Source::new_wye_slack(1.0, 3)           // Setpoint voltage = 1.0; 3 live phases (not incl. neutral).
-//!         .element(
-//!             "source",                       // The UID of the element.
-//!             vec![
-//!                 bp!("bus_abc_1", Phase::A),
-//!                 bp!("bus_abc_1", Phase::B),
-//!                 bp!("bus_abc_1", Phase::C),
-//!                 bp!("bus_abc_1", Phase::N), // Neutral comes last
-//!             ],
-//!             true                            // Re-set slack angle refs according to phasing.
-//!         )
-//!     ).unwrap();
-//!
-//! // Add a line between the two live buses.
-//! netw.add_element(
-//!     Line::new_from_sym_seq(c!(1.0, 0.0), c!(1.0, 0.0), 3) // z = 1.0+0j, z0 = 1.0+0j, n_phase = 3
-//!         .unwrap()
-//!         .element(
-//!             "line",
-//!             vec![bp!("bus_abc_1", Phase::A), bp!("bus_abc_1", Phase::B), bp!("bus_abc_1", Phase::C)],
-//!             vec![bp!("bus_abc_2", Phase::A), bp!("bus_abc_2", Phase::B), bp!("bus_abc_2", Phase::C)],
-//!         )).unwrap();
-//! # }
+#![allow(clippy::needless_doctest_main)]
+#![doc = include_str!("../examples/network_tutorial.rs")]
 //! ```
+//! </details>
 
 use std::any::Any;
 use std::collections::HashSet;
