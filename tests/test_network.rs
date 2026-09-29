@@ -19,8 +19,6 @@ mod tests {
         let bp2c = bp!("bus_2", Phase::C);
         let bp3a = bp!("bus_3", Phase::A);
 
-        let phases_abc = [Phase::A, Phase::B, Phase::C];
-
         netw.add_element(Grounding::new(1).element("gr", vec![bpg.clone()])).unwrap();
 
         netw.add_element(
@@ -40,10 +38,9 @@ mod tests {
                 )).unwrap();
 
         netw.add_element(
-            Generator::new(
-                4, vec![(0, 1), (0, 2), (0, 3)],
-                GeneratorControl::new_wye_slack_with_std_phase_angles(1.0, &phases_abc)
-            ).element("gen_1abc", vec![bpg.clone(), bp1a.clone(), bp1b.clone(), bp1c.clone()])).unwrap();
+            Source::new_wye_slack(1.0, 3)
+                .element("src_1abc", vec![bpg.clone(), bp1a.clone(), bp1b.clone(), bp1c.clone()], true)
+        ).unwrap();
 
         println!("\nNetwork:\n{}", &Wrap(&netw));
 

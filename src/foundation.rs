@@ -539,6 +539,18 @@ pub const C_ZERO: c64 = c!(0.0, 0.0);
 pub const C_I: c64 = c!(0.0, 1.0);
 /// Complex 1.
 pub const C_ONE: c64 = c!(1.0, 0.0);
+/// sqrt(2)
+pub const SQRT_2: f64 = std::f64::consts::SQRT_2;
+/// 1.0 / sqrt(2)
+pub const SQRT_2_INV: f64 = 1.0 / SQRT_2;
+/// sqrt(3)
+pub const SQRT_3: f64 = 1.7320508075688772;
+/// 1.0 / sqrt(3)
+pub const SQRT_3_INV: f64 = 1.0 / SQRT_3;
+/// pi
+pub const PI: f64 = std::f64::consts::PI;
+/// 2 pi
+pub const TAU: f64 = std::f64::consts::TAU;
 
 #[cfg(test)]
 mod tests {

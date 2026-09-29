@@ -33,7 +33,7 @@
 //! The example below shows construction of a new network, and the creation and assignment to the network of several
 //! buses and elements. It will show details of how various elements are constructed and joined to the network.
 //! ```
-//! # use griphos::{bp, Bus, BusPhaseId, c, c64, Generator, GeneratorControl, Grounding, Line, Phase, Network};
+//! # use griphos::{bp, Bus, BusPhaseId, c, c64, Source, SourceControl, Grounding, Line, Phase, Network};
 //! # fn main() {
 //! // Create a new, empty network.
 //! let mut netw = Network::new();
@@ -55,23 +55,20 @@
 //!         vec![bp!("bus_ground", Phase::N)]   // and connect to phase N of bus "bus_ground".
 //!     )).unwrap();
 //!
-//! // Add a wye-connected generator on bus_abc_1
+//! // Add a wye-connected source on bus_abc_1
 //! netw.add_element(
-//!     Generator::new(
-//!         4, // 4 terminals: 3 phases + neutral.
-//!         vec![(0, 3), (1, 3), (2, 3)], // Wye-connected branches, with neutral last.
-//!         GeneratorControl::new_wye_slack_with_std_phase_angles(
-//!             1.0, // Setpoint voltage = 1.0.
-//!             &[Phase::A, Phase::B, Phase::C]), // Phase angles calculated based on these live phases.
-//!     ).element(
-//!         "generator", // The UID of the element.
-//!         vec![
-//!             bp!("bus_abc_1", Phase::A),
-//!             bp!("bus_abc_1", Phase::B),
-//!             bp!("bus_abc_1", Phase::C),
-//!             bp!("bus_abc_1", Phase::N), // Neutral comes last
-//!         ]
-//!     )).unwrap();
+//!     Source::new_wye_slack(1.0, 3)           // Setpoint voltage = 1.0; 3 live phases (not incl. neutral).
+//!         .element(
+//!             "source",                       // The UID of the element.
+//!             vec![
+//!                 bp!("bus_abc_1", Phase::A),
+//!                 bp!("bus_abc_1", Phase::B),
+//!                 bp!("bus_abc_1", Phase::C),
+//!                 bp!("bus_abc_1", Phase::N), // Neutral comes last
+//!             ],
+//!             true                            // Re-set slack angle refs according to phasing.
+//!         )
+//!     ).unwrap();
 //!
 //! // Add a line between the two live buses.
 //! netw.add_element(

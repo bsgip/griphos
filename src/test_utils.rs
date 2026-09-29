@@ -2,10 +2,10 @@
 
 use crate::foundation::*;
 use crate::generic_element::*;
-use crate::generator::*;
 use crate::grounding::*;
 use crate::line::*;
 use crate::load::*;
+use crate::source::*;
 use crate::transformer::*;
 use crate::network::*;
 
@@ -131,21 +131,14 @@ pub fn add_ground(
     ).unwrap()
 }
 
-// Adds a wye-connected generator involving all phases of a given bus.
-pub fn add_generator(netw: &mut Network, bus_uid: &str) -> Shared<Element> {
-    let uid = elem_uid::<Generator>(netw);
+// Adds a wye-connected source involving all phases of a given bus.
+pub fn add_source(netw: &mut Network, bus_uid: &str) -> Shared<Element> {
+    let uid = elem_uid::<Source>(netw);
     let (bus, phs) = bus_and_phases(netw, bus_uid);
+    assert!(matches!(phs.last(), Some(Phase::N)));
     let bps: Vec<BusPhaseId> = phs.iter().map(|p| bp!(bus_uid, *p)).collect();
-    let n_phase = phs.len();
-    let branches = wye_connection(n_phase).unwrap();
-    let live_phs: Vec<Phase> = phs.iter().filter(|p| !matches!(p, Phase::N)).cloned().collect();
-    netw.add_element(
-        Generator::new(
-            phs.len(),
-            branches,
-            GeneratorControl::new_wye_slack_with_std_phase_angles(bus.borrow().v_base, &live_phs)
-        ).element(&uid, bps)
-    ).unwrap()
+    let n_phase = phs.len() - 1;
+    netw.add_element(Source::new_wye_slack(bus.borrow().v_base, n_phase).element(&uid, bps, true)).unwrap()
 }
 
 // Adds a line between two buses involving all phases and with the given z+, z0.

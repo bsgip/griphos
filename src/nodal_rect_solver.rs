@@ -105,7 +105,7 @@ pub struct NodeInfo {
     pub ieqn_kcl_im: Option<usize>,
 }
 
-/// Additional info for PV or SL generators at branches.
+/// Additional info for PV or SL sources at branches.
 #[derive(Clone, Debug, Default)]
 pub struct BranchGenInfo {
     pub pg: Vc,
@@ -115,7 +115,7 @@ pub struct BranchGenInfo {
     pub ieqn_vm_c: Option<usize>,
 }
 
-/// Additional info for PV generators at nodes.
+/// Additional info for PV sources at nodes.
 #[derive(Clone, Debug, Default)]
 pub struct NodeGenInfo {
     pub qg: Vc,
@@ -128,13 +128,13 @@ pub enum VarKind {
     Vr {nd_idx: usize},
     // An imaginary voltage variable.
     Vi {nd_idx: usize},
-    // A real voltage-controlled generator power on a node.
+    // A real voltage-controlled source power on a node.
     PgNd {nd_idx: usize},
-    // A reactive voltage-controlled generator power on a node.
+    // A reactive voltage-controlled source power on a node.
     QgNd {nd_idx: usize},
-    // A real voltage-controlled generator power on a branch.
+    // A real voltage-controlled source power on a branch.
     PgBr {br_idx: usize},
-    // A reactive voltage-controlled generator power on a branch.
+    // A reactive voltage-controlled source power on a branch.
     QgBr {br_idx: usize},
 }
 
@@ -222,9 +222,9 @@ pub struct NodalRectSolver {
     pub node_infos: Vec<NodeInfo>,
 
     /// The [`NodeGenInfo`]s.
-    pub node_gen_infos: HashMap<usize, NodeGenInfo>,
+    pub node_src_infos: HashMap<usize, NodeGenInfo>,
     /// The [`BranchGenInfo`]s.
-    pub branch_gen_infos: HashMap<usize, BranchGenInfo>,
+    pub branch_src_infos: HashMap<usize, BranchGenInfo>,
 
     /// The variable infos.
     pub var_infos: Vec<VarInfo>,
@@ -249,8 +249,8 @@ impl NodalRectSolver {
             params: Params::default(),
             nmod,
             node_infos: vec![],
-            node_gen_infos: HashMap::new(),
-            branch_gen_infos: HashMap::new(),
+            node_src_infos: HashMap::new(),
+            branch_src_infos: HashMap::new(),
             var_infos: vec![],
             eqn_kinds: vec![],
             vars: vec![],
@@ -272,8 +272,8 @@ impl NodalRectSolver {
     pub fn init(&mut self) {
         if self.nmod.nodes.is_empty() {return;}
 
-        let mut nd_gen_info: Vec<[Option<f64>; 2]> = vec![[None, None]; self.nmod.nodes.len()];
-        let mut br_gen_info: Vec<[Option<f64>; 2]> = vec![[None, None]; self.nmod.branches.len()];
+        let mut nd_src_info: Vec<[Option<f64>; 2]> = vec![[None, None]; self.nmod.nodes.len()];
+        let mut br_src_info: Vec<[Option<f64>; 2]> = vec![[None, None]; self.nmod.branches.len()];
 
         let mut f = |v: &CsVec<f64>, i: usize| {
             for (m_br, &x) in v.iter() {
@@ -282,13 +282,13 @@ impl NodalRectSolver {
                 let nd1 = &self.nmod.nodes[br.nd_1_idx];
                 match (nd0.is_grounded, nd1.is_grounded) {
                     (false, false) => {
-                        br_gen_info[m_br][i] = Some(x);
+                        br_src_info[m_br][i] = Some(x);
                     },
                     (false, true) => {
-                        nd_gen_info[br.nd_0_idx][i] = Some(x);
+                        nd_src_info[br.nd_0_idx][i] = Some(x);
                     },
                     (true, false) => {
-                        nd_gen_info[br.nd_1_idx][i] = Some(-x);
+                        nd_src_info[br.nd_1_idx][i] = Some(-x);
                     },
                     (true, true) => {
                         panic!("Voltage controlled branch with both nodes grounded.");
@@ -300,10 +300,10 @@ impl NodalRectSolver {
         f(&self.nmod.vang_const, 1);
 
         let n_ground = self.nmod.nodes.iter().filter(|nd| nd.is_grounded).count();
-        let n_nd_sl = nd_gen_info.iter().filter(|[vmc, vac]| vmc.is_some() && vac.is_some()).count();
-        let n_nd_pv = nd_gen_info.iter().filter(|[vmc, vac]| vmc.is_some() && vac.is_none()).count();
-        let n_br_sl = br_gen_info.iter().filter(|[vmc, vac]| vmc.is_some() && vac.is_some()).count();
-        let n_br_pv = br_gen_info.iter().filter(|[vmc, vac]| vmc.is_some() && vac.is_none()).count();
+        let n_nd_sl = nd_src_info.iter().filter(|[vmc, vac]| vmc.is_some() && vac.is_some()).count();
+        let n_nd_pv = nd_src_info.iter().filter(|[vmc, vac]| vmc.is_some() && vac.is_none()).count();
+        let n_br_sl = br_src_info.iter().filter(|[vmc, vac]| vmc.is_some() && vac.is_some()).count();
+        let n_br_pv = br_src_info.iter().filter(|[vmc, vac]| vmc.is_some() && vac.is_none()).count();
         let n_not_const = self.nmod.nodes.len() - n_ground - n_nd_sl;
         let ndim = 2 * n_not_const + n_nd_pv + 2 * n_br_sl + n_br_pv;
 
@@ -318,15 +318,15 @@ impl NodalRectSolver {
 
         self.node_infos.clear(); self.node_infos.reserve(self.nmod.nodes.len());
 
-        self.node_gen_infos.clear();
-        self.branch_gen_infos.clear();
+        self.node_src_infos.clear();
+        self.branch_src_infos.clear();
 
         self.var_infos.clear(); self.var_infos.reserve(ndim);
         self.eqn_kinds.clear(); self.eqn_kinds.reserve(ndim);
 
         let mut idim: usize = 0;
 
-        for (i_nd, (nd, ngi)) in self.nmod.nodes.iter().zip(nd_gen_info.iter()).enumerate() {
+        for (i_nd, (nd, ngi)) in self.nmod.nodes.iter().zip(nd_src_info.iter()).enumerate() {
             if nd.is_grounded {
                 // Ground node
                 self.node_infos.push(
@@ -359,7 +359,7 @@ impl NodalRectSolver {
                             }
                         );
 
-                        self.node_gen_infos.insert(
+                        self.node_src_infos.insert(
                             i_nd,
                             NodeGenInfo {qg: Vc::Var {i: idim + 2}, ieqn_vm_c: Some(idim + 2)}
                         );
@@ -399,12 +399,12 @@ impl NodalRectSolver {
             }
         }
 
-        for (m_br, bgi) in br_gen_info.iter().enumerate() {
+        for (m_br, bgi) in br_src_info.iter().enumerate() {
             match bgi {
                 [Some(vmc), Some(vac)] => {
                     // Slack branch
                     let c64 {re: vr, im: vi} = p!(*vmc, *vac);
-                    self.branch_gen_infos.insert(
+                    self.branch_src_infos.insert(
                         m_br,
                         BranchGenInfo {
                             pg: Vc::Var {i: idim},
@@ -425,7 +425,7 @@ impl NodalRectSolver {
                 },
                 [Some(vmc), None] => {
                     // PV branch
-                    self.branch_gen_infos.insert(
+                    self.branch_src_infos.insert(
                         m_br,
                         BranchGenInfo {
                             qg: Vc::Var{i: idim},
@@ -451,8 +451,8 @@ impl NodalRectSolver {
 
         assert!(idim == ndim);
         assert!(self.node_infos.len() == self.nmod.nodes.len());
-        assert!(self.node_gen_infos.len() == n_nd_pv);
-        assert!(self.branch_gen_infos.len() == n_br_sl + n_br_pv);
+        assert!(self.node_src_infos.len() == n_nd_pv);
+        assert!(self.branch_src_infos.len() == n_br_sl + n_br_pv);
         assert!(self.var_infos.len() == ndim);
         assert!(self.eqn_kinds.len() == ndim);
     }
@@ -686,7 +686,7 @@ impl NodalRectSolver {
         }
 
         // Terms involving node pg and qg in KCL; constant voltage magnitude for nodes.
-        for (&i, ngi_i) in self.node_gen_infos.iter() {
+        for (&i, ngi_i) in self.node_src_infos.iter() {
             let nd_info_i = &self.node_infos[i];
             let vr_i = nd_info_i.vr.val(&self.vars);
             let vi_i = nd_info_i.vi.val(&self.vars);
@@ -745,7 +745,7 @@ impl NodalRectSolver {
         }
 
         // Terms involving branch pg and qg in KCL
-        for (&m, bgi_m) in self.branch_gen_infos.iter() {
+        for (&m, bgi_m) in self.branch_src_infos.iter() {
             let br_m = &self.nmod.branches[m];
             let nd_info_im0 = &self.node_infos[br_m.nd_0_idx];
             let nd_info_im1 = &self.node_infos[br_m.nd_0_idx];
@@ -914,32 +914,32 @@ impl NodalRectSolver {
         }
     }
 
-    fn log_node_gen_infos(&self, log: impl Fn(std::fmt::Arguments)) {
+    fn log_node_src_infos(&self, log: impl Fn(std::fmt::Arguments)) {
         log(format_args!("Node Gens:"));
-        for (i_ng, (i_nd, ng_info)) in self.node_gen_infos.iter().enumerate() {
+        for (i_ng, (i_nd, ng_info)) in self.node_src_infos.iter().enumerate() {
             log(format_args!(
                 "    {: <4}: nd = {: <4} qg = {: <24}", i_ng, i_nd, format!("{:?}", ng_info.qg)
             ));
         }
     }
 
-    /// Prints the node-gen infos to debug log.
-    pub fn debug_node_gen_infos(&self) {
+    /// Prints the node-src infos to debug log.
+    pub fn debug_node_src_infos(&self) {
         if log::log_enabled!(log::Level::Debug) {
-            self.log_node_gen_infos(|args| debug!("{}", args));
+            self.log_node_src_infos(|args| debug!("{}", args));
         }
     }
 
-    /// Prints the node-gen infos to info log.
-    pub fn info_node_gen_infos(&self) {
+    /// Prints the node-src infos to info log.
+    pub fn info_node_src_infos(&self) {
         if log::log_enabled!(log::Level::Info) {
-            self.log_node_gen_infos(|args| info!("{}", args));
+            self.log_node_src_infos(|args| info!("{}", args));
         }
     }
 
-    fn log_branch_gen_infos(&self, log: impl Fn(std::fmt::Arguments)) {
+    fn log_branch_src_infos(&self, log: impl Fn(std::fmt::Arguments)) {
         log(format_args!("Branch Gens:"));
-        for (i_bg, (i_nd, bg_info)) in self.branch_gen_infos.iter().enumerate() {
+        for (i_bg, (i_nd, bg_info)) in self.branch_src_infos.iter().enumerate() {
             log(format_args!(
                 "    {: <4}: br = {: <4} pg = {: <24} qg = {: <24}",
                 i_bg, i_nd, format!("{:?}", bg_info.pg), format!("{:?}", bg_info.qg)
@@ -947,17 +947,17 @@ impl NodalRectSolver {
         }
     }
 
-    /// Prints the branch-gen infos to debug log.
-    pub fn debug_branch_gen_infos(&self) {
+    /// Prints the branch-src infos to debug log.
+    pub fn debug_branch_src_infos(&self) {
         if log::log_enabled!(log::Level::Debug) {
-            self.log_branch_gen_infos(|args| debug!("{}", args));
+            self.log_branch_src_infos(|args| debug!("{}", args));
         }
     }
 
-    /// Prints the branch-gen infos to info log.
-    pub fn info_branch_gen_infos(&self) {
+    /// Prints the branch-src infos to info log.
+    pub fn info_branch_src_infos(&self) {
         if log::log_enabled!(log::Level::Info) {
-            self.log_branch_gen_infos(|args| info!("{}", args));
+            self.log_branch_src_infos(|args| info!("{}", args));
         }
     }
 
@@ -1062,8 +1062,8 @@ impl NetworkSolver for NodalRectSolver {
 
                 self.prepare_for_iter();
                 self.debug_node_infos();
-                self.debug_node_gen_infos();
-                self.debug_branch_gen_infos();
+                self.debug_node_src_infos();
+                self.debug_branch_src_infos();
                 self.debug_vars();
                 self.debug_eqns();
                 debug_csmat(&self.jac_csc, Some("J"), Some(&eqn_names), Some(&var_names));

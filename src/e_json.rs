@@ -4,6 +4,7 @@ use log::warn;
 use sprs::vec;
 use std::fs::File;
 use std::io::{BufReader, Read};
+use std::iter::once;
 use serde::Deserialize;
 use serde::de::{DeserializeSeed, Deserializer};
 use std::collections::HashMap;
@@ -11,11 +12,11 @@ use std::collections::HashMap;
 use crate::connector::*;
 use crate::e_json_generated_types::{self as ejt, TwoNumberArray, TwoPositiveNumberArray, TapSide};
 use crate::foundation::*;
-use crate::generator::*;
 use crate::grounding::*;
 use crate::line::*;
 use crate::load::*;
 use crate::network::*;
+use crate::source::*;
 use crate::transformer::*;
 
 // Stores state for deserialization.
@@ -229,6 +230,14 @@ fn convert_phases(phs: &ejt::Phs, ejson_phase_map: &HashMap<String, Phase>) -> V
     phs.iter().map(|ph| ejson_phase_map[ph]).collect()
 }
 
+fn ensure_no_ground(phs: Vec<Phase>) -> Vec<Phase> {
+    phs.into_iter().filter(|ph| !matches!(ph, Phase::N)).collect()
+}
+
+fn ensure_ground(phs: Vec<Phase>) -> Vec<Phase> {
+    phs.into_iter().filter(|ph| !matches!(ph, Phase::N)).chain(once(Phase::N)).collect()
+}
+
 fn convert_in_service(in_service: &Option<ejt::InService>) -> bool {
     match in_service {
         Some(x) => x.0,
@@ -270,16 +279,13 @@ fn handle_infeeder(
     let con = &cons[0];
     let bus_id: &str = &con.node;
     let phs = convert_phases(&con.phs, ejson_phase_map);
+    // Construct BusPhases that always have ground last.
     let mut bps: Vec<BusPhaseId> = Vec::with_capacity(phs.len() + 1);
-    phs.iter().for_each(|p| bps.push(bp!(bus_id, *p)));
+    phs.iter().filter(|p| !matches!(p, Phase::N)).for_each(|p| bps.push(bp!(bus_id, *p)));
     bps.push(bp!("G".to_string(), Phase::N));
     let in_service = convert_in_service(in_service);
     let vmag = v_setpoint.0 * V_FACTOR;
-    let elem = netw.add_element(
-        Generator::new(
-            bps.len(), (0..bps.len()-1).map(|i| (i, bps.len()-1)).collect(),
-            GeneratorControl::new_wye_slack_with_std_phase_angles(vmag, &phs)
-        ).element(id, bps)).unwrap();
+    let elem = netw.add_element(Source::new_wye_slack(vmag, bps.len() - 1).element(id, bps, true)).unwrap();
     elem.borrow_mut().is_in_service = in_service;
     Ok(())
 }

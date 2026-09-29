@@ -11,7 +11,7 @@
 //! For specific network elements, [`mod@generic_element`] show all possible generic functionality of elements. You can
 //! then look at the following:
 //! - [`mod@line`]: Lines and cables.
-//! - [`mod@generator`]: Generation sources with optional voltage control.
+//! - [`mod@source`]: Generation sources with optional voltage control.
 //! - [`mod@load`]: ZIP load model for loads and uncontrolled generation.
 //! - [`mod@transformer`]: Varous transformers.
 //! - [`mod@connector`]: Switches and short circuits.
@@ -29,12 +29,12 @@ mod graph;
 pub mod network;
 pub mod network_model;
 pub mod connector;
-pub mod generator;
 pub mod generic_element;
 pub mod grounding;
 pub(crate) mod klu;
 pub mod line;
 pub mod load;
+pub mod source;
 pub mod transformer;
 pub mod network_solvers;
 pub mod nodal_rect_solver;
@@ -56,8 +56,6 @@ pub use network_model::*;
 #[doc(inline)]
 pub use connector::*;
 #[doc(inline)]
-pub use generator::*;
-#[doc(inline)]
 pub use generic_element::*;
 #[doc(inline)]
 pub use graph::*;
@@ -70,6 +68,8 @@ pub use load::*;
 #[doc(inline)]
 pub use network_solvers::*;
 #[doc(inline)]
+#[doc(inline)]
+pub use source::*;
 pub use test_networks::*;
 #[doc(inline)]
 pub use transformer::*;
