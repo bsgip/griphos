@@ -42,13 +42,18 @@ fn main() {
         )
     ).unwrap();
 
+    // We grabbed a handle to the new bus, and we do various things with it.
+    // We need to borrow() it to access its contents, and we can also
+    // borrow_mut() to mutate it,
+    println!("Souce bus:\n{}", src_bus.borrow());
+
     // Add a three phase bus with no neutral.
-    let tx_mv_bus = netw.add_bus(Bus::new("tx_mv_bus", ABC.to_vec(), V_MV))
+    netw.add_bus(Bus::new("tx_mv_bus", ABC.to_vec(), V_MV))
         .unwrap();
 
     // Add another bus, this time three-phase plus neutral and with a base
     // voltage of 230 V (line to ground).
-    let tx_lv_bus = netw.add_bus(Bus::new("tx_lv_bus", ABCN.to_vec(), V_LV))
+    netw.add_bus(Bus::new("tx_lv_bus", ABCN.to_vec(), V_LV))
         .unwrap();
 
     // Ground the neutral phases, using a Grounding elements.
@@ -71,12 +76,16 @@ fn main() {
                 vec![bp!("src_bus", Phase::N)]
             )).unwrap();
 
-    let grounding_lv = netw.add_element(Grounding::new(1).element(
+    // We grabbed a handle to the new element, and like buses we can access it
+    // using borrow()
+    println!("Source grounding:\n{}", grounding_src.borrow());
+
+    netw.add_element(Grounding::new(1).element(
         "grounding_tx_lv_bus", vec![bp!("tx_lv_bus", Phase::N)]
     )).unwrap();
 
     // Add a wye-connected source on src_bus.
-    let source = netw.add_element(
+    netw.add_element(
         Source::new_wye_slack(V_MV, 3)
             .element(
                 "source",
@@ -89,7 +98,7 @@ fn main() {
     // member for Lines takes a UID and two lists of BusPhaseIds: one for the
     // start of the line, and the other for the end of the line. Note how the
     // signature of element() is different than that for Sources, see above.
-    let line = netw.add_element(
+    netw.add_element(
         // z = 0.4+0.4j, z0 = 0.9+1.2j, n_phase = 3
         Line::new_from_sym_seq(c!(0.4, 0.4), c!(0.9, 1.2), 3)
             .unwrap()
@@ -101,7 +110,7 @@ fn main() {
     ).unwrap();
 
     // Add a DYN11 transformer between tx_mv_bus and tx_lv_bus.
-    let tx = netw.add_element(
+    netw.add_element(
         Transformer::new_dy(
             3,                  // 3 phases, i.e. 3 pairs of windings
             c!(47.826, 0.),     // ratio = 11 kV / 230 V
@@ -116,7 +125,7 @@ fn main() {
     ).unwrap();
 
     // Add a wye-connected load at tx_bus_lv.
-    let load = netw.add_element(
+    netw.add_element(
         Load::new_wye(
             // 3 phases.
             3,
@@ -129,13 +138,13 @@ fn main() {
             // Star point is grounded.
             true
         ).element(
-            "load",
-            vec![
-                bp!("tx_lv_bus", Phase::A),
-                bp!("tx_lv_bus", Phase::B),
-                bp!("tx_lv_bus", Phase::C),
-                bp!("tx_lv_bus", Phase::N),
-            ]
-        )
+                "load",
+                vec![
+                    bp!("tx_lv_bus", Phase::A),
+                    bp!("tx_lv_bus", Phase::B),
+                    bp!("tx_lv_bus", Phase::C),
+                    bp!("tx_lv_bus", Phase::N),
+                ]
+            )
     );
 }
