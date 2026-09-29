@@ -102,7 +102,7 @@ impl Transformer {
         bus_phase_ids_1: Vec<BusPhaseId>,
         winding_pairs: &[WindingPair],
         nom_turns_ratio: Vec<c64>,
-        y_series: c64,
+        z_series: c64,
         y_shunt: c64,
         taps: Option<TransformerTapsData>,
     ) -> Self {
@@ -121,7 +121,7 @@ impl Transformer {
         let gr_tx = gr::Transformer::new(
             &wps_gr,
             nom_turns_ratio,
-            y_series,
+            z_series,
             y_shunt,
             gr_taps
         );
@@ -141,12 +141,12 @@ impl Transformer {
         bus_phase_ids_1: Vec<BusPhaseId>,
         winding_pairs: Vec<WindingPair>,
         nom_turns_ratio: Vec<c64>,
-        y_series: c64,
+        z_series: c64,
         y_shunt: c64,
         taps: Option<TransformerTapsData>,
     ) -> PyClassInitializer<Self> {
         Self::new_raw(
-            uid, bus_phase_ids_0, bus_phase_ids_1, &winding_pairs, nom_turns_ratio, y_series, y_shunt, taps
+            uid, bus_phase_ids_0, bus_phase_ids_1, &winding_pairs, nom_turns_ratio, z_series, y_shunt, taps
         ).into_initializer()
     }
 

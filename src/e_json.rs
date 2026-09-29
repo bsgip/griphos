@@ -372,8 +372,6 @@ fn handle_transformer(
 
     let turns_ratio: Vec<c64> = vec![convert_complex(nom_turns_ratio, 1.0); n_winding_pairs];
 
-    let y_series = 1.0 / z_s;
-
     let tx_taps = if let Some(tap_side) = tap_side && let Some(factor) = tap_factor && let Some(tap_range) = tap_range {
         let side = match tap_side {
             TapSide::Primary => TransformerSide::P,
@@ -386,7 +384,7 @@ fn handle_transformer(
         None
     };
 
-    netw.add_element(Transformer::new(&winding_pairs, turns_ratio, y_series, y_shunt, tx_taps)
+    netw.add_element(Transformer::new(&winding_pairs, turns_ratio, z_s, y_shunt, tx_taps)
         .element(id, bps[0].clone(), bps[1].clone())).unwrap();
 
     Ok(())
