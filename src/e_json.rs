@@ -387,7 +387,7 @@ fn handle_transformer(
     };
 
     netw.add_element(Transformer::new(&winding_pairs, turns_ratio, y_series, y_shunt, tx_taps)
-        .element(id, bps[0].as_ref(), bps[1].as_ref())).unwrap();
+        .element(id, bps[0].clone(), bps[1].clone())).unwrap();
 
     Ok(())
 }

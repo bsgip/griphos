@@ -427,10 +427,10 @@ impl Transformer {
     /// Wraps a transformer in an [`Element`], with the given bus terminal connections.
     pub fn element(
         self, id: &str,
-        bus_phase_ids_p: &[BusPhaseId],
-        bus_phase_ids_s: &[BusPhaseId],
+        bus_phase_ids_p: Vec<BusPhaseId>,
+        bus_phase_ids_s: Vec<BusPhaseId>,
     ) -> Element {
-        let bus_phase_ids: Vec<BusPhaseId> = bus_phase_ids_p.iter().chain(bus_phase_ids_s.iter()).cloned().collect();
+        let bus_phase_ids: Vec<BusPhaseId> = bus_phase_ids_p.into_iter().chain(bus_phase_ids_s).collect();
         self.element_generic(id, bus_phase_ids)
     }
 

@@ -182,7 +182,7 @@ pub fn add_tx(netw: &mut Network, bus_uid_g: &str, bus_uid_p: &str, bus_uid_s: &
             c!(1000.0, 0.0),
             c!(0.0, 0.0),
             None
-        ).element(&uid, &bpsp, &bpss)).unwrap()
+        ).element(&uid, bpsp, bpss)).unwrap()
 }
 
 // Adds a wye-connected load to all phases of the given bus with constant S.
