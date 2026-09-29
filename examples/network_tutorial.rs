@@ -110,8 +110,8 @@ fn main() {
             None,               // No taps for this transformer.
         ).unwrap().element(
                 "transformer",
-                &ABC.iter().map(|ph| bp!("tx_mv_bus", *ph)).collect(),
-                &ABCN.iter().map(|ph| bp!("tx_lv_bus", *ph)).collect(),
+                ABC.iter().map(|ph| bp!("tx_mv_bus", *ph)).collect(),
+                ABCN.iter().map(|ph| bp!("tx_lv_bus", *ph)).collect(),
             )
     ).unwrap();
 

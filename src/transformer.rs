@@ -491,8 +491,8 @@ mod tests {
             Some(TransformerTaps::new(TransformerSide::P, 0.02, 1, -5, 5))
         ).element(
                 "transformer",
-                &[bp!("bus_1", Phase::A), bp!("bus_g", Phase::N)],
-                &[bp!("bus_2", Phase::A), bp!("bus_g", Phase::N)],
+                vec![bp!("bus_1", Phase::A), bp!("bus_g", Phase::N)],
+                vec![bp!("bus_2", Phase::A), bp!("bus_g", Phase::N)],
         );
 
         let n = e.n_terms();
@@ -514,8 +514,8 @@ mod tests {
             Some(TransformerTaps::new(TransformerSide::P, 0.02, 3, -5, 5)),
         ).element(
                 "transformer",
-                &[bp!("bus_1", Phase::A), bp!("bus_1", Phase::B), bp!("bus_1", Phase::C)],
-                &[bp!("bus_2", Phase::A), bp!("bus_2", Phase::B), bp!("bus_2", Phase::C)],
+                vec![bp!("bus_1", Phase::A), bp!("bus_1", Phase::B), bp!("bus_1", Phase::C)],
+                vec![bp!("bus_2", Phase::A), bp!("bus_2", Phase::B), bp!("bus_2", Phase::C)],
         );
 
         let n = e.n_terms();
