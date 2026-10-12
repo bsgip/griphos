@@ -1,22 +1,278 @@
 //! Transformer elements.
 
-use std::collections::HashSet;
+use std::str::FromStr;
 
 use serde::Serialize;
+use thiserror::Error;
 
 use crate::foundation::*;
 use crate::network::*;
 use crate::TypeStrOf;
 
-/// Specifies the side of the transformer, P = primary, S = secondary
-// TODO: Three-winding transformers. We will probably have a general framework, where TransformerSide becomes
-// a usize, ratio becomes a vector etc. Will probably be fairly easy to generalize.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
-pub enum TransformerSide {
-    P,
-    S,
-    // S1,
+/// Tap setup for a transformer with taps.
+#[derive(Debug, Serialize)]
+pub struct TransformerTaps {
+    /// Is the transformer tapped on the primary, secondary (or tertiary if it exists) side?
+    pub side: usize,
+
+    /// Tap factor.
+    ///
+    /// For a transformer primary winding at tap i, the tapped number of turns is nom_turns * (1 + i *  factor).
+    /// For a transformer secondary winding at tap i, the tapped ratio is nom_turns / (1 + i *  factor)
+    pub factor: f64,
+
+    /// Minimum allowable tap.
+    pub min_tap: i32,
+
+    /// Maximum allowable tap.
+    pub max_tap: i32,
+
+    /// Tap settings for each phase.
+    settings: Vec<i32>,
 }
+
+impl TransformerTaps {
+    /// Creates a new TransformerTaps.
+    pub fn new(side: usize, factor: f64, min_tap: i32, max_tap: i32, n_phases: usize) -> Self {
+        Self {side, factor, min_tap, max_tap, settings: vec![0; n_phases]}
+    }
+
+    /// Get the tap setting for tap `i`.
+    pub fn get(&self, i: usize) -> i32 {
+        self.settings[i]
+    }
+
+    /// Set tap `i`.
+    pub fn set(&mut self, i: usize, setting: i32) {
+        assert!(i < self.settings.len() && setting >= self.min_tap && setting <= self.max_tap);
+        self.settings[i] = setting;
+    }
+
+    /// Get all tap settings.
+    pub fn get_all(&self) -> &Vec<i32> {
+        &self.settings
+    }
+
+    /// Set all tap settings.
+    pub fn set_all(&mut self, settings: impl Iterator<Item = i32>) {
+        for (targ, val) in self.settings.iter_mut().zip(settings) {
+            assert!(val >= self.min_tap && val <= self.max_tap);
+            *targ = val;
+        }
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum TransformerError {
+    #[error("bad winding groups {0:?}.")] BadWindingGroups(Vec<Vec<(usize, usize)>>),
+    #[error("wrong number of phases {0}.")] WrongNumerOfPhases(usize),
+    #[error("error {0:?}")] Error(String),
+}
+
+impl From<String> for TransformerError {
+    fn from(s: String) -> Self {
+        Self::Error(s)
+    }
+}
+
+impl From<TransformerError> for String {
+    fn from(e: TransformerError) -> Self {
+        e.to_string()
+    }
+}
+
+/// A power transformer.
+///
+/// Currently, we allow only two-windings transformers, with arbitrary numbers of phases.
+///
+/// A transformer model is based on a primitive model, where we only care about the windings. The primitive model
+/// has `n_sides` sides (which is, e.g., 2 for a 2-winding transformer and 3 for a 3-winding transformer), and
+/// `n_phases` phases, which is the number of phases.
+///
+/// There are `n_sides x n_phases` windings, ordered as, e.g. `[PA, SA, PB, SB, PC, SC]` for a 2-winding 3-phase
+/// transformer, where `P` is primary, `S` is secondary, and `A, B, C` are the phases. This means, for example, that the
+/// primitive branch impedance matrix is block diagonal matrix organised as three 2x2 blocks. It depends only on the
+/// following: `n_sides`, `n_phases`, the leakage impedance of each winding, and the relative turns ratios
+/// between the windings.
+///
+/// After calculating the primitive branch impedance matrix, we can map terminals to branches in various permutations.
+/// This allows us to distinguish, for example, between a DYN11 and a DYN1 transformer.
+#[derive(Debug, Serialize, TypeStrOf)]
+pub struct Transformer {
+
+    // -------------------------------------------------------------------------
+    // Primative model
+    //
+    // The primitive model describes the transformer configuration excluding all mapping between windings and terminals.
+    // In other words, the primitive model is a list of winding groups (one group per phase), plus the associated
+    // parameters.
+    // -------------------------------------------------------------------------
+
+    /// The number of sides (primary/secondary/tertiary...).
+    ///
+    /// Normal two-winding transformers have two sides, primary and secondary, while three-winding transformers
+    /// have an additional tertiary winding. This is distinct from the number of phases of the transformer, e.g. we can
+    /// have a three-phase, two-winding transformer. We reserve the term "winding" to mean a *single* winding of wire,
+    /// i.e. a particular phase of a side.
+    pub n_sides: usize,
+
+    /// Number of phases (single phase, three phase, etc.).
+    pub n_phases: usize,
+
+    /// The nominal number of turns per side, scaled by an arbitrary factor.
+    ///
+    /// Only the ratios between the sides matter. So for a two winding transformer, we can use [np/ns, 1.0] or
+    /// equivalently [1.0, ns/np]. For a three winding transformer, it is easiest to use [1.0, ns/np, nt/np].
+    pub nom_turns: Vec<c64>,
+
+    /// Specification for optional taps of each winding.
+    ///
+    /// The ordering is the same as the windings, e.g. [PA, SA, PB, SB, PC, SC].
+    pub taps: Option<TransformerTaps>,
+
+    /// Series impedance of each side, assumed to be duplicated across the windings.
+    pub z_series: Vec<c64>,
+
+    // -------------------------------------------------------------------------
+    // Terminal mapping
+    // -------------------------------------------------------------------------
+
+    /// Number of terminals. These are terminals of the model, regardless of whether the terminal is "brought out", i.e.
+    /// exposed to the outside world, in the actual equipment. So for example an internal star point counts as a
+    /// terminal. A three phase DD transformer will have 6 terminals while a three phase DYN will have 7.
+    pub n_terms: usize,
+
+    /// In transformers, the branches are [(start_terminal_idx, end_terminal_idx)] indexed by winding.
+    pub branches: Vec<(usize, usize)>,
+}
+
+impl Transformer {
+    /// Creates a new [`Transformer`].
+    pub fn new(
+        n_sides: usize,
+        n_phases: usize,
+        nom_turns: Vec<c64>,
+        taps: Option<TransformerTaps>,
+        z_series: Vec<c64>,
+        winding_groups: Vec<Vec<(usize, usize)>>,
+    ) -> Result<Self, TransformerError> {
+
+        let mut terms: Vec<usize> = winding_groups.iter().flatten().flat_map(|w| [w.0, w.1]).collect();
+        terms.sort();
+        terms.dedup();
+        if terms != (0..terms.len()).collect::<Vec<usize>>() {
+            return Err(TransformerError::BadWindingGroups(winding_groups))
+        }
+
+        let branches: Vec<(usize, usize)> = winding_groups.into_iter().flatten().collect();
+
+        Ok(Transformer {n_sides, n_phases, nom_turns, taps, z_series, n_terms: terms.len(), branches})
+    }
+
+    /// Creates a new two-winding [`Transformer`] with the given vector group, number of phases and other data.
+    ///
+    /// turns_ratio is np/ns. vector_group_str is all lowercase, with the primary always assumed to come first.
+    pub fn new_with_vector_group(
+        n_phases: usize,
+        nom_turns_ratio: c64,
+        taps: Option<TransformerTaps>,
+        z_series: (c64, c64),
+        vector_group_str: &str
+    ) -> Result<Transformer, TransformerError> {
+        let vg: VectorGroup = VectorGroup::from_str(vector_group_str)?;
+        let winding_groups = winding_groups_from_vector_group(&vg, n_phases)?;
+        let nom_turns = vec![nom_turns_ratio, C_ONE];
+        let zs: Vec<c64> = vec![z_series.0, z_series.1];
+        Transformer::new(2, n_phases, nom_turns, taps, zs, winding_groups)
+    }
+
+    /// Wraps a transformer in an [`Element`], with the given bus/phase connections.
+    ///
+    /// the [`BusTermId`]s are grouped into winding groups, e.g. [[PA, SA], [PB, SB], [PC, SC]].
+    pub fn element(
+        self, id: &str,
+        bus_term_id_groups: Vec<Vec<BusTermId>>,
+    ) -> Element {
+        self.element_generic(id, bus_term_id_groups.into_iter().flatten().collect())
+    }
+
+    /// The number of windings, just `n_sides` x `n_phases`.
+    pub fn n_windings(&self) -> usize {
+        self.n_sides * self.n_phases
+    }
+
+    /// The winding index for side = i_side, phase = i_phase.
+    fn i_winding(&self, i_side: usize, i_phase: usize) -> usize {
+        i_phase * self.n_sides + i_side
+    }
+
+    /// Returns the turns count for the winding on side i_side and phase i_phase, relative to the winding on side 0
+    /// and phase i_phase.
+    pub fn turns(&self, i_side: usize, i_phase: usize) -> c64 {
+        let mut f = 1.0;
+        if let Some(taps) = &self.taps && taps.side == i_side {
+            f += taps.factor * (taps.settings[i_phase] as f64);
+        }
+        self.nom_turns[i_side] * f
+    }
+
+    /// Returns the turns ratio, turns(i_side_0, i_phase) / turns(i_side_1, i_phase).
+    pub fn turns_ratio(&self, i_side_0: usize, i_side_1: usize, i_phase: usize) -> c64 {
+        self.turns(i_side_0, i_phase) / self.turns(i_side_1, i_phase)
+    }
+
+    /// The primitive branch admittance matrix for a single phase and two particular sides.
+    pub fn y_primitive(&self, i_side_0: usize, i_side_1: usize, i_phase: usize) -> Mat<c64> {
+        let n0 = self.turns(i_side_0, i_phase);
+        let n02 = c!(n0.norm_sqr(), 0.0);
+        let n1 = self.turns(i_side_1, i_phase);
+        let n12 = c!(n1.norm_sqr(), 0.0);
+        let z0 = self.z_series[i_side_0];
+        let z1 = self.z_series[i_side_1];
+        let f = C_ONE / (n02 * z1 + n12 * z0);
+        Mat::from_row_slice(2, 2, &[
+            f * n12,                -f * n0 * n1.conj(),
+            -f * n0.conj() * n1,    f * n02
+        ])
+    }
+}
+
+impl ElementSpec for Transformer {
+    fn n_terms(&self) -> usize {
+        self.n_terms
+    }
+
+    fn n_branches(&self) -> usize {
+        self.n_sides * self.n_phases
+    }
+
+    /// Branches are ordered as, e.g.,  [PA, SA, PB, SB, ...]
+    fn branch_wiring(&self) -> Vec<(usize, usize)> {
+        self.branches.clone()
+    }
+
+    fn y_const(&self) -> CooMat<c64> {
+        let mut y: CooMat<c64> = Vec::with_capacity(self.n_branches().pow(2));
+        for ip in 0..self.n_phases {
+            for is0 in 0..self.n_sides {
+                for is1 in (is0 + 1)..self.n_sides {
+                    let yi = self.y_primitive(is0, is1, ip);
+                    let i0 = self.i_winding(is0, ip);
+                    let i1 = self.i_winding(is1, ip);
+                    y.push(((i0, i0), yi[(0, 0)]));
+                    y.push(((i0, i1), yi[(0, 1)]));
+                    y.push(((i1, i0), yi[(1, 0)]));
+                    y.push(((i1, i1), yi[(1, 1)]));
+                }
+            }
+        }
+        y
+    }
+}
+
+impl_g_serialize!(Transformer);
+
+// Vector Group Stuff
 
 /// Winding type in a vector group, D, Y or Z.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -147,32 +403,16 @@ impl std::str::FromStr for VectorGroup {
     }
 }
 
-/// A transformer winding pair, i.e. a specification of a magnetically coupled pair of windings, one primary and one
-/// secondary. Each winding has a pair of terminal indexes, specifying the terminals between which the winding is
-/// connected. Note that the indexing starts at zero for both primary and secondary, so for a three phase DD
-/// transformer, p = (0, 1) and s = (2, 0) means the winding runs between the first and second terminals on the
-/// primary side and the third and first terminals on the secondary side.
-#[derive(Clone, Copy, Debug)]
-pub struct WindingPair {
-    /// Index of the primary side terminals
-    pub p: (usize, usize),
-
-    /// Index of the secondary side terminals
-    pub s: (usize, usize),
-}
-
-/// Given a vector group and a phase count, recreate the [`WindingPair`]s.
-pub fn winding_pairs_from_vector_group(vg: &VectorGroup, n_phase: usize) -> Result<Vec<WindingPair>, String> {
+/// Given a vector group and a phase count, partition the windings into coupled groups (pairs in this case).
+fn winding_groups_from_vector_group(vg: &VectorGroup, n_phases: usize) -> Result<Vec<Vec<(usize, usize)>>, String> {
     if vg.winding_types.len() != 2 {
         return Err(String::from(
-            "only two-winding vector groups are supported for now",
+            "only two-winding vector groups are supported for now.",
         ));
     }
 
     if vg.winding_types.contains(&WindingType::Z) {
-        return Err(String::from(
-            "zigzag isn't supported yet: each zigzag phase spans two legs, which doesn't fit one WindingPair",
-        ));
+        return Err(String::from("zigzag isn't supported yet."));
     }
 
     let primary_type = vg.winding_types[0];
@@ -190,7 +430,7 @@ pub fn winding_pairs_from_vector_group(vg: &VectorGroup, n_phase: usize) -> Resu
 
     let base_clock = (type_shift(primary_type) - type_shift(secondary_type)).rem_euclid(12);
 
-    if n_phase == 1 {
+    if n_phases == 1 {
         if target_clock != base_clock {
             return Err(format!(
                 "a single-phase {}-{} transformer's clock is fixed at {} by its connection type (got {target_clock})",
@@ -208,11 +448,8 @@ pub fn winding_pairs_from_vector_group(vg: &VectorGroup, n_phase: usize) -> Resu
             }
         }
 
-        Ok(vec![WindingPair {
-            p: single_phase_winding(primary_type),
-            s: single_phase_winding(secondary_type),
-        }])
-    } else if n_phase == 3 {
+        Ok(vec![vec![single_phase_winding(primary_type), single_phase_winding(secondary_type)]])
+    } else if n_phases == 3 {
         fn natural_winding(t: WindingType, i: usize, n: usize) -> (usize, usize) {
             match t {
                 WindingType::Y => (i, n),
@@ -222,23 +459,20 @@ pub fn winding_pairs_from_vector_group(vg: &VectorGroup, n_phase: usize) -> Resu
         }
 
         for flip in [false, true] {
-            for r in 0..n_phase {
-                let rotation_shift = 4 * ((n_phase - r) % n_phase) as i32;
+            for r in 0..n_phases {
+                let rotation_shift = 4 * ((n_phases - r) % n_phases) as i32;
                 let flip_shift = if flip { 6 } else { 0 };
                 let clock = (base_clock + rotation_shift + flip_shift).rem_euclid(12);
 
                 if clock == target_clock {
-                    let pairs = (0..n_phase)
+                    let pairs = (0..n_phases)
                         .map(|leg| {
-                            let secondary_index = (leg + r) % n_phase;
-                            let mut s = natural_winding(secondary_type, secondary_index, n_phase);
+                            let secondary_index = (leg + r) % n_phases;
+                            let mut s = natural_winding(secondary_type, secondary_index, n_phases);
                             if flip {
                                 s = (s.1, s.0);
                             }
-                            WindingPair {
-                                p: natural_winding(primary_type, leg, n_phase),
-                                s,
-                            }
+                            vec![natural_winding(primary_type, leg, n_phases), s]
                         })
                         .collect();
                     return Ok(pairs);
@@ -260,274 +494,161 @@ pub fn winding_pairs_from_vector_group(vg: &VectorGroup, n_phase: usize) -> Resu
     }
 }
 
-/// Tap setup for a transformer with taps.
-#[derive(Debug, Serialize)]
-pub struct TransformerTaps {
-    /// Is the transformer tapped on the primary or secondary side?
-    pub side: TransformerSide,
-    /// Tap factor.
-    ///
-    /// For a transformer primary winding at tap i, the tapped ratio is
-    /// nom_turns_ratio * (1 + i *  factor). For a transformer secondary
-    /// winding at tap i, the tapped ratio is
-    /// nom_turns_ratio / (1 + i *  factor)
-    pub factor: f64,
-    /// Minimum allowable tap.
-    pub min_tap: i32,
-    /// Maximum allowable tap.
-    pub max_tap: i32,
-    /// Tap settings for each winding pair.
-    settings: Vec<i32>,
-}
-
-impl TransformerTaps {
-    /// Creates a new TransformerTaps.
-    pub fn new(side: TransformerSide, factor: f64, min_tap: i32, max_tap: i32, n_phase: usize) -> Self {
-        Self {side, factor, min_tap, max_tap, settings: vec![0; n_phase]}
-    }
-
-    /// Get the tap setting for tap `i`.
-    pub fn get(&self, i: usize) -> i32 {
-        self.settings[i]
-    }
-
-    /// Set tap `i`.
-    pub fn set(&mut self, i: usize, setting: i32) {
-        assert!(i < self.settings.len() && setting >= self.min_tap && setting <= self.max_tap);
-        self.settings[i] = setting;
-    }
-
-    /// Get all tap settings.
-    pub fn get_all(&self) -> &Vec<i32> {
-        &self.settings
-    }
-
-    /// Set all tap settings.
-    pub fn set_all(&mut self, settings: impl Iterator<Item = i32>) {
-        for (targ, val) in self.settings.iter_mut().zip(settings) {
-            assert!(val >= self.min_tap && val <= self.max_tap);
-            *targ = val;
-        }
-    }
-}
-
-/// A power transformer.
+/// Typical series impedance (R, X) in ohms of a two-winding transformer.
 ///
-/// Currently, we allow only two-windings transformers, with arbitrary numbers of phases.
-#[derive(Debug, Serialize, TypeStrOf)]
-pub struct Transformer {
-    /// Number of terminals.
-    ///
-    /// A three phase DD will have 6 terminals while a three phase DYN will have 7.
-    pub n_term: usize,
+/// Referred to the winding with line-to-line voltage `v` (V), for a rated power `s_va` (VA).
+pub fn typical_tx_z_series(s_va: f64, v_v: f64) -> c64 {
+    // Typical short-circuit impedance in percent (IEC 60076-5 style steps)
+    let uk_pct = match s_va {
+        s if s <= 630.0e3 => 4.0,
+        s if s <= 1250.0e3 => 5.0,
+        s if s <= 3150.0e3 => 6.25,
+        s if s <= 6300.0e3 => 7.15,
+        s if s <= 12500.0e3 => 8.35,
+        s if s <= 25000.0e3 => 10.0,
+        _ => 12.5,
+    };
 
-    /// Number of phases, where each phase correponds to a single pair of windings.
-    pub n_phase: usize,
+    // Rough empirical X/R ratio, growing with size
+    let x_over_r = 6.0 * (s_va / 1e6).powf(0.4);
 
-    /// Branches
-    pub branches: Vec<(usize, usize)>,
-
-    /// Transformer turns ratio n_p / n_s
-    pub nom_turns_ratio: Vec<c64>,
-
-    /// Series impedance, comprising the leakage impedance plus winding resistance
-    pub y_series: c64,
-
-    /// Shunt admittance, comprising magnetising susceptance plus core losses
-    pub y_shunt: c64,
-
-    /// Specification for optional taps
-    pub taps: Option<TransformerTaps>,
-
+    let z_base = v_v.powi(2) / s_va; // ohm
+    let z = uk_pct / 100.0 * z_base;
+    let r = z / (1.0 + x_over_r * x_over_r).sqrt();
+    c!(r, r * x_over_r)
 }
-
-impl Transformer {
-    /// Creates a new [`Transformer`].
-    pub fn new(
-        winding_pairs: &[WindingPair],
-        nom_turns_ratio: Vec<c64>,
-        z_series: c64,
-        y_shunt: c64,
-        taps: Option<TransformerTaps>,
-    ) -> Self {
-        let n_phase = winding_pairs.len();
-        #[allow(clippy::type_complexity)]
-        let (windings_p, windings_s): (Vec<(usize, usize)>, Vec<(usize, usize)>) = winding_pairs.iter()
-            .map(|WindingPair {p: wpp, s: wps}| (wpp, wps)).unzip();
-
-        fn check_terms(windings: &[(usize, usize)]) -> Result<usize, ()> {
-            let terms: HashSet<usize> = windings.iter().flat_map(|&(a, b)| [a, b]).collect();
-            let nterm = terms.len();
-            if terms == (0..nterm).collect::<HashSet<usize>>() {Ok(nterm)} else {Err(())}
-        }
-
-        let nterm_p = check_terms(&windings_p).expect("windings_p must be specified as a vector using a permutation of 0..nterm_p");
-        let nterm_s = check_terms(&windings_s).expect("windings_s must be specified as a vector using a permutation of 0..nterm_s");
-        let n_term = nterm_p + nterm_s;
-
-        // Branches are ordered as [winding_0_p, winding_0_s, winding_1_p, winding_1_s, ...]
-        // Terminals are ordered as [term_0_p, term_1_p ... term_0_s, term_1_s, ...]
-        let mut branches: Vec<(usize, usize)> = Vec::with_capacity(2 * n_phase);
-        for wp in winding_pairs {
-            let ws: (usize, usize) = (wp.s.0 + nterm_p, wp.s.1 + nterm_p);
-            branches.push(wp.p);
-            branches.push(ws);
-        }
-        assert!(nom_turns_ratio.len() == n_phase);
-        Transformer {
-            n_term, n_phase, branches, nom_turns_ratio, y_series: 1.0 / z_series, y_shunt, taps
-        }
-    }
-
-    /// Creates a new delta-wye connected [`Transformer`].
-    pub fn new_dy(
-        n_phase: usize,
-        nom_turns_ratio: c64,
-        z_series: c64,
-        y_shunt: c64,
-        taps: Option<TransformerTaps>,
-    ) -> Result<Self, String> {
-        let windings_p = delta_connection(n_phase)?;
-        let windings_s = wye_connection(n_phase)?;
-        let winding_pairs: Vec<WindingPair> = windings_p.into_iter().zip(windings_s)
-            .map(|(p, s)| WindingPair { p, s }).collect();
-        Ok(Self::new(&winding_pairs, vec![nom_turns_ratio; winding_pairs.len()], z_series, y_shunt, taps))
-    }
-
-    /// Creates a new delta-delta connected [`Transformer`].
-    pub fn new_dd(
-        n_phase: usize,
-        nom_turns_ratio: c64,
-        z_series: c64,
-        y_shunt: c64,
-        taps: Option<TransformerTaps>,
-    ) -> Result<Self, String> {
-        let windings_p = delta_connection(n_phase)?;
-        let windings_s = delta_connection(n_phase)?;
-        let winding_pairs: Vec<WindingPair> = windings_p.into_iter().zip(windings_s)
-            .map(|(p, s)| WindingPair { p, s }).collect();
-        Ok(Self::new(&winding_pairs, vec![nom_turns_ratio; winding_pairs.len()], z_series, y_shunt, taps))
-    }
-
-    /// Creates a new wye-wye connected [`Transformer`].
-    pub fn new_yy(
-        n_phase: usize,
-        nom_turns_ratio: c64,
-        z_series: c64,
-        y_shunt: c64,
-        taps: Option<TransformerTaps>,
-    ) -> Result<Self, String> {
-        let windings_p = wye_connection(n_phase)?;
-        let windings_s = wye_connection(n_phase)?;
-        let winding_pairs: Vec<WindingPair> = windings_p.into_iter().zip(windings_s)
-            .map(|(p, s)| WindingPair { p, s }).collect();
-        Ok(Self::new(&winding_pairs, vec![nom_turns_ratio; winding_pairs.len()], z_series, y_shunt, taps))
-    }
-
-    /// Wraps a transformer in an [`Element`], with the given bus terminal connections.
-    pub fn element(
-        self, id: &str,
-        bus_phase_ids_p: Vec<BusPhaseId>,
-        bus_phase_ids_s: Vec<BusPhaseId>,
-    ) -> Element {
-        let bus_phase_ids: Vec<BusPhaseId> = bus_phase_ids_p.into_iter().chain(bus_phase_ids_s).collect();
-        self.element_generic(id, bus_phase_ids)
-    }
-
-    /// Returns the turns ratio for the `i`th winding.
-    pub fn turns_ratio(&self, i: usize) -> c64 {
-        if let Some(taps) = &self.taps {
-            let x = 1.0 + taps.factor * (taps.settings[i] as f64);
-            match taps.side {
-                TransformerSide::P => self.nom_turns_ratio[i] * x,
-                TransformerSide::S => self.nom_turns_ratio[i] / x,
-            }
-        } else {
-            self.nom_turns_ratio[i]
-        }
-    }
-}
-
-impl ElementSpec for Transformer {
-    fn n_terms(&self) -> usize {
-        self.n_term
-    }
-
-    fn n_branches(&self) -> usize {
-        2 * self.n_phase
-    }
-
-    /// Branches are ordered as [p0, s0, p1, s1, ...]
-    fn branch_wiring(&self) -> Vec<(usize, usize)> {
-        self.branches.clone()
-    }
-
-    fn y_const(&self) -> Vec<((usize, usize), c64)> {
-        let mut y: Vec<((usize, usize), c64)> = Vec::with_capacity((2 * self.n_phase).pow(2));
-        for i in 0..self.n_phase {
-            y.push(((2*i,   2*i  ), (self.y_series + 0.5 * self.y_shunt) / self.turns_ratio(i).norm_sqr()));
-            y.push(((2*i,   2*i+1), -self.y_series / self.turns_ratio(i).conj()));
-            y.push(((2*i+1, 2*i  ), -self.y_series / self.turns_ratio(i)));
-            y.push(((2*i+1, 2*i+1), self.y_series + 0.5 * self.y_shunt));
-        }
-        y
-    }
-}
-
-impl_g_serialize!(Transformer);
 
 #[cfg(test)]
 mod tests {
+    use crate::load::*;
+    use crate::source::*;
+    use crate::test_utils::*;
     use super::*;
-    use nalgebra::DMatrix;
 
     #[test]
-    fn test_transformer_topology_1() {
-        let e: Element = Transformer::new(
-            &[WindingPair {p: (1, 0), s: (1, 0)}],
-            vec![c!(2.0, 0.0)],
-            c!(1.0, 0.0),
-            c!(0.0, 0.0),
-            Some(TransformerTaps::new(TransformerSide::P, 0.02, 1, -5, 5))
-        ).element(
-                "transformer",
-                vec![bp!("bus_1", Phase::A), bp!("bus_g", Phase::N)],
-                vec![bp!("bus_2", Phase::A), bp!("bus_g", Phase::N)],
-        );
-
-        let n = e.n_terms();
-        let mut dense = DMatrix::<c64>::zeros(n, n);
-        for ((r, c), x) in e.y_const() {
-            dense[(r, c)] += x;  // += handles duplicate indices naturally
-        }
-
-        println!("y_const:\n{}", dense);
+    fn test_single_phase_tx() {
+        let turns = c!(5.0, 0.0);
+        let zs = c!(0.0, 0.01);
+        let tx = Transformer::new(
+            2, 1, vec![turns, C_ONE], None, vec![C_ZERO, zs], vec![vec![(0, 1), (2, 0)]]
+        ).unwrap();
+        let yc = coo_mat_to_dense(&tx.y_const(), 2, 2);
+        println!("{}", yc);
+        assert!((yc[(0, 0)] - c!(0.0, -4.0)).abs() < 1e-6);
+        assert!((yc[(0, 1)] - c!(0.0, 20.0)).abs() < 1e-6);
+        assert!((yc[(1, 0)] - c!(0.0, 20.0)).abs() < 1e-6);
+        assert!((yc[(1, 1)] - c!(0.0, -100.0)).abs() < 1e-6);
     }
 
     #[test]
-    fn test_transformer_topology_3() {
-        let e: Element = Transformer::new(
-            &[WindingPair {p: (0, 1), s: (0, 1)}, WindingPair {p: (1, 2), s: (0, 2)}, WindingPair {p:(2, 0), s: (0, 3)}],
-            vec![c!(1.0, 0.0), c!(1.0, 0.0), c!(1.0, 0.0)],
-            c!(1.0, 0.0),
-            c!(1.0, 0.0),
-            Some(TransformerTaps::new(TransformerSide::P, 0.02, 3, -5, 5)),
-        ).element(
-                "transformer",
-                vec![bp!("bus_1", Phase::A), bp!("bus_1", Phase::B), bp!("bus_1", Phase::C)],
-                vec![bp!("bus_2", Phase::A), bp!("bus_2", Phase::B), bp!("bus_2", Phase::C)],
-        );
-
-        let n = e.n_terms();
-        let mut dense = DMatrix::<c64>::zeros(n, n);
-        for ((r, c), x) in e.y_const() {
-            dense[(r, c)] += x;  // += handles duplicate indices naturally
-        }
-
-        println!("y_const:\n{}", dense);
+    fn test_single_phase_tx_cplx_turns() {
+        let turns = c!(0.0, 5.0);
+        let zs = c!(0.0, 0.01);
+        let tx = Transformer::new(
+            2, 1, vec![turns, C_ONE], None, vec![C_ZERO, zs], vec![vec![(0, 1), (2, 0)]]
+        ).unwrap();
+        let yc = coo_mat_to_dense(&tx.y_const(), 2, 2);
+        println!("{}", yc);
+        assert!((yc[(0, 0)] - c!(0.0, -4.0)).abs() < 1e-6);
+        assert!((yc[(0, 1)] - c!(-20.0, 0.0)).abs() < 1e-6);
+        assert!((yc[(1, 0)] - c!(20.0, 0.0)).abs() < 1e-6);
+        assert!((yc[(1, 1)] - c!(0.0, -100.0)).abs() < 1e-6);
     }
 
     #[test]
-    fn test_transformer_3p_dyn11() {
+    fn test_single_phase_tx_z_prim() {
+        let turns = c!(5.0, 0.0);
+        let zs = c!(0.0, 0.01);
+        let tx = Transformer::new(
+            2, 1, vec![turns, C_ONE], None, vec![zs, C_ZERO], vec![vec![(0, 1), (2, 0)]]
+        ).unwrap();
+        let yc = coo_mat_to_dense(&tx.y_const(), 2, 2);
+        println!("{}", yc);
+        assert!((yc[(0, 0)] - c!(0.0, -100.0)).abs() < 1e-6);
+        assert!((yc[(0, 1)] - c!(0.0, 500.0)).abs() < 1e-6);
+        assert!((yc[(1, 0)] - c!(0.0, 500.0)).abs() < 1e-6);
+        assert!((yc[(1, 1)] - c!(0.0, -2500.0)).abs() < 1e-6);
+    }
+
+    fn expect_three_phase_yc(yc: &Mat<c64>) {
+        for ip in 0..3 {
+            assert!((yc[(2*ip, 2*ip)] - c!(0.0, -4.0)).abs() < 1e-6);
+            assert!((yc[(2*ip, 2*ip+1)] - c!(0.0, 20.0)).abs() < 1e-6);
+            assert!((yc[(2*ip+1, 2*ip)] - c!(0.0, 20.0)).abs() < 1e-6);
+            assert!((yc[(2*ip+1, 2*ip+1)] - c!(0.0, -100.0)).abs() < 1e-6);
+
+            for j in 1..=2 {
+                let jp = (ip + j) % 3;
+                assert!(yc[(2*ip, 2*jp)] == C_ZERO);
+                assert!(yc[(2*ip, 2*jp+1)] == C_ZERO);
+                assert!(yc[(2*ip+1, 2*jp)] == C_ZERO);
+                assert!(yc[(2*ip+1, 2*jp+1)] == C_ZERO);
+            }
+        }
+    }
+
+    #[test]
+    fn test_three_phase_tx() {
+        let turns = c!(5.0, 0.0);
+        let zs = c!(0.0, 0.01);
+        let tx = Transformer::new(
+            2, 3, vec![turns, C_ONE], None, vec![C_ZERO, zs], vec![vec![(0, 1), (2, 0)]]
+        ).unwrap();
+        let yc = coo_mat_to_dense(&tx.y_const(), 6, 6);
+        println!("{}", yc);
+        expect_three_phase_yc(&yc);
+    }
+
+    /// Returns a simple test network minus the transformer
+    fn base_netw() -> Network {
+        let mut netw = Network::new();
+
+        let bus0 = add_bus(&mut netw, PHASES_ABCN.to_vec());
+        let bus0_uid = bus0.borrow().uid();
+        let bts_abcn_0: Vec<BusTermId> = PHASES_ABCN.iter().map(|p| bt!(bus0_uid, *p)).collect();
+
+        let bus1 = add_bus(&mut netw, PHASES_ABCN.to_vec());
+        let bus1_uid = bus1.borrow().uid();
+        let bts_abcn_1: Vec<BusTermId> = PHASES_ABCN.iter().map(|p| bt!(bus1_uid, *p)).collect();
+
+        let source_uid = elem_uid::<Source>(&netw);
+        netw.add_element(Source::new_wye_slack(bus0.borrow().v_base, 3)
+            .element(&source_uid, bts_abcn_0, true)).unwrap();
+
+        let load_uid = elem_uid::<Source>(&netw);
+        let s = vec![c!(1e-3, 0.0); 3];
+        netw.add_element(Load::new_wye(3, None, None, Some(s), true)
+            .element(&load_uid, bts_abcn_1)).unwrap();
+
+        netw
+    }
+
+    #[test]
+    fn test_three_phase_dyn11_tx() {
+        let turns = c!(5.0, 0.0);
+        let zs = c!(0.0, 0.01);
+        let tx = Transformer::new_with_vector_group(
+            3, turns, None, (C_ZERO, zs), "dyn11"
+        ).unwrap();
+        let yc = coo_mat_to_dense(&tx.y_const(), 6, 6);
+        println!("{}", yc);
+        expect_three_phase_yc(&yc);
+        let mut netw = base_netw();
+        let bus0 = netw.bus_i(0).unwrap();
+        let bus0_uid = bus0.borrow().uid();
+        let bus1 = netw.bus_i(1).unwrap();
+        let bus1_uid = bus1.borrow().uid();
+        let bts_abc_0 = PHASES_ABC.iter().map(|p| bt!(bus0_uid, *p)).collect();
+        let bts_abcn_1 = PHASES_ABCN.iter().map(|p| bt!(bus1_uid, *p)).collect();
+        let e = netw.add_element(tx.element("transformer", vec![bts_abc_0, bts_abcn_1])).unwrap();
+        dbg!(&e.borrow().branches);
+    }
+
+    #[test]
+    fn typical_z_series_one_mva_11kv() {
+        // 5 % of 121 ohm = 6.05 ohm
+        let z = typical_tx_z_series(1000.0e3, 11.0e3);
+        assert!((z.re.hypot(z.im) - 6.05).abs() < 1e-9);
+        assert!(z.im > z.re);
     }
 }

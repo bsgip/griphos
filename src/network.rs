@@ -3,13 +3,13 @@
 //! [`Network`]s comprise a list of [`Bus`]es and a list of [`Element`]s.
 //!
 //! Buses are nodes of the network, and consist of one or more blobs or bars of conductor with negligible resistance,
-//! the bus phases. Each [`Bus`] object has one or more [`BusPhase`]s. [`BusPhase`]s contain a [`Phase`] label and a
-//! voltage. Each [`BusPhase`] is uniquely labelled by a [`BusPhaseId`], recording the bus's UID and the phase.
+//! the bus terninals, or [`BusTerm`]s. [`BusTerm`]s contain a [`Phase`] label and a voltage. Each [`BusTerm`] is
+//! uniquely labelled by a [`BusTermId`], recording the bus's UID and the phase.
 //!
 //! Buses are connected together by elements, which provide conductive pathways (termed *branches* in griphos
-//! terminology) between bus phases. Each [`Element`] has a given number of *terminals* (connection points), and is
-//! connected to the [`Network`] by assigning to each terminal a particular [`BusPhaseId`]. Each of the element's
-//! branches then provides a conductive pathway between a start terminal and an end terminal.
+//! terminology) between pairs of bus terminals. Each [`Element`] has a given number of element *terminals* (connection
+//! points), and is connected to the [`Network`] by assigning to each terminal a particular [`BusTermId`]. Each of the
+//! element's branches then provides a conductive pathway between a start terminal and an end terminal.
 //!
 //! For example, a three phase line with no neutral wire will have six terminals: three at the start of the line, and
 //! three at the end. It will have three branches, each corresponding to a wire of the line. For the griphos terminal
@@ -74,7 +74,7 @@ impl fmt::Display for SwitchState {
     }
 }
 
-/// Line or bus terminal phase, A, B, C or N.
+/// Line or bus phase, A, B, C or N.
 ///
 /// A, B, C are assumed to form a positive sequence, and N is assumed to be a (possibly grounded) neutral.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -138,35 +138,35 @@ pub fn delta_connection(n_phase: usize) -> Result<Vec<(usize, usize)>, String> {
     }
 }
 
-/// A bus UID / phase pair, that together serve to identify which phase of which bus a terminal is connected to.
+/// A bus UID / phase pair, that together serve to identify a single bus terminal.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct BusPhaseId {
+pub struct BusTermId {
     /// Bus uid.
     pub b: String,
-    /// Bus phase.
+    /// Phase.
     pub p: Phase
 }
 
-impl_g_serialize!(BusPhaseId);
-impl fmt::Display for BusPhaseId {
+impl_g_serialize!(BusTermId);
+impl fmt::Display for BusTermId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Remove quotation marks
         write!(f, "{}:{}", self.b, self.p)
     }
 }
 
-/// Macro to create a [`BusPhaseId`]
+/// Macro to create a [`BusTermId`]
 ///
 /// # Examples
 ///
 /// ```
-/// # use griphos::{bp, BusPhaseId, Phase};
-/// let bus_phase = bp!("bus_1", Phase::A);
+/// # use griphos::{bt, BusTermId, Phase};
+/// let bus_term = bt!("bus_1", Phase::A);
 /// ```
 #[macro_export]
-macro_rules! bp {
+macro_rules! bt {
     ($b:expr, $p:expr) => {
-        BusPhaseId {b: $b.to_string(), p: $p}
+        BusTermId {b: $b.to_string(), p: $p}
     }
 }
 
@@ -222,15 +222,15 @@ impl fmt::Display for Wiring {
 
 /// Per-phase data of a bus.
 #[derive(Clone, Debug, Serialize)]
-pub struct BusPhase {
+pub struct BusTerm {
     /// The phase
     pub phase: Phase,
     /// Voltage
     pub v: c64,
 }
 
-impl_g_serialize!(BusPhase);
-impl_disp_from_fmt!(BusPhase);
+impl_g_serialize!(BusTerm);
+impl_disp_from_fmt!(BusTerm);
 
 /// A bus is a collection of one or more nodes, each distinguished by a different phase.
 #[derive(Clone, Debug, Serialize)]
@@ -242,29 +242,29 @@ pub struct Bus {
     pub v_base: f64,
 
     /// Terminals
-    pub terms: Vec<BusPhase>,
+    pub terms: Vec<BusTerm>,
 }
 
 impl Bus {
     /// Creates a new [`Bus`].
     pub fn new(uid: &str, phases: Vec<Phase>, v_base: f64) -> Bus {
-        let terms: Vec<BusPhase> = phases.iter()
-            .map(|phase| BusPhase {phase: *phase, v: v_base * phase.v_nom_pu()}).collect();
+        let terms: Vec<BusTerm> = phases.iter()
+            .map(|phase| BusTerm {phase: *phase, v: v_base * phase.v_nom_pu()}).collect();
         Bus {uid: uid.to_string(), v_base, terms}
     }
 
     /// Searches for the terminal of a bus that has phase `p`.
-    pub fn bus_phase(&self, p: Phase) -> Option<&BusPhase> {
+    pub fn bus_term(&self, p: Phase) -> Option<&BusTerm> {
         self.terms.iter().find(|x| x.phase == p)
     }
 
     /// Searches for the terminal of a bus that has phase `p`, mutable version.
-    pub fn bus_phase_mut(&mut self, p: Phase) -> Option<&mut BusPhase> {
+    pub fn bus_term_mut(&mut self, p: Phase) -> Option<&mut BusTerm> {
         self.terms.iter_mut().find(|x| x.phase == p)
     }
 
     /// Searches for the terminal index of a bus that has phase `p`.
-    pub fn i_bus_phase(&self, p: Phase) -> Option<usize> {
+    pub fn i_bus_term(&self, p: Phase) -> Option<usize> {
         self.terms.iter().position(|x| x.phase == p)
     }
 
@@ -305,7 +305,7 @@ pub struct Element {
     /// Is the element in service / operational.
     pub is_in_service: bool,
     /// Key of which bus/phases the terminals are connected to.
-    pub bus_phase_ids: Vec<BusPhaseId>,
+    pub bus_term_ids: Vec<BusTermId>,
     /// The branch info, a vector of [`ElemBranch`] of the element.
     pub branches: Vec<ElemBranch>,
 
@@ -315,12 +315,12 @@ pub struct Element {
 
 impl Element {
     /// Creates a new element.
-    pub fn new<T: ElementSpec + 'static>(uid: &str, bus_phase_ids: Vec<BusPhaseId>, spec: T) -> Element {
+    pub fn new<T: ElementSpec + 'static>(uid: &str, bus_term_ids: Vec<BusTermId>, spec: T) -> Element {
         let n_branches = spec.n_branches();
         Element {
             uid: uid.to_string(),
             is_in_service: true,
-            bus_phase_ids,
+            bus_term_ids,
             spec: Box::new(spec),
             branches: vec![ElemBranch {v: c!(0.0, 0.0), i: c!(0.0, 0.0)}; n_branches],
         }
@@ -366,7 +366,7 @@ impl Element {
     /// The row and column indices correspond to branch indices. Off diagonal elements can occur e.g. due to magnetic
     /// coupling in lines for example. In a line, y_const is the phase impedance matrix, as distinct from the nodal
     /// impedance matrix. For a three-phase line, the former is a 3x3 matrix, and the latter is a 6x6 matrix.
-    pub fn y_const(&self) -> Vec<((usize, usize), c64)> {
+    pub fn y_const(&self) -> CooMat<c64> {
         if self.is_live() {self.spec.y_const()} else {vec![]}
     }
 
@@ -412,7 +412,7 @@ impl GSerialize for Element {
         state.serialize_field("uid", &self.uid)?;
         state.serialize_field("element_type", &self.element_type())?;
         state.serialize_field("is_in_service", &self.is_in_service)?;
-        state.serialize_field("bus_phase_ids", &self.bus_phase_ids)?;
+        state.serialize_field("bus_term_ids", &self.bus_term_ids)?;
         state.serialize_field("n_terms", &self.spec.n_terms())?;
         state.serialize_field("branch_wiring", &self.branch_wiring())?;
         state.serialize_field("y_const", &self.spec.y_const())?;
@@ -447,8 +447,8 @@ impl<T: TypeStrOf> TypeStr for T {
 
 /// An element_spec collects together electrical connections of various types such as constant y or constant s.
 pub trait ElementSpec: Any + std::fmt::Debug + Send + Sync + TypeStrOf + TypeStr {
-    fn element_generic(self, uid: &str, bus_phase_ids: Vec<BusPhaseId>) -> Element where Self: Sized + 'static {
-        Element::new(uid, bus_phase_ids, self)
+    fn element_generic(self, uid: &str, bus_term_ids: Vec<BusTermId>) -> Element where Self: Sized + 'static {
+        Element::new(uid, bus_term_ids, self)
     }
 
     /// Returns the number of terminals (connection points).
@@ -464,7 +464,7 @@ pub trait ElementSpec: Any + std::fmt::Debug + Send + Sync + TypeStrOf + TypeStr
     fn is_live(&self) -> bool {true}
 
     /// Branch impedance matrix; I_i = y_ij V_j where i and j index branches.
-    fn y_const(&self) -> Vec<((usize, usize), c64)> {vec![]}
+    fn y_const(&self) -> CooMat<c64> {vec![]}
 
     /// Branch constant currents, where the index is a branch index.
     fn i_const(&self) -> Vec<(usize, c64)> {vec![]}

@@ -1,7 +1,7 @@
 //! A generic element that can have various functions.
 
-use crate::foundation::c64;
-use crate::network::{BusPhaseId, Element, ElementSpec};
+use crate::foundation::{CooMat, c64};
+use crate::network::{BusTermId, Element, ElementSpec};
 use crate::TypeStrOf;
 
 #[derive(Debug, Default, TypeStrOf)]
@@ -15,7 +15,7 @@ pub struct GenericElement {
     /// Mostly, the admittance matrix will be diagonal, with indices indicating which branch has the given admittance.
     /// However, we can also have off-diagonal terms `(i, j)` (e.g. for transformers), where the current in branch `i`
     /// depends on the voltage across branch `j`.
-    pub y_const: Vec<((usize, usize), c64)>,
+    pub y_const: CooMat<c64>,
     /// Constant current component per branch.
     pub i_const: Vec<(usize, c64)>,
     /// Constant complex power component per branch.
@@ -34,7 +34,7 @@ impl GenericElement {
     /// Creates a new GenericElement.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        n_terms: usize, branches: Vec<(usize, usize)>, y_const: Vec<((usize, usize), c64)>, i_const: Vec<(usize, c64)>,
+        n_terms: usize, branches: Vec<(usize, usize)>, y_const: CooMat<c64>, i_const: Vec<(usize, c64)>,
         s_const: Vec<(usize, c64)>, vmag_const: Vec<(usize, f64)>, vang_const: Vec<(usize, f64)>,
         copper_plate: Vec<Vec<usize>>, grounding: Vec<usize>
     ) -> GenericElement {
@@ -42,8 +42,8 @@ impl GenericElement {
     }
 
     /// Wraps a GenericElement in an Element, with given bus terminal connections.
-    pub fn element(self, id: &str, bus_phase_ids: Vec<BusPhaseId>) -> Element {
-        self.element_generic(id, bus_phase_ids)
+    pub fn element(self, id: &str, bus_term_ids: Vec<BusTermId>) -> Element {
+        self.element_generic(id, bus_term_ids)
     }
 }
 
@@ -60,7 +60,7 @@ impl ElementSpec for GenericElement {
         self.branches.clone()
     }
 
-    fn y_const(&self) -> Vec<((usize, usize), c64)> {
+    fn y_const(&self) -> CooMat<c64> {
         self.y_const.clone()
     }
 

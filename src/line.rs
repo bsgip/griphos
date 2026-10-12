@@ -12,7 +12,7 @@ pub struct Line {
     /// The number of phases (wires).
     pub n_phase: usize,
     /// The phase admittance matrix, specified as ((term_0, term_1), y) triples.
-    pub y_const: Vec<((usize, usize), c64)>,
+    pub y_const: CooMat<c64>,
 }
 
 impl Line {
@@ -24,7 +24,7 @@ impl Line {
     /// # use griphos::{c, c64, Line, y_branch_from_sym_seq};
     /// let line = Line::new(3, y_branch_from_sym_seq(c!(1.0, 1.0), c!(1.0, 1.0), 3).unwrap());
     /// ```
-    pub fn new(n_phase: usize, y_const: Vec<((usize, usize), c64)>) -> Line {
+    pub fn new(n_phase: usize, y_const: CooMat<c64>) -> Line {
         Line {n_phase, y_const}
     }
 
@@ -46,9 +46,9 @@ impl Line {
     }
 
     /// Wraps an existing [`Line`] in an [`Element`].
-    pub fn element(self, uid: &str, bus_phase_ids_0: Vec<BusPhaseId>, bus_phase_ids_1: Vec<BusPhaseId>) -> Element {
-        assert!(bus_phase_ids_0.len() == bus_phase_ids_1.len(), "Lines must have the same number of phases at each end");
-        self.element_generic(uid, bus_phase_ids_0.into_iter().chain(bus_phase_ids_1).collect())
+    pub fn element(self, uid: &str, bus_term_ids_0: Vec<BusTermId>, bus_term_ids_1: Vec<BusTermId>) -> Element {
+        assert!(bus_term_ids_0.len() == bus_term_ids_1.len(), "Lines must have the same number of phases at each end");
+        self.element_generic(uid, bus_term_ids_0.into_iter().chain(bus_term_ids_1).collect())
     }
 }
 
@@ -70,7 +70,7 @@ impl ElementSpec for Line {
         (0..self.n_phase).map(|i| (i, i + self.n_phase)).collect()
     }
 
-    fn y_const(&self) -> Vec<((usize, usize), c64)> {
+    fn y_const(&self) -> CooMat<c64> {
         self.y_const.clone()
     }
 }
@@ -83,7 +83,7 @@ impl_g_serialize!(Line);
 /// symmnetry in the line geometry. This is why "sym" is used in the name. It
 /// is common to make this assumption as an approximation to the real world
 /// case.
-pub fn y_branch_from_sym_seq(z_plus: c64, mut z_0: c64, n_phase: usize) -> Result<Vec<((usize, usize), c64)>, String> {
+pub fn y_branch_from_sym_seq(z_plus: c64, mut z_0: c64, n_phase: usize) -> Result<CooMat<c64>, String> {
     if n_phase == 1 {
         // NOTE: How do we treat sequence components with single (and for that matter, two) wire lines?
         // We could effectively use the same matrix elements no matter the number of phases, i.e. picking submatrices

@@ -99,7 +99,7 @@ impl Element {
     }
 
     #[getter]
-    pub fn y_const(&self) -> Vec<((usize, usize), c64)> {
+    pub fn y_const(&self) -> CooMat<c64> {
         self.inner.borrow().y_const()
     }
 

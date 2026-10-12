@@ -5,7 +5,7 @@ use std::cell::{RefCell, Ref, RefMut};
 // use parking_lot::{Mutex, MutexGuard};
 use std::collections::HashMap;
 use std::fmt;
-use std::ops::Add;
+use std::ops::{Add, AddAssign};
 use std::rc::Rc;
 use std::sync::LazyLock;
 use std::vec::Vec;
@@ -13,6 +13,7 @@ use std::vec::Vec;
 pub use indexmap::IndexMap;
 extern crate nalgebra as na;
 pub use nalgebra::ComplexField;
+use num_traits::Zero;
 use petgraph::graph::UnGraph;
 use regex::Regex;
 pub use sprs::{CompressedStorage, CsMatBase, CsMat, CsMatI, CsVec, TriMat, TriMatI};
@@ -450,7 +451,7 @@ pub fn map_csmat_outer<T, F>(mat: &mut CsMat<T>, i: usize, f: F) where F: Fn(&mu
 }
 
 /// Sums rows i (for a row major CSMat) or column i (for a column major CSMat).
-pub fn outer_sum<T>(mat: &CsMat<T>, i: usize) -> T where T: num_traits::Zero + Copy + std::ops::Add<Output = T> {
+pub fn outer_sum<T>(mat: &CsMat<T>, i: usize) -> T where T: Zero + Copy + std::ops::Add<Output = T> {
     mat.outer_view(i).unwrap().iter().fold(T::zero(), |acc, (_, &val)| acc + val)
 }
 
@@ -527,6 +528,60 @@ where
 
         Ok(())
     }
+}
+
+pub type CooVec<T> = Vec<(usize, T)>;
+
+pub fn coo_vec_to_dense<T: AddAssign + Clone + Copy + Zero>(v: &CooVec<T>, n: usize) -> Vec<T> {
+    let mut result: Vec<T> = vec![T::zero(); n];
+    for (i, x) in v {
+        result[*i] += *x;
+    };
+    result
+}
+
+pub fn coo_vec_to_sparse<T>(v: &[(usize, T)], n: usize) -> CsVec<T>
+where
+    T: Copy + AddAssign,
+{
+    let mut sorted = v.to_vec();
+    sorted.sort_unstable_by_key(|&(i, _)| i);
+
+    let mut indices: Vec<usize> = Vec::with_capacity(sorted.len());
+    let mut data: Vec<T> = Vec::with_capacity(sorted.len());
+    for (i, x) in sorted {
+        if indices.last() == Some(&i) {
+            *data.last_mut().unwrap() += x;
+        } else {
+            indices.push(i);
+            data.push(x);
+        }
+    }
+    CsVec::new(n, indices, data)
+}
+
+pub type CooMat<T> = Vec<((usize, usize), T)>;
+
+pub fn coo_mat_to_dense<T>(m: &CooMat<T>, nr: usize, nc: usize) -> Mat<T>
+where
+    T: AddAssign + Copy + Zero + na::Scalar
+{
+    let mut result: Mat<T> = Mat::zeros(nr, nc);
+    for &((i, j), x) in m {
+        result[(i, j)] += x;
+    };
+    result
+}
+
+pub fn coo_mat_to_sparse<T>(m: &[((usize, usize), T)], nr: usize, nc: usize) -> CsMat<T>
+where
+    T: Copy + num_traits::Num,
+{
+    let mut tri = TriMat::new((nr, nc));
+    for &((i, j), x) in m {
+        tri.add_triplet(i, j, x);
+    }
+    tri.to_csr()
 }
 
 // -----------------------------------------------------------------------------

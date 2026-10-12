@@ -13,7 +13,7 @@ impl Line {
         uid: &str,
         bus_phase_ids_0: Vec<BusPhaseId>,
         bus_phase_ids_1: Vec<BusPhaseId>,
-        y_const: Vec<((usize, usize), c64)>,
+        y_const: CooMat<c64>,
     ) -> Self {
         let n_phase = bus_phase_ids_0.len() + bus_phase_ids_1.len();
         let gr_line = gr::Line::new(n_phase, y_const);
@@ -32,7 +32,7 @@ impl Line {
         uid: &str,
         bus_phase_ids_0: Vec<BusPhaseId>,
         bus_phase_ids_1: Vec<BusPhaseId>,
-        y_const: Vec<((usize, usize), c64)>,
+        y_const: CooMat<c64>,
     ) -> PyClassInitializer<Self> {
         Self::new_raw(uid, bus_phase_ids_0, bus_phase_ids_1, y_const).into_initializer()
     }

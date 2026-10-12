@@ -10,14 +10,14 @@ mod tests {
         assert!(netw.add_bus(Bus::new("bus_2", vec![Phase::A, Phase::B, Phase::C], 1.0)).is_ok());
         assert!(netw.add_bus(Bus::new("bus_3", vec![Phase::A], 1.0)).is_ok());
 
-        let bpg = bp!("bus_g", Phase::N);
-        let bp1a = bp!("bus_1", Phase::A);
-        let bp1b = bp!("bus_1", Phase::B);
-        let bp1c = bp!("bus_1", Phase::C);
-        let bp2a = bp!("bus_2", Phase::A);
-        let bp2b = bp!("bus_2", Phase::B);
-        let bp2c = bp!("bus_2", Phase::C);
-        let bp3a = bp!("bus_3", Phase::A);
+        let bpg = bt!("bus_g", Phase::N);
+        let bp1a = bt!("bus_1", Phase::A);
+        let bp1b = bt!("bus_1", Phase::B);
+        let bp1c = bt!("bus_1", Phase::C);
+        let bp2a = bt!("bus_2", Phase::A);
+        let bp2b = bt!("bus_2", Phase::B);
+        let bp2c = bt!("bus_2", Phase::C);
+        let bp3a = bt!("bus_3", Phase::A);
 
         netw.add_element(Grounding::new(1).element("gr", vec![bpg.clone()])).unwrap();
 

@@ -161,7 +161,7 @@ fn convert_to_network(schema: Root, ejson_phase_map: &HashMap<String, Phase>) ->
     let _ = netw.add_bus(Bus::new("G", vec![Phase::N], 1.0));
 
     // Make sure it's explicitly grounded.
-    let _ = netw.add_element(Grounding::new(1).element("G", vec![bp!("G", Phase::N)])).unwrap();
+    let _ = netw.add_element(Grounding::new(1).element("G", vec![bt!("G", Phase::N)])).unwrap();
 
     let vt = schema.voltage_type; // TODO
     let comps = &schema.components;
@@ -245,18 +245,18 @@ fn convert_in_service(in_service: &Option<ejt::InService>) -> bool {
     }
 }
 
-fn get_bps(
+fn get_bts(
     cons: &[ejt::Connection],
     ejson_phase_map: &HashMap<String, Phase>
-) -> Vec<Vec<BusPhaseId>> {
+) -> Vec<Vec<BusTermId>> {
     let bus_ids: Vec<&String> = cons.iter().map(|x| {&x.node}).collect();
     let phs: Vec<Vec<Phase>> = cons.iter().map(|x| {convert_phases(&x.phs, ejson_phase_map)}).collect();
     bus_ids.iter().cloned().zip(phs.iter())
-        .map(|(b, ps)| ps.iter().cloned().map(|p| bp!(b.clone(), p)).collect()).collect()
+        .map(|(b, ps)| ps.iter().cloned().map(|p| bt!(b.clone(), p)).collect()).collect()
 }
 
-fn flatten_bps(bps: &[Vec<BusPhaseId>]) -> Vec<BusPhaseId> {
-    bps.iter().flatten().cloned().collect()
+fn flatten_bts(bts: &[Vec<BusTermId>]) -> Vec<BusTermId> {
+    bts.iter().flatten().cloned().collect()
 }
 
 fn handle_node(
@@ -279,13 +279,13 @@ fn handle_infeeder(
     let con = &cons[0];
     let bus_id: &str = &con.node;
     let phs = convert_phases(&con.phs, ejson_phase_map);
-    // Construct BusPhases that always have ground last.
-    let mut bps: Vec<BusPhaseId> = Vec::with_capacity(phs.len() + 1);
-    phs.iter().filter(|p| !matches!(p, Phase::N)).for_each(|p| bps.push(bp!(bus_id, *p)));
-    bps.push(bp!("G".to_string(), Phase::N));
+    // Construct BusTerms that always have ground last.
+    let mut bts: Vec<BusTermId> = Vec::with_capacity(phs.len() + 1);
+    phs.iter().filter(|p| !matches!(p, Phase::N)).for_each(|p| bts.push(bt!(bus_id, *p)));
+    bts.push(bt!("G".to_string(), Phase::N));
     let in_service = convert_in_service(in_service);
     let vmag = v_setpoint.0 * V_FACTOR;
-    let elem = netw.add_element(Source::new_wye_slack(vmag, bps.len() - 1).element(id, bps, true)).unwrap();
+    let elem = netw.add_element(Source::new_wye_slack(vmag, bts.len() - 1).element(id, bts, true)).unwrap();
     elem.borrow_mut().is_in_service = in_service;
     Ok(())
 }
@@ -296,16 +296,16 @@ fn handle_line_variant_0(
     id: &str, cons: &ejt::TwoConnections, in_service: &Option<ejt::InService>, i_max: &Option<ejt::IMax>,
     z: &ejt::ComplexNumber, z0: &ejt::ComplexNumber, b_chg: &Option<f64>, length: f64
 ) -> Result<(), String> {
-    let bps = get_bps(&cons.0, ejson_phase_map);
-    let [bps0, bps1] = bps.as_slice() else {panic!("Expected 2 elements")};
-    let n_phase = bps0.len();
+    let bts = get_bts(&cons.0, ejson_phase_map);
+    let [bts0, bts1] = bts.as_slice() else {panic!("Expected 2 elements")};
+    let n_phase = bts0.len();
     let in_service = convert_in_service(in_service);
     let z = length * convert_complex(z, Z_FACTOR);
     let z0= length * convert_complex(z0, Z_FACTOR);
     if !b_chg.is_none() {
         warn!("Unimplemented b_chg for e-JSON line. Ignoring.");
     }
-    let elem = netw.add_element(Line::new_from_sym_seq(z, z0, n_phase).unwrap().element(id, bps0.clone(), bps1.clone())).unwrap();
+    let elem = netw.add_element(Line::new_from_sym_seq(z, z0, n_phase).unwrap().element(id, bts0.clone(), bts1.clone())).unwrap();
     elem.borrow_mut().is_in_service = in_service;
     Ok(())
 }
@@ -323,7 +323,7 @@ fn handle_transformer(
     transformer: &ejt::Transformer
 ) -> Result<(), String> {
     let (
-        id, mut bps, vector_group, n_winding_pairs, nom_turns_ratio, z0_p, z0_s, tap_side, tap_factor, tap_range, taps,
+        id, mut bts, vector_group, n_winding_pairs, nom_turns_ratio, z0_p, z0_s, tap_side, tap_factor, tap_range, taps,
         user_data
     ) = match transformer {
         ejt::Transformer::Variant0 {
@@ -331,7 +331,7 @@ fn handle_transformer(
             tap_side, tap_factor, tap_range, taps, ..
         } => {
             (
-                id, get_bps(&cons.0, ejson_phase_map), vector_group, n_winding_pairs, nom_turns_ratio, z0_p, z0_s,
+                id, get_bts(&cons.0, ejson_phase_map), vector_group, n_winding_pairs, nom_turns_ratio, z0_p, z0_s,
                 tap_side, tap_factor, tap_range, taps, user_data.as_ref().unwrap(),
             )
         },
@@ -340,7 +340,7 @@ fn handle_transformer(
             tap_side, tap_factor, tap_range, taps, ..
         } => {
             (
-                id, get_bps(&cons.0, ejson_phase_map), vector_group, n_winding_pairs, nom_turns_ratio, z0_p, z0_s,
+                id, get_bts(&cons.0, ejson_phase_map), vector_group, n_winding_pairs, nom_turns_ratio, z0_p, z0_s,
                 tap_side, tap_factor, tap_range, taps, user_data.as_ref().unwrap()
             )
         },
@@ -359,24 +359,10 @@ fn handle_transformer(
     assert!(z0_p.is_none(), "Currently can't handle z0_p in Transformer components");
     let y_shunt = match z0_s {Some(c) => 1.0 / convert_complex(c, Y_FACTOR), None => c!(0.0, 0.0)};
 
-    let vector_group: VectorGroup = vector_group.parse()?;
-
-    let winding_pairs = winding_pairs_from_vector_group(&vector_group, n_winding_pairs)?;
-
-    for (wt, bpsi) in vector_group.winding_types.iter().zip(bps.iter_mut()) {
-        // For every Y winding, insert an extra grounded neutral.
-        if matches!(wt, WindingType::Y) {
-            bpsi.push(bp!("G", Phase::N));
-        }
-    }
-
-    let turns_ratio: Vec<c64> = vec![convert_complex(nom_turns_ratio, 1.0); n_winding_pairs];
+    let turns_ratio: c64 = convert_complex(nom_turns_ratio, 1.0);
 
     let tx_taps = if let Some(tap_side) = tap_side && let Some(factor) = tap_factor && let Some(tap_range) = tap_range {
-        let side = match tap_side {
-            TapSide::Primary => TransformerSide::P,
-            TapSide::Secondary => TransformerSide::S,
-        };
+        let side = match tap_side {TapSide::Primary => 0, TapSide::Secondary => 1};
         let min_tap = tap_range[0];
         let max_tap = tap_range[1];
         Some(TransformerTaps::new(side, *factor, min_tap as i32, max_tap as i32, taps.len()))
@@ -384,8 +370,14 @@ fn handle_transformer(
         None
     };
 
-    netw.add_element(Transformer::new(&winding_pairs, turns_ratio, z_s, y_shunt, tx_taps)
-        .element(id, bps[0].clone(), bps[1].clone())).unwrap();
+    netw.add_element(
+        Transformer::new_with_vector_group(
+            n_winding_pairs,
+            turns_ratio,
+            tx_taps,
+            (C_ZERO, z_s),
+            &vector_group
+        )?.element(id, vec![bts[0].clone(), bts[1].clone()])).unwrap();
 
     Ok(())
 }
@@ -395,8 +387,8 @@ fn handle_connector(
     id: &str, cons: &ejt::TwoOrMoreConnections, in_service: &Option<ejt::InService>, i_max: &Option<ejt::IMax>,
     switch_state: &Option<ejt::ConnectorSwitchState>
 ) -> Result<(), String> {
-    let bps = get_bps(&cons.0, ejson_phase_map);
-    let bps_flat = flatten_bps(&bps);
+    let bts = get_bts(&cons.0, ejson_phase_map);
+    let bts_flat = flatten_bts(&bts);
     let switch_state = if let Some(x) = switch_state {
         match x {
             ejt::ConnectorSwitchState::NoSwitch => SwitchState::NoSwitch,
@@ -404,7 +396,7 @@ fn handle_connector(
             ejt::ConnectorSwitchState::Open => SwitchState::Open,
         }
     } else {SwitchState::NoSwitch};
-    let elem = netw.add_element(Connector::new(bps.len(), switch_state).element(id, bps_flat)).unwrap();
+    let elem = netw.add_element(Connector::new(bts.len(), switch_state).element(id, bts_flat)).unwrap();
     elem.borrow_mut().is_in_service = convert_in_service(in_service);
     Ok(())
 }
@@ -414,17 +406,17 @@ fn handle_load(
     id: &str, cons: &ejt::OneConnection,
     wiring: &ejt::Wiring, in_service: &Option<ejt::InService>, s: &Option<Vec<ejt::ComplexNumber>>
 ) -> Result<(), String> {
-    let mut bps = get_bps(&cons.0, ejson_phase_map)[0].clone();
+    let mut bts = get_bts(&cons.0, ejson_phase_map)[0].clone();
     let s: Option<Vec<c64>> = s.clone().map(|v| v.iter().map(|c| convert_complex(c, S_FACTOR)).collect());
     let spec = match *wiring {
-        ejt::Wiring::Delta => {Load::new_delta(bps.len(), None, None, s)},
+        ejt::Wiring::Delta => {Load::new_delta(bts.len(), None, None, s)},
         ejt::Wiring::Wye => {
-            let n_term = bps.len();
-            bps.insert(0, bp!("G", Phase::N));
+            let n_term = bts.len();
+            bts.insert(0, bt!("G", Phase::N));
             Load::new_wye(n_term, None, None, s, true)
         },
     };
-    let elem = netw.add_element(spec.element(id, bps)).unwrap();
+    let elem = netw.add_element(spec.element(id, bts)).unwrap();
     elem.borrow_mut().is_in_service = convert_in_service(in_service);
     Ok(())
 }

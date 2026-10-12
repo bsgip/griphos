@@ -91,17 +91,17 @@ impl Source {
         }
     }
 
-    /// Wraps a [`Source`] in a new [`Element`], with the given [`BusPhaseId`]s.
+    /// Wraps a [`Source`] in a new [`Element`], with the given [`BusTermId`]s.
     ///
     /// If set_angle_refs_from_phases is true and control is slack, set the phase reference angles using the standard
     /// positive sequence angles for phases A, B, C.
-    pub fn element(mut self, id: &str, bus_phase_ids: Vec<BusPhaseId>, set_angle_refs_from_phases: bool) -> Element {
+    pub fn element(mut self, id: &str, bus_term_ids: Vec<BusTermId>, set_angle_refs_from_phases: bool) -> Element {
         if set_angle_refs_from_phases && let SourceControl::SL {vmag: _, vang } = &mut self.control {
             *vang = self.branches.iter().map(
-                |(i0, i1)| (bus_phase_ids[*i0].p.v_nom_pu() - bus_phase_ids[*i1].p.v_nom_pu()).arg()
+                |(i0, i1)| (bus_term_ids[*i0].p.v_nom_pu() - bus_term_ids[*i1].p.v_nom_pu()).arg()
             ).collect();
         }
-        self.element_generic(id, bus_phase_ids)
+        self.element_generic(id, bus_term_ids)
     }
 }
 

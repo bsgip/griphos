@@ -12,8 +12,8 @@
 // connected and grounded.
 
 use griphos::{
-    bp, Bus, BusPhaseId, c, c64, Grounding, Line, Load, Network, Phase, Source,
-    SQRT_3, Transformer
+    Bus, BusTermId, C_ZERO, Grounding, Line, Load, Network, Phase, SQRT_3, Source, Transformer, bt, c, c64,
+    typical_tx_z_series
 };
 
 fn main() {
@@ -73,56 +73,61 @@ fn main() {
                 // with UID "grounding_src_bus"...
                 "grounding_src_bus",
                 // and connect the element to phase N of src_bus.
-                vec![bp!("src_bus", Phase::N)]
-            )).unwrap();
+                vec![bt!("src_bus", Phase::N)]
+            )).expect("problem adding source grounding");
 
     // We grabbed a handle to the new element, and like buses we can access it
     // using borrow()
     println!("Source grounding:\n{}", grounding_src.borrow());
 
     netw.add_element(Grounding::new(1).element(
-        "grounding_tx_lv_bus", vec![bp!("tx_lv_bus", Phase::N)]
-    )).unwrap();
+        "grounding_tx_lv_bus", vec![bt!("tx_lv_bus", Phase::N)]
+    )).expect("problem adding transformer grounding");
 
     // Add a wye-connected source on src_bus.
     netw.add_element(
         Source::new_wye_slack(V_MV, 3)
             .element(
                 "source",
-                ABCN.iter().map(|ph| bp!("src_bus", *ph)).collect(),
+                ABCN.iter().map(|ph| bt!("src_bus", *ph)).collect(),
                 true
             )
-    ).unwrap();
+    ).expect("problem adding source");
 
     // Add a three-wire line between the src_bus and tx_mv_bus. The element(...)
-    // member for Lines takes a UID and two lists of BusPhaseIds: one for the
+    // member for Lines takes a UID and two lists of BusTermIds: one for the
     // start of the line, and the other for the end of the line. Note how the
     // signature of element() is different than that for Sources, see above.
     netw.add_element(
         // z = 0.4+0.4j, z0 = 0.9+1.2j, n_phase = 3
         Line::new_from_sym_seq(c!(0.4, 0.4), c!(0.9, 1.2), 3)
-            .unwrap()
+            .expect("problem creating line")
             .element(
                 "line",
-                ABC.iter().map(|ph| bp!("src_bus", *ph)).collect(),
-                ABC.iter().map(|ph| bp!("tx_mv_bus", *ph)).collect(),
+                ABC.iter().map(|ph| bt!("src_bus", *ph)).collect(),
+                ABC.iter().map(|ph| bt!("tx_mv_bus", *ph)).collect(),
             )
-    ).unwrap();
+    ).expect("problem adding line");
 
     // Add a DYN11 transformer between tx_mv_bus and tx_lv_bus.
+    let zs = typical_tx_z_series(500.0e3, 230.0); // Utility function for typical transformer series impedance.
     netw.add_element(
-        Transformer::new_dy(
+        Transformer::new_with_vector_group(
             3,                  // 3 phases, i.e. 3 pairs of windings
-            c!(47.826, 0.),     // ratio = 11 kV / 230 V
-            c!(0.06, 0.1),      // Series impedance = 0.06 + 0.1j.
-            c!(0.0, 0.0),       // y_shunt is small and can be ignored.
+            47.826.into(),      // complex ratio = 11 kV / 230 V
             None,               // No taps for this transformer.
-        ).unwrap().element(
+            (C_ZERO, zs),       // Series impedance.
+            "dyn11"             // Vector group string, all lowercase.
+        )
+            .expect("problem creating transformer")
+            .element(
                 "transformer",
-                ABC.iter().map(|ph| bp!("tx_mv_bus", *ph)).collect(),
-                ABCN.iter().map(|ph| bp!("tx_lv_bus", *ph)).collect(),
+                vec![
+                    ABC.iter().map(|ph| bt!("tx_mv_bus", *ph)).collect(),   // Primary phases.
+                    ABCN.iter().map(|ph| bt!("tx_lv_bus", *ph)).collect(),  // Secondary phases.
+                ]
             )
-    ).unwrap();
+    ).expect("problem adding transformer");
 
     // Add a wye-connected load at tx_bus_lv.
     netw.add_element(
@@ -140,11 +145,11 @@ fn main() {
         ).element(
                 "load",
                 vec![
-                    bp!("tx_lv_bus", Phase::A),
-                    bp!("tx_lv_bus", Phase::B),
-                    bp!("tx_lv_bus", Phase::C),
-                    bp!("tx_lv_bus", Phase::N),
+                    bt!("tx_lv_bus", Phase::A),
+                    bt!("tx_lv_bus", Phase::B),
+                    bt!("tx_lv_bus", Phase::C),
+                    bt!("tx_lv_bus", Phase::N),
                 ]
             )
-    );
+    ).expect("problem adding load");
 }

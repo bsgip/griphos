@@ -1,7 +1,7 @@
 //! Load elements.
 
-use crate::foundation::c64;
-use crate::network::{BusPhaseId, Element, ElementSpec};
+use crate::foundation::{CooMat, c64};
+use crate::network::{BusTermId, Element, ElementSpec};
 use crate::TypeStrOf;
 
 /// A load element, using a ZIP load model.
@@ -12,7 +12,7 @@ pub struct Load {
     /// The branches, each in the form (term_0_idx, term_1_idx)
     pub branches: Vec<(usize, usize)>,
     /// constant Y component of ZIP model, equivalent to Z in ZIP.
-    pub y_const: Vec<((usize, usize), c64)>,
+    pub y_const: CooMat<c64>,
     /// constant I component of ZIP model, equivalent to I in ZIP.
     pub i_const: Vec<(usize, c64)>,
     /// constant S component of ZIP model, equivalent to P in ZIP.
@@ -26,7 +26,7 @@ impl Load {
     pub fn new(
         n_terms: usize,
         branches: Vec<(usize, usize)>,
-        y_const: Option<Vec<((usize, usize), c64)>>,
+        y_const: Option<CooMat<c64>>,
         i_const: Option<Vec<(usize, c64)>>,
         s_const: Option<Vec<(usize, c64)>>,
         grounding: Option<Vec<usize>>,
@@ -48,7 +48,7 @@ impl Load {
     ) -> Load {
         let branches = (1..=n_phases).map(|i| (i, 0)).collect();
 
-        let y_const: Vec<((usize, usize), c64)> = if let Some(yca) = y_const {
+        let y_const: CooMat<c64> = if let Some(yca) = y_const {
             yca.iter().cloned().enumerate().map(|(i, ycai)| ((i, i), ycai)).collect()
         } else {
             vec![]
@@ -76,7 +76,7 @@ impl Load {
     ) -> Load {
         let branches: Vec<(usize, usize)> = (0..n_phases).map(|i| (i, (i+1) % n_phases)).collect();
 
-        let y_const: Vec<((usize, usize), c64)> = if let Some(yca) = y_const {
+        let y_const: CooMat<c64> = if let Some(yca) = y_const {
             yca.iter().cloned().enumerate().map(|(i, ycai)| ((i, i), ycai)).collect()
         } else {
             vec![]
@@ -97,8 +97,8 @@ impl Load {
     }
 
     /// Wraps a [`Load`] in a new [`Element`], with the given terminal mapping.
-    pub fn element(self, id: &str, bus_phase_ids: Vec<BusPhaseId>) -> Element {
-        self.element_generic(id, bus_phase_ids)
+    pub fn element(self, id: &str, bus_term_ids: Vec<BusTermId>) -> Element {
+        self.element_generic(id, bus_term_ids)
     }
 }
 
@@ -115,7 +115,7 @@ impl ElementSpec for Load {
         self.branches.clone()
     }
 
-    fn y_const(&self) -> Vec<((usize, usize), c64)> {
+    fn y_const(&self) -> CooMat<c64> {
         self.y_const.clone()
     }
 
