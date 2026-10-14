@@ -1,5 +1,6 @@
 //! Generic network solver code.
 
+use std::any::Any;
 use std::fmt;
 use std::ops::Deref;
 
@@ -179,11 +180,25 @@ pub(crate) fn info_csvec<T, IStorage, DStorage>(
 
 /// A [`NetworkSolver`] specifies assumed behaviour of a solver, incluing solving and modifying the network based on the
 /// solution.
-pub trait NetworkSolver {
+pub trait NetworkSolver: Any {
     /// Solves power flow (or whatever).
     fn solve(&mut self) -> SolverStatus;
     /// Propagates the solution to the network after solving.
     fn propagate_to_network(&self, netw: &mut Network);
+}
+
+impl dyn NetworkSolver {
+    pub fn is<T: NetworkSolver>(&self) -> bool {
+        (self as &dyn Any).is::<T>()
+    }
+
+    pub fn downcast_ref<T: NetworkSolver>(&self) -> Option<&T> {
+        (self as &dyn Any).downcast_ref::<T>()
+    }
+
+    pub fn downcast_mut<T: NetworkSolver>(&mut self) -> Option<&mut T> {
+        (self as &mut dyn Any).downcast_mut::<T>()
+    }
 }
 
 /// A funtion used to autoregister solvers that will be chosen and constructed using a key.
