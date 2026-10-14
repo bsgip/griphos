@@ -346,6 +346,8 @@ fn handle_transformer(
         },
     };
 
+    let bts: Vec<BusTermId> = bts[0].iter().chain(bts[1].iter()).cloned().collect();
+
     let n_winding_pairs = n_winding_pairs.as_ref().expect("Currenly n_winding_pairs is required").0 as usize;
 
     // typify messes up z_p and z_s, so we're using a KLUDGE involving user_data.
@@ -377,7 +379,8 @@ fn handle_transformer(
             tx_taps,
             (C_ZERO, z_s),
             &vector_group
-        )?.element(id, vec![bts[0].clone(), bts[1].clone()])).unwrap();
+        )?.element(id, bts)
+    ).unwrap();
 
     Ok(())
 }

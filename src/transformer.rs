@@ -64,7 +64,7 @@ impl TransformerTaps {
 
 #[derive(Debug, Error)]
 pub enum TransformerError {
-    #[error("bad winding groups {0:?}.")] BadWindingGroups(Vec<Vec<(usize, usize)>>),
+    #[error("bad terminal mapping {0:?}.")] BadTerminalMapping(Vec<Vec<(usize, usize)>>),
     #[error("wrong number of phases {0}.")] WrongNumerOfPhases(usize),
     #[error("error {0:?}")] Error(String),
 }
@@ -82,8 +82,6 @@ impl From<TransformerError> for String {
 }
 
 /// A power transformer.
-///
-/// Currently, we allow only two-windings transformers, with arbitrary numbers of phases.
 ///
 /// A transformer model is based on a primitive model, where we only care about the windings. The primitive model
 /// has `n_sides` sides (which is, e.g., 2 for a 2-winding transformer and 3 for a 3-winding transformer), and
@@ -104,8 +102,6 @@ pub struct Transformer {
     // Primative model
     //
     // The primitive model describes the transformer configuration excluding all mapping between windings and terminals.
-    // In other words, the primitive model is a list of winding groups (one group per phase), plus the associated
-    // parameters.
     // -------------------------------------------------------------------------
 
     /// The number of sides (primary/secondary/tertiary...).
@@ -142,30 +138,48 @@ pub struct Transformer {
     /// terminal. A three phase DD transformer will have 6 terminals while a three phase DYN will have 7.
     pub n_terms: usize,
 
-    /// In transformers, the branches are [(start_terminal_idx, end_terminal_idx)] indexed by winding.
+    /// In transformers, the branches are [(start_terminal_idx, end_terminal_idx)] indexed by winding. The
+    /// start_terminal_idx can be equated with the "dotted" terminals for each winding.
     pub branches: Vec<(usize, usize)>,
 }
 
 impl Transformer {
     /// Creates a new [`Transformer`].
+    ///
+    /// n_sides:
+    ///     The number of sides, i.e. 2 for a normal 2-winding transformer, 3 for a 3-winding transformer, etc.
+    /// n_phases:
+    ///     The number of phases, i.e. 1 for a single phase transformer, 3 for a 3-phase transformer.
+    /// nom_turns:
+    ///     The normalised number of turns on each side - only the ratios matter.
+    /// taps:
+    ///     Optional taps as TransformerTaps.
+    /// z_series:
+    ///     The series impedance on each side.
+    /// terminal_mapping:
+    ///     For each side, and for each phase in that side, the start and end terminal indexes.
+    ///     Example 1: a 2-winding 3-phase dyn11 transformer:
+    ///         [[(0, 1), (1, 2), (2, 0)], [(3, 6), (4, 6), (5, 6)]].
+    ///     Example 2: a 2-winding 3-phase ynyn0 transformer with the neutrals tied together:
+    ///         [[(0, 6), (1, 6), (2, 6)], [(3, 6), (4, 6), (5, 6)]].
+    ///     Note that by convention, the first index is assumed to be the "dotted" one, and the neutrals come last.
     pub fn new(
         n_sides: usize,
         n_phases: usize,
         nom_turns: Vec<c64>,
         taps: Option<TransformerTaps>,
         z_series: Vec<c64>,
-        winding_groups: Vec<Vec<(usize, usize)>>,
+        terminal_mapping: Vec<Vec<(usize, usize)>>,
     ) -> Result<Self, TransformerError> {
-
-        let mut terms: Vec<usize> = winding_groups.iter().flatten().flat_map(|w| [w.0, w.1]).collect();
+        let branches: Vec<(usize, usize)> = terminal_mapping.iter().cloned().flatten().collect();
+        let mut terms: Vec<usize> = branches.iter().flat_map(|(i, j)| [*i, *j]).collect();
         terms.sort();
         terms.dedup();
-        if terms != (0..terms.len()).collect::<Vec<usize>>() {
-            return Err(TransformerError::BadWindingGroups(winding_groups))
+        let n_terms = terms.len();
+        if terms.is_empty() || *terms.first().unwrap() != 0 || *terms.last().unwrap() != n_terms - 1 {
+            // Set of terminals must be a contiguous set {0...n_terms}
+            return Err(TransformerError::BadTerminalMapping(terminal_mapping));
         }
-
-        let branches: Vec<(usize, usize)> = winding_groups.into_iter().flatten().collect();
-
         Ok(Transformer {n_sides, n_phases, nom_turns, taps, z_series, n_terms: terms.len(), branches})
     }
 
@@ -180,20 +194,19 @@ impl Transformer {
         vector_group_str: &str
     ) -> Result<Transformer, TransformerError> {
         let vg: VectorGroup = VectorGroup::from_str(vector_group_str)?;
-        let winding_groups = winding_groups_from_vector_group(&vg, n_phases)?;
+        let term_mapping = terminal_mapping_from_vector_group(&vg, n_phases)?;
         let nom_turns = vec![nom_turns_ratio, C_ONE];
         let zs: Vec<c64> = vec![z_series.0, z_series.1];
-        Transformer::new(2, n_phases, nom_turns, taps, zs, winding_groups)
+        Transformer::new(2, n_phases, nom_turns, taps, zs, term_mapping)
     }
 
     /// Wraps a transformer in an [`Element`], with the given bus/phase connections.
     ///
-    /// the [`BusTermId`]s are grouped into winding groups, e.g. [[PA, SA], [PB, SB], [PC, SC]].
-    pub fn element(
-        self, id: &str,
-        bus_term_id_groups: Vec<Vec<BusTermId>>,
-    ) -> Element {
-        self.element_generic(id, bus_term_id_groups.into_iter().flatten().collect())
+    /// The [`BusTermId`]s are in the order of the terminal indexes used in the terminal_mapping. So for example,
+    /// a dyn11 transformer has the terminal mapping [[(0,1), (1, 2), (2, 0)], [(3, 6), (4, 6), (5, 6)]], and the
+    /// `BusTermIds` are given as a seven element list whose indices correspond to the numbers in the terminal mapping.
+    pub fn element(self, id: &str, bus_term_ids: Vec<BusTermId>) -> Element {
+        self.element_generic(id, bus_term_ids)
     }
 
     /// The number of windings, just `n_sides` x `n_phases`.
@@ -403,95 +416,117 @@ impl std::str::FromStr for VectorGroup {
     }
 }
 
-/// Given a vector group and a phase count, partition the windings into coupled groups (pairs in this case).
-fn winding_groups_from_vector_group(vg: &VectorGroup, n_phases: usize) -> Result<Vec<Vec<(usize, usize)>>, String> {
-    if vg.winding_types.len() != 2 {
-        return Err(String::from(
-            "only two-winding vector groups are supported for now.",
-        ));
+/// Terminal pairs for one side's windings, numbered from `first_terminal`.
+/// Y: each winding runs (phase terminal, shared neutral), so it uses n + 1 terminals.
+/// D: each winding runs (phase terminal, next phase terminal), so it uses n terminals.
+fn natural_winding_terminals(t: WindingType, n_phases: usize, first_terminal: usize) -> Vec<(usize, usize)> {
+    // A single-phase winding is just two terminals, regardless of type.
+    if n_phases == 1 {
+        vec![(first_terminal, first_terminal + 1)]
+    } else {
+        match t {
+            WindingType::Y => {
+                (0..n_phases).map(|i| (first_terminal + i, first_terminal + n_phases)).collect()
+            },
+            WindingType::D => {
+                (0..n_phases).map(|i| (first_terminal + i, first_terminal + (i + 1) % n_phases)).collect()
+            },
+            WindingType::Z => unreachable!("zigzag is rejected by the caller"),
+        }
     }
+}
 
+/// How many terminals one side occupies.
+fn terminal_count(t: WindingType, n_phases: usize) -> usize {
+    match (t, n_phases) {
+        (_, 1) => 2,
+        (WindingType::Y, n) => n + 1,
+        (WindingType::D, n) => n,
+        (WindingType::Z, _) => unreachable!("zigzag is rejected by the caller"),
+    }
+}
+
+/// Inherent phase shift (in clock hours) of a winding's first terminal relative to its leg's reference angle.
+fn type_shift(t: WindingType) -> i32 {
+    match t {
+        WindingType::Y => 0,
+        WindingType::D => -1,
+        WindingType::Z => unreachable!("zigzag is rejected by the caller"),
+    }
+}
+
+/// Convert a vector group and phase count into a terminal mapping:
+/// `[primary_windings, secondary_windings]`, each a list of (terminal, terminal) pairs.
+/// e.g. dyn11, 3 phases -> [[(0,1),(1,2),(2,0)], [(3,6),(4,6),(5,6)]]
+fn terminal_mapping_from_vector_group(vg: &VectorGroup, n_phases: usize) -> Result<Vec<Vec<(usize, usize)>>, String> {
+    if vg.winding_types.len() != 2 {
+        return Err("only two-winding vector groups are supported for now".into());
+    }
     if vg.winding_types.contains(&WindingType::Z) {
-        return Err(String::from("zigzag isn't supported yet."));
+        return Err("zigzag isn't supported yet".into());
+    }
+    if n_phases != 1 && n_phases != 3 {
+        return Err("only single-phase and three-phase transformers are supported for now".into());
     }
 
     let primary_type = vg.winding_types[0];
     let secondary_type = vg.winding_types[1];
     let target_clock = vg.secondary_clocks[0] as i32;
 
-    // Inherent phase shift (in clock hours) of a winding's own (first) terminal relative to its leg's reference angle.
-    fn type_shift(t: WindingType) -> i32 {
-        match t {
-            WindingType::Y => 0,
-            WindingType::D => -1,
-            WindingType::Z => unreachable!("zigzag is rejected above"),
-        }
-    }
+    let primary_terminals = natural_winding_terminals(primary_type, n_phases, 0);
+    let secondary_first = terminal_count(primary_type, n_phases);
 
     let base_clock = (type_shift(primary_type) - type_shift(secondary_type)).rem_euclid(12);
 
     if n_phases == 1 {
-        if target_clock != base_clock {
-            return Err(format!(
-                "a single-phase {}-{} transformer's clock is fixed at {} by its connection type (got {target_clock})",
-                primary_type.as_char(),
-                secondary_type.as_char(),
-                base_clock
-            ));
-        }
-
-        fn single_phase_winding(t: WindingType) -> (usize, usize) {
-            match t {
-                WindingType::Y => (0, 1), // line to neutral
-                WindingType::D => (0, 1), // line to line (phase-to-phase)
-                WindingType::Z => unreachable!("zigzag is rejected above"),
+        // Single phase: a winding is just two terminals, so the only freedom is polarity.
+        // Natural order gives clock 0; swapping the secondary terminals gives clock 6.
+        let flip = match target_clock {
+            0 => false,
+            6 => true,
+            _ => {
+                return Err(format!(
+                    "a single-phase transformer's clock must be 0 or 6 (got {target_clock})"
+                ));
             }
+        };
+
+        let mut secondary = natural_winding_terminals(secondary_type, 1, secondary_first);
+        if flip {
+            secondary = secondary.into_iter().map(|(a, b)| (b, a)).collect();
         }
-
-        Ok(vec![vec![single_phase_winding(primary_type), single_phase_winding(secondary_type)]])
-    } else if n_phases == 3 {
-        fn natural_winding(t: WindingType, i: usize, n: usize) -> (usize, usize) {
-            match t {
-                WindingType::Y => (i, n),
-                WindingType::D => (i, (i + 1) % n),
-                WindingType::Z => unreachable!("zigzag is rejected above"),
-            }
-        }
-
-        for flip in [false, true] {
-            for r in 0..n_phases {
-                let rotation_shift = 4 * ((n_phases - r) % n_phases) as i32;
-                let flip_shift = if flip { 6 } else { 0 };
-                let clock = (base_clock + rotation_shift + flip_shift).rem_euclid(12);
-
-                if clock == target_clock {
-                    let pairs = (0..n_phases)
-                        .map(|leg| {
-                            let secondary_index = (leg + r) % n_phases;
-                            let mut s = natural_winding(secondary_type, secondary_index, n_phases);
-                            if flip {
-                                s = (s.1, s.0);
-                            }
-                            vec![natural_winding(primary_type, leg, n_phases), s]
-                        })
-                        .collect();
-                    return Ok(pairs);
-                }
-            }
-        }
-
-        Err(format!(
-            "clock number {target_clock} isn't reachable for a {}-{} pair (only {} clock numbers are, since base alignment gives {})",
-            primary_type.as_char(),
-            secondary_type.as_char(),
-            if base_clock.rem_euclid(2) == 0 { "even" } else { "odd" },
-            base_clock
-        ))
-    } else {
-        Err(String::from(
-            "only single-phase and three-phase transformers are supported for now",
-        ))
+        return Ok(vec![primary_terminals, secondary]);
     }
+
+    // Three phase: try each (flip, rotation) of the secondary relative to the primary.
+    let secondary_natural = natural_winding_terminals(secondary_type, n_phases, secondary_first);
+
+    for flip in [false, true] {
+        for r in 0..n_phases {
+            let rotation_shift = 4 * ((n_phases - r) % n_phases) as i32;
+            let flip_shift = if flip { 6 } else { 0 };
+            let clock = (base_clock + rotation_shift + flip_shift).rem_euclid(12);
+
+            if clock == target_clock {
+                // Primary leg `leg` is coupled to secondary winding (leg + r) % n,
+                // optionally with reversed polarity. The secondary list is in leg order.
+                let secondary = (0..n_phases)
+                    .map(|leg| {
+                        let (a, b) = secondary_natural[(leg + r) % n_phases];
+                        if flip { (b, a) } else { (a, b) }
+                    })
+                    .collect();
+                return Ok(vec![primary_terminals, secondary]);
+            }
+        }
+    }
+
+    Err(format!(
+        "clock number {target_clock} isn't reachable for a {}-{} pair (only {} clock numbers are, since base alignment gives {base_clock})",
+        primary_type.as_char(),
+        secondary_type.as_char(),
+        if base_clock % 2 == 0 { "even" } else { "odd" },
+    ))
 }
 
 /// Typical series impedance (R, X) in ohms of a two-winding transformer.
@@ -524,6 +559,55 @@ mod tests {
     use crate::source::*;
     use crate::test_utils::*;
     use super::*;
+
+    #[test]
+    fn test_natural_winding_terminals() {
+        assert_eq!(natural_winding_terminals(WindingType::Y, 1, 0), [(0, 1)]);
+        assert_eq!(natural_winding_terminals(WindingType::Y, 2, 0), [(0, 2), (1, 2)]);
+        assert_eq!(natural_winding_terminals(WindingType::Y, 3, 0), [(0, 3), (1, 3), (2, 3)]);
+
+        assert_eq!(natural_winding_terminals(WindingType::D, 3, 0), [(0, 1), (1, 2), (2, 0)]);
+
+        assert_eq!(natural_winding_terminals(WindingType::Y, 1, 2), [(2, 3)]);
+        assert_eq!(natural_winding_terminals(WindingType::Y, 2, 3), [(3, 5), (4, 5)]);
+        assert_eq!(natural_winding_terminals(WindingType::Y, 3, 4), [(4, 7), (5, 7), (6, 7)]);
+
+        assert_eq!(natural_winding_terminals(WindingType::D, 3, 3), [(3, 4), (4, 5), (5, 3)]);
+    }
+
+    #[test]
+    fn test_terminal_mapping_from_vector_group() {
+        fn do_test(vg_str: &str, n_phases: usize, expected: &[&[(usize, usize)]]) {
+            let vg = VectorGroup::from_str(vg_str).unwrap();
+            let term_map = terminal_mapping_from_vector_group(&vg, n_phases).unwrap();
+            assert_eq!(term_map, expected)
+        }
+
+        do_test("ynyn0", 1, &[&[(0, 1)], &[(2, 3)]]);
+        do_test("ynyn6", 1, &[&[(0, 1)], &[(3, 2)]]);
+        do_test("yy0", 1, &[&[(0, 1)], &[(2, 3)]]);
+
+        do_test("ynyn0", 3, &[&[(0, 3), (1, 3), (2, 3)], &[(4, 7), (5, 7), (6, 7)]]);
+        do_test("ynyn4", 3, &[&[(0, 3), (1, 3), (2, 3)], &[(6, 7), (4, 7), (5, 7)]]);
+        do_test("ynyn8", 3, &[&[(0, 3), (1, 3), (2, 3)], &[(5, 7), (6, 7), (4, 7)]]);
+        do_test("ynyn6", 3, &[&[(0, 3), (1, 3), (2, 3)], &[(7, 4), (7, 5), (7, 6)]]);
+        do_test("ynyn10", 3, &[&[(0, 3), (1, 3), (2, 3)], &[(7, 6), (7, 4), (7, 5)]]);
+        do_test("ynyn2", 3, &[&[(0, 3), (1, 3), (2, 3)], &[(7, 5), (7, 6), (7, 4)]]);
+
+        do_test("dd0", 3, &[&[(0, 1), (1, 2), (2, 0)], &[(3, 4), (4, 5), (5, 3)]]);
+        do_test("dd4", 3, &[&[(0, 1), (1, 2), (2, 0)], &[(5, 3), (3, 4), (4, 5)]]);
+        do_test("dd8", 3, &[&[(0, 1), (1, 2), (2, 0)], &[(4, 5), (5, 3), (3, 4)]]);
+        do_test("dd6", 3, &[&[(0, 1), (1, 2), (2, 0)], &[(4, 3), (5, 4), (3, 5)]]);
+        do_test("dd10", 3, &[&[(0, 1), (1, 2), (2, 0)], &[(3, 5), (4, 3), (5, 4)]]);
+        do_test("dd2", 3, &[&[(0, 1), (1, 2), (2, 0)], &[(5, 4), (3, 5), (4, 3)]]);
+
+        do_test("dyn11", 3, &[&[(0, 1), (1, 2), (2, 0)], &[(3, 6), (4, 6), (5, 6)]]);
+        do_test("dyn3", 3, &[&[(0, 1), (1, 2), (2, 0)], &[(5, 6), (3, 6), (4, 6)]]);
+        do_test("dyn7", 3, &[&[(0, 1), (1, 2), (2, 0)], &[(4, 6), (5, 6), (3, 6)]]);
+        do_test("dyn5", 3, &[&[(0, 1), (1, 2), (2, 0)], &[(6, 3), (6, 4), (6, 5)]]);
+        do_test("dyn9", 3, &[&[(0, 1), (1, 2), (2, 0)], &[(6, 5), (6, 3), (6, 4)]]);
+        do_test("dyn1", 3, &[&[(0, 1), (1, 2), (2, 0)], &[(6, 4), (6, 5), (6, 3)]]);
+    }
 
     #[test]
     fn test_single_phase_tx() {
@@ -638,10 +722,10 @@ mod tests {
         let bus0_uid = bus0.borrow().uid();
         let bus1 = netw.bus_i(1).unwrap();
         let bus1_uid = bus1.borrow().uid();
-        let bts_abc_0 = PHASES_ABC.iter().map(|p| bt!(bus0_uid, *p)).collect();
-        let bts_abcn_1 = PHASES_ABCN.iter().map(|p| bt!(bus1_uid, *p)).collect();
-        let e = netw.add_element(tx.element("transformer", vec![bts_abc_0, bts_abcn_1])).unwrap();
-        dbg!(&e.borrow().branches);
+        let bts = PHASES_ABC.iter().map(|p| bt!(bus0_uid, *p))
+            .chain(PHASES_ABCN.iter().map(|p| bt!(bus1_uid, *p))).collect();
+        let e = netw.add_element(tx.element("transformer", bts)).unwrap();
+        dbg!(&e.borrow().branch_wiring());
     }
 
     #[test]

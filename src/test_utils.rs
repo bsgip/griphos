@@ -169,8 +169,12 @@ pub fn add_tx(netw: &mut Network, bus_uid_g: &str, bus_uid_p: &str, bus_uid_s: &
     let (buss, phss) = bus_and_phases(netw, bus_uid_s);
     assert!(phss == [Phase::A]);
 
-    let btsp: Vec<BusTermId> = vec![bt!(bus_uid_p, Phase::A), bt!(bus_uid_g, Phase::N)];
-    let btss: Vec<BusTermId> = vec![bt!(bus_uid_s, Phase::A), bt!(bus_uid_g, Phase::N)];
+    let bts: Vec<BusTermId> = vec![
+        bt!(bus_uid_p, Phase::A),
+        bt!(bus_uid_g, Phase::N),
+        bt!(bus_uid_s, Phase::A),
+        bt!(bus_uid_g, Phase::N)
+    ];
     let ratio = c!(busp.borrow().v_base / buss.borrow().v_base, 0.0);
     let zs = typical_tx_z_series(1000.0e3, buss.borrow().v_base);
 
@@ -181,7 +185,7 @@ pub fn add_tx(netw: &mut Network, bus_uid_g: &str, bus_uid_p: &str, bus_uid_s: &
             None,
             (C_ZERO, zs),
             "ynyn0"
-        ).unwrap().element(&uid, vec![btsp, btss])
+        ).unwrap().element(&uid, bts)
     ).unwrap()
 }
 
