@@ -534,6 +534,7 @@ impl NodalRectSolver {
             JacTarget::Existing { pos: 0 }
         };
 
+        // Terms involving y_const in KCL
         for (&c64 {re: gmn, im: bmn}, (m, n)) in self.nmod.y_const.iter() {
             let br_m = &self.nmod.branches[m];
             let nd_info_im0 = &self.node_infos[br_m.nd_0_idx];
