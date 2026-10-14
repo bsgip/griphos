@@ -555,6 +555,7 @@ pub fn typical_tx_z_series(s_va: f64, v_v: f64) -> c64 {
 
 #[cfg(test)]
 mod tests {
+    use crate::SolverStatusFlags;
     use crate::load::*;
     use crate::source::*;
     use crate::test_utils::*;
@@ -687,36 +688,32 @@ mod tests {
     fn base_netw() -> Network {
         let mut netw = Network::new();
 
-        let bus0 = add_bus(&mut netw, PHASES_ABCN.to_vec());
-        let bus0_uid = bus0.borrow().uid();
-        let bts_abcn_0: Vec<BusTermId> = PHASES_ABCN.iter().map(|p| bt!(bus0_uid, *p)).collect();
+        let bus_uid_0 = bus_uid(&netw);
+        let bus_0 = netw.add_bus(Bus::new(&bus_uid_0, PHASES_ABCN.to_vec(), 11000.0 * SQRT_3_INV)).unwrap();
+        let bts_abcn_0: Vec<BusTermId> = PHASES_ABCN.iter().map(|p| bt!(bus_uid_0, *p)).collect();
 
-        let bus1 = add_bus(&mut netw, PHASES_ABCN.to_vec());
-        let bus1_uid = bus1.borrow().uid();
-        let bts_abcn_1: Vec<BusTermId> = PHASES_ABCN.iter().map(|p| bt!(bus1_uid, *p)).collect();
+        let bus_uid_1 = bus_uid(&netw);
+        netw.add_bus(Bus::new(&bus_uid_1, PHASES_ABCN.to_vec(), 230.0)).unwrap();
+        let bts_abcn_1: Vec<BusTermId> = PHASES_ABCN.iter().map(|p| bt!(bus_uid_1, *p)).collect();
 
         let source_uid = elem_uid::<Source>(&netw);
-        netw.add_element(Source::new_wye_slack(bus0.borrow().v_base, 3)
+        netw.add_element(Source::new_wye_slack(bus_0.borrow().v_base, 3, true)
             .element(&source_uid, bts_abcn_0, true)).unwrap();
 
         let load_uid = elem_uid::<Source>(&netw);
-        let s = vec![c!(1e-3, 0.0); 3];
-        netw.add_element(Load::new_wye(3, None, None, Some(s), true)
-            .element(&load_uid, bts_abcn_1)).unwrap();
+        let y = vec![c!(1e-6, 0.0); 3];
+        netw.add_element(Load::new_wye(3, Some(y), None, None, true).element(&load_uid, bts_abcn_1)).unwrap();
 
         netw
     }
 
-    #[test]
-    fn test_three_phase_dyn11_tx() {
-        let turns = c!(5.0, 0.0);
-        let zs = c!(0.0, 0.01);
-        let tx = Transformer::new_with_vector_group(
-            3, turns, None, (C_ZERO, zs), "dyn11"
-        ).unwrap();
-        let yc = coo_mat_to_dense(&tx.y_const(), 6, 6);
-        println!("{}", yc);
-        expect_three_phase_yc(&yc);
+    use crate::network_solvers::solve_network;
+
+    fn solve_with_vg(vg: &str) -> Vec<Vec<(f64, f64)>> {
+        const TURNS: c64 = c!(47.826, 0.0);
+        const ZS: c64 = c!(0.0, 0.01);
+        let tx = Transformer::new_with_vector_group(3, TURNS, None, (C_ZERO, ZS), vg).unwrap();
+
         let mut netw = base_netw();
         let bus0 = netw.bus_i(0).unwrap();
         let bus0_uid = bus0.borrow().uid();
@@ -724,8 +721,29 @@ mod tests {
         let bus1_uid = bus1.borrow().uid();
         let bts = PHASES_ABC.iter().map(|p| bt!(bus0_uid, *p))
             .chain(PHASES_ABCN.iter().map(|p| bt!(bus1_uid, *p))).collect();
-        let e = netw.add_element(tx.element("transformer", bts)).unwrap();
-        dbg!(&e.borrow().branch_wiring());
+        netw.add_element(tx.element("transformer", bts)).unwrap();
+        let solve_result = solve_network(&mut netw, "nodal_rect", None);
+        assert!(solve_result.is_ok());
+        let solve_result = solve_result.unwrap();
+        for status in solve_result.statuses.iter() {
+            assert!(status.status.flags.contains(SolverStatusFlags::SUCCESS));
+        }
+        netw.buses()
+            .map(
+                |b| b.borrow().terms.iter().map(|t| t.v.to_polar()).collect::<Vec<(f64, f64)>>()
+            ).collect::<Vec<Vec<(f64, f64)>>>()
+    }
+
+    #[test]
+    fn test_solve() {
+        configure_logging();
+        let vs = solve_with_vg("dyn11");
+        for (i, vs_bus) in vs.iter().enumerate() {
+            println!("bus {i}:");
+            for v in vs_bus.iter() {
+                println!("    {v:?}");
+            }
+        }
     }
 
     #[test]
