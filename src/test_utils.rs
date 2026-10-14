@@ -137,7 +137,7 @@ pub fn add_source(netw: &mut Network, bus_uid: &str) -> Shared<Element> {
     assert!(matches!(phs.last(), Some(Phase::N)));
     let bts: Vec<BusTermId> = phs.iter().map(|p| bt!(bus_uid, *p)).collect();
     let n_phase = phs.len() - 1;
-    netw.add_element(Source::new_wye_slack(bus.borrow().v_base, n_phase).element(&uid, bts, true)).unwrap()
+    netw.add_element(Source::new_wye_slack(bus.borrow().v_base, n_phase, true).element(&uid, bts, true)).unwrap()
 }
 
 // Adds a line between two buses involving all phases and with the given z+, z0.

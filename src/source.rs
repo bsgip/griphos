@@ -24,24 +24,28 @@ pub struct Source {
     /// Branch wiring specified as (term_0, term_1) tuples.
     pub branch_wiring: Vec<(usize, usize)>,
     /// Source control, slack, PV or PQ.
-    pub control: SourceControl
+    pub control: SourceControl,
+    /// Index of any grounded terminal(s), normally the neutral terminal of the load if there is one.
+    pub grounding: Vec<usize>,
 }
 
 impl Source {
     /// Creates a new [`Source`].
     pub fn new(
-        n_terms: usize, branch_wiring: Vec<(usize, usize)>, control: SourceControl
+        n_terms: usize, branch_wiring: Vec<(usize, usize)>, control: SourceControl, grounding: Option<Vec<usize>>
     ) -> Source {
-        Source {n_terms, branch_wiring, control}
+        Source { n_terms, branch_wiring, control, grounding: grounding.unwrap_or_default() }
     }
 
     /// Creates a new wye-connected slack source with default positive sequence reference angles.
-    pub fn new_wye_slack(vmag: f64, n_phases: usize) -> Self {
+    pub fn new_wye_slack(vmag: f64, n_phases: usize, is_grounded: bool) -> Self {
         let vang: Vec<f64> = (0..n_phases).map(|i| (-(i as f64) * TAU / 3.0).rem_euclid(TAU)).collect();
+        let grounding = if is_grounded {vec![n_phases]} else {vec![]};
         Self {
             n_terms: n_phases + 1, // Add 1 for neutral.
             branch_wiring: wye_connection(n_phases).unwrap(),
             control: SourceControl::SL {vmag: vec![vmag; n_phases], vang },
+            grounding,
         }
     }
 
@@ -52,15 +56,18 @@ impl Source {
             n_terms: n_phases,
             branch_wiring: delta_connection(n_phases).unwrap(),
             control: SourceControl::SL {vmag: vec![vmag; n_phases], vang },
+            grounding: vec![],
         }
     }
 
     /// Creates a new wye-connected PV source. n_phases is the number of live terminals.
-    pub fn new_wye_pv(p_tot: f64, vmag: f64, n_phases: usize) -> Self {
+    pub fn new_wye_pv(p_tot: f64, vmag: f64, n_phases: usize, is_grounded: bool) -> Self {
+        let grounding = if is_grounded {vec![n_phases]} else {vec![]};
         Self {
             n_terms: n_phases + 1,
             branch_wiring: wye_connection(n_phases).unwrap(),
-            control: SourceControl::PV { p: vec![p_tot / n_phases as f64; n_phases], vmag: vec![vmag; n_phases] }
+            control: SourceControl::PV { p: vec![p_tot / n_phases as f64; n_phases], vmag: vec![vmag; n_phases] },
+            grounding,
         }
     }
 
@@ -69,16 +76,19 @@ impl Source {
         Self {
             n_terms: n_phases,
             branch_wiring: delta_connection(n_phases).unwrap(),
-            control: SourceControl::PV { p: vec![p_tot / n_phases as f64; n_phases], vmag: vec![vmag; n_phases] }
+            control: SourceControl::PV { p: vec![p_tot / n_phases as f64; n_phases], vmag: vec![vmag; n_phases] },
+            grounding: vec![],
         }
     }
 
     /// Creates a new wye-connected PQ (uncontrolled) source. n_phases is the number of live terminals.
-    pub fn new_wye_pq(s_tot: c64, n_phases: usize) -> Self {
+    pub fn new_wye_pq(s_tot: c64, n_phases: usize, is_grounded: bool) -> Self {
+        let grounding = if is_grounded {vec![n_phases]} else {vec![]};
         Self {
             n_terms: n_phases + 1,
             branch_wiring: wye_connection(n_phases).unwrap(),
-            control: SourceControl::PQ { s: vec![s_tot / n_phases as f64; n_phases] }
+            control: SourceControl::PQ { s: vec![s_tot / n_phases as f64; n_phases] },
+            grounding,
         }
     }
 
@@ -87,7 +97,8 @@ impl Source {
         Self {
             n_terms: n_phases + 1,
             branch_wiring: delta_connection(n_phases).unwrap(),
-            control: SourceControl::PQ { s: vec![s_tot / n_phases as f64; n_phases] }
+            control: SourceControl::PQ { s: vec![s_tot / n_phases as f64; n_phases] },
+            grounding: vec![],
         }
     }
 
@@ -152,6 +163,10 @@ impl ElementSpec for Source {
             },
             _ => vec![]
         }
+    }
+
+    fn grounding(&self) -> Vec<usize> {
+        self.grounding.clone()
     }
 }
 

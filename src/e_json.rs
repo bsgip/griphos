@@ -285,7 +285,7 @@ fn handle_infeeder(
     bts.push(bt!("G".to_string(), Phase::N));
     let in_service = convert_in_service(in_service);
     let vmag = v_setpoint.0 * V_FACTOR;
-    let elem = netw.add_element(Source::new_wye_slack(vmag, bts.len() - 1).element(id, bts, true)).unwrap();
+    let elem = netw.add_element(Source::new_wye_slack(vmag, bts.len() - 1, true).element(id, bts, true)).unwrap();
     elem.borrow_mut().is_in_service = in_service;
     Ok(())
 }
