@@ -567,7 +567,7 @@ mod tests {
         let copper_plate = vec![vec![0, 1]]; // Copper plate two nodes together
 
         netw.add_element(
-            (GenericElement {n_terms: 2, branches: vec![(0, 1)], y_const, ..Default::default()})
+            (GenericElement {n_terms: 2, branch_wiring: vec![(0, 1)], y_const, ..Default::default()})
                 .element("y01", vec![bt!("bus_0", Phase::A), bt!("bus_1", Phase::A)])).unwrap();
 
         netw.add_element(
@@ -601,16 +601,16 @@ mod tests {
         // We expect buses 2 and 3 to get aggregated into a single ground node, thus the indexing
         // should be 0, 1, 1, 2
         netw.add_element(
-            (GenericElement {n_terms: 2, branches: vec![(0, 1)], y_const: y_const.clone(), ..Default::default()})
+            (GenericElement {n_terms: 2, branch_wiring: vec![(0, 1)], y_const: y_const.clone(), ..Default::default()})
                 .element("y01", bts(0, 1))).unwrap();
         netw.add_element(
-            (GenericElement {n_terms: 2, branches: vec![(0, 1)], y_const: y_const.clone(), ..Default::default()})
+            (GenericElement {n_terms: 2, branch_wiring: vec![(0, 1)], y_const: y_const.clone(), ..Default::default()})
                 .element("y12", bts(1, 2))).unwrap();
         netw.add_element(
             (GenericElement {n_terms: 2, grounding: vec![0, 1], ..Default::default()})
             .element("g12", bts(1, 2))).unwrap();
         netw.add_element(
-            (GenericElement {n_terms: 2, branches: vec![(0, 1)], y_const, ..Default::default()})
+            (GenericElement {n_terms: 2, branch_wiring: vec![(0, 1)], y_const, ..Default::default()})
             .element("y23", bts(2, 3))).unwrap();
         let mods = NetworkModels::new(&netw);
         assert!(mods.master.nodes.len() == 3);

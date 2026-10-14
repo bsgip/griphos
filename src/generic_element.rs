@@ -8,8 +8,8 @@ use crate::TypeStrOf;
 pub struct GenericElement {
     /// Number of bus terminals.
     pub n_terms: usize,
-    /// Branches, as a vector of `(term_0, term_1)` tuples.
-    pub branches: Vec<(usize, usize)>,
+    /// Branch wiring, as a vector of `(term_0, term_1)` tuples.
+    pub branch_wiring: Vec<(usize, usize)>,
     /// Constant admittance component, as branch admittance matrix elements.
     ///
     /// Mostly, the admittance matrix will be diagonal, with indices indicating which branch has the given admittance.
@@ -34,11 +34,13 @@ impl GenericElement {
     /// Creates a new GenericElement.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        n_terms: usize, branches: Vec<(usize, usize)>, y_const: CooMat<c64>, i_const: Vec<(usize, c64)>,
+        n_terms: usize, branch_wiring: Vec<(usize, usize)>, y_const: CooMat<c64>, i_const: Vec<(usize, c64)>,
         s_const: Vec<(usize, c64)>, vmag_const: Vec<(usize, f64)>, vang_const: Vec<(usize, f64)>,
         copper_plate: Vec<Vec<usize>>, grounding: Vec<usize>
     ) -> GenericElement {
-        GenericElement {n_terms, branches, y_const, i_const, s_const, vmag_const, vang_const, copper_plate, grounding}
+        GenericElement {
+            n_terms, branch_wiring, y_const, i_const, s_const, vmag_const, vang_const, copper_plate, grounding
+        }
     }
 
     /// Wraps a GenericElement in an Element, with given bus terminal connections.
@@ -53,11 +55,11 @@ impl ElementSpec for GenericElement {
     }
 
     fn n_branches(&self) -> usize {
-        self.branches.len()
+        self.branch_wiring.len()
     }
 
     fn branch_wiring(&self) -> Vec<(usize, usize)> {
-        self.branches.clone()
+        self.branch_wiring.clone()
     }
 
     fn y_const(&self) -> CooMat<c64> {

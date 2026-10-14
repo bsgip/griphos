@@ -9,8 +9,8 @@ use crate::TypeStrOf;
 pub struct Load {
     /// The number of terminals.
     pub n_terms: usize,
-    /// The branches, each in the form (term_0_idx, term_1_idx)
-    pub branches: Vec<(usize, usize)>,
+    /// The branch wiring entries, each item in the form (term_0_idx, term_1_idx)
+    pub branch_wiring: Vec<(usize, usize)>,
     /// constant Y component of ZIP model, equivalent to Z in ZIP.
     pub y_const: CooMat<c64>,
     /// constant I component of ZIP model, equivalent to I in ZIP.
@@ -25,7 +25,7 @@ impl Load {
     /// Creates a new load.
     pub fn new(
         n_terms: usize,
-        branches: Vec<(usize, usize)>,
+        branch_wiring: Vec<(usize, usize)>,
         y_const: Option<CooMat<c64>>,
         i_const: Option<Vec<(usize, c64)>>,
         s_const: Option<Vec<(usize, c64)>>,
@@ -33,7 +33,7 @@ impl Load {
     ) -> Load {
         Load {
             n_terms,
-            branches,
+            branch_wiring,
             y_const: y_const.unwrap_or_default(),
             i_const: i_const.unwrap_or_default(),
             s_const: s_const.unwrap_or_default(),
@@ -46,7 +46,7 @@ impl Load {
         n_phases: usize, y_const: Option<Vec<c64>>, i_const: Option<Vec<c64>>, s_const: Option<Vec<c64>>,
         is_grounded: bool
     ) -> Load {
-        let branches = (1..=n_phases).map(|i| (i, 0)).collect();
+        let branch_wiring = (1..=n_phases).map(|i| (i, 0)).collect();
 
         let y_const: CooMat<c64> = if let Some(yca) = y_const {
             yca.iter().cloned().enumerate().map(|(i, ycai)| ((i, i), ycai)).collect()
@@ -62,7 +62,7 @@ impl Load {
 
         Load {
             n_terms: n_phases + 1,
-            branches,
+            branch_wiring,
             y_const,
             i_const,
             s_const,
@@ -74,7 +74,7 @@ impl Load {
     pub fn new_delta(
         n_phases: usize, y_const: Option<Vec<c64>>, i_const: Option<Vec<c64>>, s_const: Option<Vec<c64>>
     ) -> Load {
-        let branches: Vec<(usize, usize)> = (0..n_phases).map(|i| (i, (i+1) % n_phases)).collect();
+        let branch_wiring: Vec<(usize, usize)> = (0..n_phases).map(|i| (i, (i+1) % n_phases)).collect();
 
         let y_const: CooMat<c64> = if let Some(yca) = y_const {
             yca.iter().cloned().enumerate().map(|(i, ycai)| ((i, i), ycai)).collect()
@@ -88,7 +88,7 @@ impl Load {
 
         Load {
             n_terms: n_phases,
-            branches,
+            branch_wiring,
             y_const,
             i_const,
             s_const,
@@ -108,11 +108,11 @@ impl ElementSpec for Load {
     }
 
     fn n_branches(&self) -> usize {
-        self.branches.len()
+        self.branch_wiring.len()
     }
 
     fn branch_wiring(&self) -> Vec<(usize, usize)> {
-        self.branches.clone()
+        self.branch_wiring.clone()
     }
 
     fn y_const(&self) -> CooMat<c64> {

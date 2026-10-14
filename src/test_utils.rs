@@ -64,7 +64,7 @@ pub fn add_y_const(
     netw.add_element(
         GenericElement {
             n_terms: 2,
-            branches: vec![(0usize, 1usize)],
+            branch_wiring: vec![(0usize, 1usize)],
             y_const: vec![((0, 0), y_const)],
             ..Default::default()
         }.element(&uid, bts)
@@ -80,7 +80,7 @@ pub fn add_i_const(
     netw.add_element(
         GenericElement {
             n_terms: 2,
-            branches: vec![(0usize, 1usize)],
+            branch_wiring: vec![(0usize, 1usize)],
             i_const: vec![(0, i_const)],
             ..Default::default()
         }.element(&uid, bts)
@@ -96,7 +96,7 @@ pub fn add_s_const(
     netw.add_element(
         GenericElement {
             n_terms: 2,
-            branches: vec![(0usize, 1usize)],
+            branch_wiring: vec![(0usize, 1usize)],
             s_const: vec![(0, s_const)],
             ..Default::default()
         }.element(&uid, bts)
@@ -112,7 +112,7 @@ pub fn add_v_const(
     netw.add_element(
         GenericElement {
             n_terms: 2,
-            branches: vec![(0usize, 1usize)],
+            branch_wiring: vec![(0usize, 1usize)],
             vmag_const: vec![(0, v_const)],
             vang_const: vec![(0, 0.0)],
             ..Default::default()

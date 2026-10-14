@@ -140,7 +140,7 @@ pub struct Transformer {
 
     /// In transformers, the branches are [(start_terminal_idx, end_terminal_idx)] indexed by winding. The
     /// start_terminal_idx can be equated with the "dotted" terminals for each winding.
-    pub branches: Vec<(usize, usize)>,
+    pub branch_wiring: Vec<(usize, usize)>,
 }
 
 impl Transformer {
@@ -171,8 +171,8 @@ impl Transformer {
         z_series: Vec<c64>,
         terminal_mapping: Vec<Vec<(usize, usize)>>,
     ) -> Result<Self, TransformerError> {
-        let branches: Vec<(usize, usize)> = terminal_mapping.iter().cloned().flatten().collect();
-        let mut terms: Vec<usize> = branches.iter().flat_map(|(i, j)| [*i, *j]).collect();
+        let branch_wiring: Vec<(usize, usize)> = terminal_mapping.iter().cloned().flatten().collect();
+        let mut terms: Vec<usize> = branch_wiring.iter().flat_map(|(i, j)| [*i, *j]).collect();
         terms.sort();
         terms.dedup();
         let n_terms = terms.len();
@@ -180,7 +180,7 @@ impl Transformer {
             // Set of terminals must be a contiguous set {0...n_terms}
             return Err(TransformerError::BadTerminalMapping(terminal_mapping));
         }
-        Ok(Transformer {n_sides, n_phases, nom_turns, taps, z_series, n_terms: terms.len(), branches})
+        Ok(Transformer {n_sides, n_phases, nom_turns, taps, z_series, n_terms: terms.len(), branch_wiring})
     }
 
     /// Creates a new two-winding [`Transformer`] with the given vector group, number of phases and other data.
@@ -261,7 +261,7 @@ impl ElementSpec for Transformer {
 
     /// Branches are ordered as, e.g.,  [PA, SA, PB, SB, ...]
     fn branch_wiring(&self) -> Vec<(usize, usize)> {
-        self.branches.clone()
+        self.branch_wiring.clone()
     }
 
     fn y_const(&self) -> CooMat<c64> {

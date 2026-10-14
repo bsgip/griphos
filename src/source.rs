@@ -21,8 +21,8 @@ pub enum SourceControl {
 pub struct Source {
     /// Number of terminals on the source.
     pub n_terms: usize,
-    /// Branches specified as (term_0, term_1) tuples.
-    pub branches: Vec<(usize, usize)>,
+    /// Branch wiring specified as (term_0, term_1) tuples.
+    pub branch_wiring: Vec<(usize, usize)>,
     /// Source control, slack, PV or PQ.
     pub control: SourceControl
 }
@@ -30,9 +30,9 @@ pub struct Source {
 impl Source {
     /// Creates a new [`Source`].
     pub fn new(
-        n_terms: usize, branches: Vec<(usize, usize)>, control: SourceControl
+        n_terms: usize, branch_wiring: Vec<(usize, usize)>, control: SourceControl
     ) -> Source {
-        Source {n_terms, branches, control}
+        Source {n_terms, branch_wiring, control}
     }
 
     /// Creates a new wye-connected slack source with default positive sequence reference angles.
@@ -40,7 +40,7 @@ impl Source {
         let vang: Vec<f64> = (0..n_phases).map(|i| (-(i as f64) * TAU / 3.0).rem_euclid(TAU)).collect();
         Self {
             n_terms: n_phases + 1, // Add 1 for neutral.
-            branches: wye_connection(n_phases).unwrap(),
+            branch_wiring: wye_connection(n_phases).unwrap(),
             control: SourceControl::SL {vmag: vec![vmag; n_phases], vang },
         }
     }
@@ -50,7 +50,7 @@ impl Source {
         let vang: Vec<f64> = (0..n_phases).map(|i| (((1 - i) as f64) * TAU / 3.0).rem_euclid(TAU)).collect();
         Self {
             n_terms: n_phases,
-            branches: delta_connection(n_phases).unwrap(),
+            branch_wiring: delta_connection(n_phases).unwrap(),
             control: SourceControl::SL {vmag: vec![vmag; n_phases], vang },
         }
     }
@@ -59,7 +59,7 @@ impl Source {
     pub fn new_wye_pv(p_tot: f64, vmag: f64, n_phases: usize) -> Self {
         Self {
             n_terms: n_phases + 1,
-            branches: wye_connection(n_phases).unwrap(),
+            branch_wiring: wye_connection(n_phases).unwrap(),
             control: SourceControl::PV { p: vec![p_tot / n_phases as f64; n_phases], vmag: vec![vmag; n_phases] }
         }
     }
@@ -68,7 +68,7 @@ impl Source {
     pub fn new_delta_pv(p_tot: f64, vmag: f64, n_phases: usize) -> Self {
         Self {
             n_terms: n_phases,
-            branches: delta_connection(n_phases).unwrap(),
+            branch_wiring: delta_connection(n_phases).unwrap(),
             control: SourceControl::PV { p: vec![p_tot / n_phases as f64; n_phases], vmag: vec![vmag; n_phases] }
         }
     }
@@ -77,7 +77,7 @@ impl Source {
     pub fn new_wye_pq(s_tot: c64, n_phases: usize) -> Self {
         Self {
             n_terms: n_phases + 1,
-            branches: wye_connection(n_phases).unwrap(),
+            branch_wiring: wye_connection(n_phases).unwrap(),
             control: SourceControl::PQ { s: vec![s_tot / n_phases as f64; n_phases] }
         }
     }
@@ -86,7 +86,7 @@ impl Source {
     pub fn new_delta_pq(s_tot: c64, n_phases: usize) -> Self {
         Self {
             n_terms: n_phases + 1,
-            branches: delta_connection(n_phases).unwrap(),
+            branch_wiring: delta_connection(n_phases).unwrap(),
             control: SourceControl::PQ { s: vec![s_tot / n_phases as f64; n_phases] }
         }
     }
@@ -97,7 +97,7 @@ impl Source {
     /// positive sequence angles for phases A, B, C.
     pub fn element(mut self, id: &str, bus_term_ids: Vec<BusTermId>, set_angle_refs_from_phases: bool) -> Element {
         if set_angle_refs_from_phases && let SourceControl::SL {vmag: _, vang } = &mut self.control {
-            *vang = self.branches.iter().map(
+            *vang = self.branch_wiring.iter().map(
                 |(i0, i1)| (bus_term_ids[*i0].p.v_nom_pu() - bus_term_ids[*i1].p.v_nom_pu()).arg()
             ).collect();
         }
@@ -111,11 +111,11 @@ impl ElementSpec for Source {
     }
 
     fn n_branches(&self) -> usize {
-        self.branches.len()
+        self.branch_wiring.len()
     }
 
     fn branch_wiring(&self) -> Vec<(usize, usize)> {
-        self.branches.clone()
+        self.branch_wiring.clone()
     }
 
     /// The constant power component of a [`Source`] depends on its [`SourceControl`] type.
