@@ -46,6 +46,7 @@ impl Load {
         n_phases: usize, y_const: Option<Vec<c64>>, i_const: Option<Vec<c64>>, s_const: Option<Vec<c64>>,
         is_grounded: bool
     ) -> Load {
+        let n_terms = n_phases + 1;
         let branch_wiring = (1..=n_phases).map(|i| (i, 0)).collect();
 
         let y_const: CooMat<c64> = if let Some(yca) = y_const {
@@ -58,10 +59,10 @@ impl Load {
 
         let s_const = if let Some(sca) = s_const {sca.iter().cloned().enumerate().collect()} else {vec![]};
 
-        let grounding = if is_grounded {vec![0]} else {vec![]};
+        let grounding = if is_grounded {vec![n_phases]} else {vec![]};
 
         Load {
-            n_terms: n_phases + 1,
+            n_terms,
             branch_wiring,
             y_const,
             i_const,
