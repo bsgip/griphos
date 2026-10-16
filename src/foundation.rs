@@ -16,7 +16,7 @@ pub use nalgebra::ComplexField;
 use num_traits::Zero;
 use petgraph::graph::UnGraph;
 use regex::Regex;
-pub use sprs::{CompressedStorage, CsMatBase, CsMat, CsMatI, CsVec, TriMat, TriMatI};
+pub use sprs::{CompressedStorage, CsMatBase, CsMat, CsMatI, CsVecBase, CsVec, TriMat, TriMatI};
 use serde::{Serialize, Serializer};
 use serde::ser::{SerializeMap, SerializeSeq, SerializeTuple};
 
@@ -521,6 +521,70 @@ where
             let suffix = if i == nrows - 1 { "]" } else { ";" };
 
             writeln!(f, "{}    {}    {} # {}", prefix, inner, suffix, row_names_ref[i])?;
+        }
+
+        // Bottom separator
+        writeln!(f, "#{sep}")?;
+
+        Ok(())
+    }
+}
+
+/// Pretty printing for [`CsVec`]s.
+impl<'a, T, I, IndStorage, DataStorage> fmt::Display
+    for PrettyPrint<'a, CsVecBase<IndStorage, DataStorage, T, I>, Option<&[String]>>
+where
+    T: fmt::Display + Copy,
+    I: sprs::SpIndex,
+    IndStorage: std::ops::Deref<Target = [I]>,
+    DataStorage: std::ops::Deref<Target = [T]>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let vec = &self.0;
+        let names = self.1;
+
+        let n = vec.dim();
+
+        // Fall back to numeric indices when no names are given
+        let names_stor: Vec<String>;
+        let names_ref: &[String] = match names {
+            Some(names) => names,
+            None => {
+                names_stor = (0..n).map(|i| i.to_string()).collect();
+                &names_stor
+            }
+        };
+
+        let cells: Vec<String> = (0..n)
+            .map(|i| match vec.get(i) {
+                Some(v) => format!("{:.4}", v),
+                None => "0".to_string(),
+            })
+            .collect();
+
+        let col_width = cells.iter().map(|s| s.len()).max().unwrap_or(1).max(2);
+        let sep_width = col_width + 2 + 1;
+
+        // Column header (a vector has a single column)
+        writeln!(f, "#    {:>width$}", "0", width = col_width)?;
+
+        let sep = "-".repeat(sep_width + 24);
+
+        // Top separator
+        writeln!(f, "# {sep}")?;
+
+        // Rows
+        for (i, cell) in cells.iter().enumerate() {
+            let prefix = if i == 0     { "[" } else { " " };
+            let suffix = if i == n - 1 { "]" } else { ";" };
+            let name = names_ref.get(i).map(String::as_str).unwrap_or("");
+
+            writeln!(
+                f,
+                "{}    {:>width$}    {} # {}",
+                prefix, cell, suffix, name,
+                width = col_width
+            )?;
         }
 
         // Bottom separator
