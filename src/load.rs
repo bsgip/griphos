@@ -47,7 +47,7 @@ impl Load {
         is_grounded: bool
     ) -> Load {
         let n_terms = n_phases + 1;
-        let branch_wiring = (1..=n_phases).map(|i| (i, 0)).collect();
+        let branch_wiring = (0..n_phases).map(|i| (i, n_phases)).collect();
 
         let y_const: CooMat<c64> = if let Some(yca) = y_const {
             yca.iter().cloned().enumerate().map(|(i, ycai)| ((i, i), ycai)).collect()
