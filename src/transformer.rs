@@ -171,7 +171,11 @@ impl Transformer {
         z_series: Vec<c64>,
         terminal_mapping: Vec<Vec<(usize, usize)>>,
     ) -> Result<Self, TransformerError> {
-        let branch_wiring: Vec<(usize, usize)> = terminal_mapping.iter().cloned().flatten().collect();
+        fn flatten_transposed<T>(v: &[Vec<T>]) -> Vec<T> where T: Clone {
+            let cols = v.first().map_or(0, Vec::len);
+            (0..cols).flat_map(|i| v.iter().map(move |row| &row[i])).cloned().collect()
+        }
+        let branch_wiring: Vec<(usize, usize)> = flatten_transposed(&terminal_mapping);
         let mut terms: Vec<usize> = branch_wiring.iter().flat_map(|(i, j)| [*i, *j]).collect();
         terms.sort();
         terms.dedup();
@@ -700,7 +704,7 @@ mod tests {
         netw.add_element(Source::new_wye_slack(bus_0.borrow().v_base, 3, true)
             .element(&source_uid, bts_abcn_0, true)).unwrap();
 
-        let load_uid = elem_uid::<Source>(&netw);
+        let load_uid = elem_uid::<Load>(&netw);
         let y = vec![c!(1e-6, 0.0); 3];
         netw.add_element(Load::new_wye(3, Some(y), None, None, true).element(&load_uid, bts_abcn_1)).unwrap();
 
@@ -719,9 +723,10 @@ mod tests {
         let bus0_uid = bus0.borrow().uid();
         let bus1 = netw.bus_i(1).unwrap();
         let bus1_uid = bus1.borrow().uid();
-        let bts = PHASES_ABC.iter().map(|p| bt!(bus0_uid, *p))
+        let bts = PHASES_ABCN.iter().map(|p| bt!(bus0_uid, *p))
             .chain(PHASES_ABCN.iter().map(|p| bt!(bus1_uid, *p))).collect();
         netw.add_element(tx.element("transformer", bts)).unwrap();
+
         let solve_result = solve_network(&mut netw, "nodal_rect", None);
         assert!(solve_result.is_ok());
         let solve_result = solve_result.unwrap();
@@ -737,7 +742,7 @@ mod tests {
     #[test]
     fn test_solve() {
         configure_logging();
-        let vs = solve_with_vg("dyn11");
+        let vs = solve_with_vg("yy0");
         for (i, vs_bus) in vs.iter().enumerate() {
             println!("bus {i}:");
             for v in vs_bus.iter() {
