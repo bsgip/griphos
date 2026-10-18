@@ -9,13 +9,13 @@ use crate::TypeStrOf;
 #[derive(Debug, Serialize, TypeStrOf)]
 pub struct Grounding {
     /// The number of terminals to ground.
-    pub n_term: usize,
+    pub n_terms: usize,
 }
 
 impl Grounding {
     /// Creates a new [`Grounding`].
-    pub fn new(n_term: usize) -> Grounding {
-        Grounding {n_term}
+    pub fn new(n_terms: usize) -> Grounding {
+        Grounding {n_terms}
     }
 
     /// Wraps grounding in an [`Element`] with the given terminal mapping.
@@ -25,7 +25,19 @@ impl Grounding {
 }
 
 impl ElementSpec for Grounding {
-    fn grounding(&self) -> Vec<usize> {(0..self.n_term).collect()}
+    fn n_terms(&self) -> usize {
+        self.n_terms
+    }
+
+    fn n_branches(&self) -> usize {
+        0
+    }
+
+    fn branch_wiring(&self) -> Vec<(usize, usize)> {
+        vec![]
+    }
+
+    fn grounding(&self) -> Vec<usize> {(0..self.n_terms).collect()}
 }
 
 impl_g_serialize!(Grounding);

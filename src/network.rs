@@ -448,17 +448,26 @@ impl<T: TypeStrOf> TypeStr for T {
 /// An element_spec collects together electrical connections of various types such as constant y or constant s.
 pub trait ElementSpec: Any + std::fmt::Debug + Send + Sync + TypeStrOf + TypeStr {
     fn element_generic(self, uid: &str, bus_term_ids: Vec<BusTermId>) -> Element where Self: Sized + 'static {
+        let n_terms = self.n_terms();
+        assert!(
+            bus_term_ids.len() == n_terms,
+            "element {} has the wrong number of terminals, have {}, expecting {}", uid, bus_term_ids.len(), n_terms
+        );
+        assert!(
+            self.branch_wiring().iter().flat_map(|(i, j)| [i, j]).all(|k| *k < n_terms),
+            "wiring for element {} contains terminal indices that are >= the number of terminals", &uid
+        );
         Element::new(uid, bus_term_ids, self)
     }
 
     /// Returns the number of terminals (connection points).
-    fn n_terms(&self) -> usize {0}
+    fn n_terms(&self) -> usize;
 
     /// Returns the number of branches (node-node connections)
-    fn n_branches(&self) -> usize {0}
+    fn n_branches(&self) -> usize;
 
     /// Branch wiring, term_idx_i -> term_idx_j.
-    fn branch_wiring(&self) -> Vec<(usize, usize)> {vec![]}
+    fn branch_wiring(&self) -> Vec<(usize, usize)>;
 
     /// Is the element live (e.g. switched on)?
     fn is_live(&self) -> bool {true}
