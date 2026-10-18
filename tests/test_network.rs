@@ -38,7 +38,7 @@ mod tests {
                 )).unwrap();
 
         netw.add_element(
-            Source::new_wye_slack(1.0, 3)
+            Source::new_wye_slack(1.0, 3, false)
                 .element("src_1abc", vec![bpg.clone(), bp1a.clone(), bp1b.clone(), bp1c.clone()], true)
         ).unwrap();
 
