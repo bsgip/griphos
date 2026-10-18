@@ -12,8 +12,8 @@
 // connected and grounded.
 
 use griphos::{
-    Bus, BusTermId, C_ZERO, Grounding, Line, Load, Network, Phase, SQRT_3, Source, Transformer, bt, c, c64,
-    typical_tx_z_series
+    Bus, BusTermId, C_ZERO, Line, Load, Network, Phase, SQRT_3, Source,
+    Transformer, bt, c, c64, typical_tx_z_series
 };
 
 fn main() {
@@ -56,7 +56,7 @@ fn main() {
     netw.add_bus(Bus::new("tx_lv_bus", ABCN.to_vec(), V_LV))
         .unwrap();
 
-    // Ground the neutral phases, using a Grounding elements.
+    // Add a wye-connected source on src_bus.
     //
     // Note that each different element type (i.e. the implementors of
     // ElementSpec, like Line, Transformer, Load, etc.), normally have its own
@@ -65,34 +65,23 @@ fn main() {
     // on the details of the element type.
     //
     // Add an element to the network...
-    let grounding_src = netw.add_element(
-        // ... Grounding with 1 terminal
-        Grounding::new(1)
+    let source = netw.add_element(
+        // A source element, with 3 live phases (plus grounded neutral since
+        // it's a wye connection - the `true` grounds the neutral).
+        Source::new_wye_slack(V_MV, 3, true)
             // Wrap it in it's own element...
             .element(
-                // with UID "grounding_src_bus"...
-                "grounding_src_bus",
-                // and connect the element to phase N of src_bus.
-                vec![bt!("src_bus", Phase::N)]
-            )).expect("problem adding source grounding");
-
-    // We grabbed a handle to the new element, and like buses we can access it
-    // using borrow()
-    println!("Source grounding:\n{}", grounding_src.borrow());
-
-    netw.add_element(Grounding::new(1).element(
-        "grounding_tx_lv_bus", vec![bt!("tx_lv_bus", Phase::N)]
-    )).expect("problem adding transformer grounding");
-
-    // Add a wye-connected source on src_bus.
-    netw.add_element(
-        Source::new_wye_slack(V_MV, 3)
-            .element(
+                // with UID "source"...
                 "source",
+                // and connect to phases ABCN of src_bus, N being neutral.
                 ABCN.iter().map(|ph| bt!("src_bus", *ph)).collect(),
                 true
             )
     ).expect("problem adding source");
+
+    // We grabbed a handle to the new element, and like buses we can access it
+    // using borrow()
+    println!("Source element:\n{}", source.borrow());
 
     // Add a three-wire line between the src_bus and tx_mv_bus. The element(...)
     // member for Lines takes a UID and two lists of BusTermIds: one for the
@@ -113,19 +102,17 @@ fn main() {
     let zs = typical_tx_z_series(500.0e3, 230.0); // Utility function for typical transformer series impedance.
     netw.add_element(
         Transformer::new_with_vector_group(
-            3,                  // 3 phases, i.e. 3 pairs of windings
+            3,                  // 3 phases, i.e. 3 pairs of coupled windings
             47.826.into(),      // complex ratio = 11 kV / 230 V
             None,               // No taps for this transformer.
-            (C_ZERO, zs),       // Series impedance.
+            (C_ZERO, zs),       // Series impedance (z_primary, z_secondary).
             "dyn11"             // Vector group string, all lowercase.
-        )
-            .expect("problem creating transformer")
+        ).expect("problem creating transformer")
             .element(
                 "transformer",
-                vec![
-                    ABC.iter().map(|ph| bt!("tx_mv_bus", *ph)).collect(),   // Primary phases.
-                    ABCN.iter().map(|ph| bt!("tx_lv_bus", *ph)).collect(),  // Secondary phases.
-                ]
+                ABC.iter().map(|ph| bt!("tx_mv_bus", *ph)).chain(
+                    ABCN.iter().map(|ph| bt!("tx_lv_bus", *ph))
+                ).collect(),  // Secondary phases.
             )
     ).expect("problem adding transformer");
 
