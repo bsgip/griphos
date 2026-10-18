@@ -180,7 +180,7 @@ pub fn add_tx(netw: &mut Network, bus_uid_g: &str, bus_uid_p: &str, bus_uid_s: &
 
     netw.add_element(
         Transformer::new_with_vector_group(
-            3,
+            1,
             ratio,
             None,
             (C_ZERO, zs),
