@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 use ::griphos as gr;
 use gr::{c64, Shared, IntoShared};
 use crate::plumbing::{element_subclass};
-use crate::network::{BusPhaseId, bus_phase_ids_to_gr};
+use crate::network::{BusTermId, bus_term_ids_to_gr};
 
 #[pyclass(eq, from_py_object)]
 #[derive(Clone, PartialEq)]
@@ -59,67 +59,68 @@ impl Source {
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
     pub fn new_raw(
         uid: &str,
-        bus_phase_ids: Vec<BusPhaseId>,
+        bus_term_ids: Vec<BusTermId>,
         branches: Vec<(usize, usize)>,
-        control: SourceControl
+        control: SourceControl,
+        grounding: Option<Vec<usize>>,
     ) -> Self {
-        let gr_source = gr::Source::new(bus_phase_ids.len(), branches, control.into());
-        let bps = bus_phase_ids_to_gr(bus_phase_ids);
-        let elem = gr_source.element(uid, bps, false).into_shared();
+        let gr_source = gr::Source::new(bus_term_ids.len(), branches, control.into(), grounding);
+        let bts = bus_term_ids_to_gr(bus_term_ids);
+        let elem = gr_source.element(uid, bts, false).into_shared();
         Source::from_elem(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
-    pub fn new_wye_slack_raw(uid: &str, bus_phase_ids: Vec<BusPhaseId>, vmag: f64) -> Self {
-        let n_phases = bus_phase_ids.len() - 1;
-        let gr_source = gr::Source::new_wye_slack(vmag, n_phases);
-        let bps = bus_phase_ids_to_gr(bus_phase_ids);
-        let elem = gr_source.element(uid, bps, true).into_shared();
+    pub fn new_wye_slack_raw(uid: &str, bus_term_ids: Vec<BusTermId>, vmag: f64, is_grounded: bool) -> Self {
+        let n_phases = bus_term_ids.len() - 1;
+        let gr_source = gr::Source::new_wye_slack(vmag, n_phases, is_grounded);
+        let bts = bus_term_ids_to_gr(bus_term_ids);
+        let elem = gr_source.element(uid, bts, true).into_shared();
         Source::from_elem(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
-    pub fn new_delta_slack_raw(uid: &str, bus_phase_ids: Vec<BusPhaseId>, vmag: f64) -> Self {
-        let n_phases = bus_phase_ids.len();
+    pub fn new_delta_slack_raw(uid: &str, bus_term_ids: Vec<BusTermId>, vmag: f64) -> Self {
+        let n_phases = bus_term_ids.len();
         let gr_source = gr::Source::new_delta_slack(vmag, n_phases);
-        let bps = bus_phase_ids_to_gr(bus_phase_ids);
-        let elem = gr_source.element(uid, bps, true).into_shared();
+        let bts = bus_term_ids_to_gr(bus_term_ids);
+        let elem = gr_source.element(uid, bts, true).into_shared();
         Source::from_elem(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
-    pub fn new_wye_pv_raw(uid: &str, bus_phase_ids: Vec<BusPhaseId>, p_tot: f64, vmag: f64) -> Self {
-        let n_phases = bus_phase_ids.len() - 1;
-        let gr_source = gr::Source::new_wye_pv(p_tot, vmag, n_phases);
-        let bps = bus_phase_ids_to_gr(bus_phase_ids);
-        let elem = gr_source.element(uid, bps, true).into_shared();
+    pub fn new_wye_pv_raw(uid: &str, bus_term_ids: Vec<BusTermId>, p_tot: f64, vmag: f64, is_grounded: bool) -> Self {
+        let n_phases = bus_term_ids.len() - 1;
+        let gr_source = gr::Source::new_wye_pv(p_tot, vmag, n_phases, is_grounded);
+        let bts = bus_term_ids_to_gr(bus_term_ids);
+        let elem = gr_source.element(uid, bts, true).into_shared();
         Source::from_elem(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
-    pub fn new_delta_pv_raw(uid: &str, bus_phase_ids: Vec<BusPhaseId>, p_tot: f64, vmag: f64) -> Self {
-        let n_phases = bus_phase_ids.len();
+    pub fn new_delta_pv_raw(uid: &str, bus_term_ids: Vec<BusTermId>, p_tot: f64, vmag: f64) -> Self {
+        let n_phases = bus_term_ids.len();
         let gr_source = gr::Source::new_delta_pv(p_tot, vmag, n_phases);
-        let bps = bus_phase_ids_to_gr(bus_phase_ids);
-        let elem = gr_source.element(uid, bps, true).into_shared();
+        let bts = bus_term_ids_to_gr(bus_term_ids);
+        let elem = gr_source.element(uid, bts, true).into_shared();
         Source::from_elem(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
-    pub fn new_wye_pq_raw(uid: &str, bus_phase_ids: Vec<BusPhaseId>, s_tot: c64) -> Self {
-        let n_phases = bus_phase_ids.len() - 1;
-        let gr_source = gr::Source::new_wye_pq(s_tot, n_phases);
-        let bps = bus_phase_ids_to_gr(bus_phase_ids);
-        let elem = gr_source.element(uid, bps, true).into_shared();
+    pub fn new_wye_pq_raw(uid: &str, bus_term_ids: Vec<BusTermId>, s_tot: c64, is_grounded: bool) -> Self {
+        let n_phases = bus_term_ids.len() - 1;
+        let gr_source = gr::Source::new_wye_pq(s_tot, n_phases, is_grounded);
+        let bts = bus_term_ids_to_gr(bus_term_ids);
+        let elem = gr_source.element(uid, bts, true).into_shared();
         Source::from_elem(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
-    pub fn new_delta_pq_raw(uid: &str, bus_phase_ids: Vec<BusPhaseId>, s_tot: c64) -> Self {
-        let n_phases = bus_phase_ids.len();
+    pub fn new_delta_pq_raw(uid: &str, bus_term_ids: Vec<BusTermId>, s_tot: c64) -> Self {
+        let n_phases = bus_term_ids.len();
         let gr_source = gr::Source::new_delta_pq(s_tot, n_phases);
-        let bps = bus_phase_ids_to_gr(bus_phase_ids);
-        let elem = gr_source.element(uid, bps, true).into_shared();
+        let bts = bus_term_ids_to_gr(bus_term_ids);
+        let elem = gr_source.element(uid, bts, true).into_shared();
         Source::from_elem(elem)
     }
 }
@@ -130,41 +131,44 @@ impl Source {
     #[new]
     pub fn new(
         uid: &str,
-        bus_phase_ids: Vec<BusPhaseId>,
+        bus_term_ids: Vec<BusTermId>,
         branches: Vec<(usize, usize)>,
         control: SourceControl,
+        grounding: Option<Vec<usize>>,
     ) -> PyClassInitializer<Self> {
-        Self::new_raw(uid, bus_phase_ids, branches, control).into_initializer()
+        Self::new_raw(uid, bus_term_ids, branches, control, grounding).into_initializer()
     }
 
     #[staticmethod]
-    pub fn new_wye_slack(py: Python<'_>, uid: &str, bus_phase_ids: Vec<BusPhaseId>, vmag: f64) -> PyResult<Py<Self>> {
-        Py::new(py, Self::new_wye_slack_raw(uid, bus_phase_ids, vmag).into_initializer())
+    pub fn new_wye_slack(py: Python<'_>, uid: &str, bus_term_ids: Vec<BusTermId>, vmag: f64, is_grounded: bool)
+    -> PyResult<Py<Self>>
+    {
+        Py::new(py, Self::new_wye_slack_raw(uid, bus_term_ids, vmag, is_grounded).into_initializer())
     }
 
     #[staticmethod]
-    pub fn new_delta_slack(py: Python<'_>, uid: &str, bus_phase_ids: Vec<BusPhaseId>, vmag: f64) -> PyResult<Py<Self>> {
-        Py::new(py, Self::new_delta_slack_raw(uid, bus_phase_ids, vmag).into_initializer())
+    pub fn new_delta_slack(py: Python<'_>, uid: &str, bus_term_ids: Vec<BusTermId>, vmag: f64) -> PyResult<Py<Self>> {
+        Py::new(py, Self::new_delta_slack_raw(uid, bus_term_ids, vmag).into_initializer())
     }
 
     #[staticmethod]
-    pub fn new_wye_pv(py: Python<'_>, uid: &str, bus_phase_ids: Vec<BusPhaseId>, p_tot: f64, vmag: f64) -> PyResult<Py<Self>> {
-        Py::new(py, Self::new_wye_pv_raw(uid, bus_phase_ids, p_tot, vmag).into_initializer())
+    pub fn new_wye_pv(py: Python<'_>, uid: &str, bus_term_ids: Vec<BusTermId>, p_tot: f64, vmag: f64, is_grounded: bool) -> PyResult<Py<Self>> {
+        Py::new(py, Self::new_wye_pv_raw(uid, bus_term_ids, p_tot, vmag, is_grounded).into_initializer())
     }
 
     #[staticmethod]
-    pub fn new_delta_pv(py: Python<'_>, uid: &str, bus_phase_ids: Vec<BusPhaseId>, p_tot: f64, vmag: f64) -> PyResult<Py<Self>> {
-        Py::new(py, Self::new_delta_pv_raw(uid, bus_phase_ids, p_tot, vmag).into_initializer())
+    pub fn new_delta_pv(py: Python<'_>, uid: &str, bus_term_ids: Vec<BusTermId>, p_tot: f64, vmag: f64) -> PyResult<Py<Self>> {
+        Py::new(py, Self::new_delta_pv_raw(uid, bus_term_ids, p_tot, vmag).into_initializer())
     }
 
     #[staticmethod]
-    pub fn new_wye_pq(py: Python<'_>, uid: &str, bus_phase_ids: Vec<BusPhaseId>, s_tot: c64) -> PyResult<Py<Self>> {
-        Py::new(py, Self::new_wye_pq_raw(uid, bus_phase_ids, s_tot).into_initializer())
+    pub fn new_wye_pq(py: Python<'_>, uid: &str, bus_term_ids: Vec<BusTermId>, s_tot: c64, is_grounded: bool) -> PyResult<Py<Self>> {
+        Py::new(py, Self::new_wye_pq_raw(uid, bus_term_ids, s_tot, is_grounded).into_initializer())
     }
 
     #[staticmethod]
-    pub fn new_delta_pq(py: Python<'_>, uid: &str, bus_phase_ids: Vec<BusPhaseId>, s_tot: c64) -> PyResult<Py<Self>> {
-        Py::new(py, Self::new_delta_pq_raw(uid, bus_phase_ids, s_tot).into_initializer())
+    pub fn new_delta_pq(py: Python<'_>, uid: &str, bus_term_ids: Vec<BusTermId>, s_tot: c64) -> PyResult<Py<Self>> {
+        Py::new(py, Self::new_delta_pq_raw(uid, bus_term_ids, s_tot).into_initializer())
     }
 }
 
@@ -175,16 +179,17 @@ mod tests {
 
     #[test]
     fn test_new_source() {
-        let bps = vec![
-            BusPhaseId {b: "bus_1".to_string(), p: Phase::A},
-            BusPhaseId {b: "bus_1".to_string(), p: Phase::B},
-            BusPhaseId {b: "bus_1".to_string(), p: Phase::C},
+        let bts = vec![
+            BusTermId {b: "bus_1".to_string(), p: Phase::A},
+            BusTermId {b: "bus_1".to_string(), p: Phase::B},
+            BusTermId {b: "bus_1".to_string(), p: Phase::C},
         ];
         let branches = vec![(0, 1), (1, 2), (2, 0)];
         let source = Source::new_raw(
-            "new_source", bps, branches, SourceControl::SL {vmag: vec![1.0], vang: vec![0.0]}
+            "new_source", bts, branches,
+            SourceControl::SL {vmag: vec![1.0, 1.0, 1.0], vang: vec![0.0, -2.0*3.14/3.0, 2.0*3.14/3.0]}, None
         );
         assert!(source.uid() == "new_source");
-        assert!(source.elem.borrow().copper_plate() == vec![vec![0, 1, 2]]);
+        assert!(source.elem.borrow().vmag_const() == vec![(0, 1.0), (1, 1.0), (2, 1.0)]);
     }
 }

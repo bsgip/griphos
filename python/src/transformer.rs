@@ -1,21 +1,30 @@
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 
 use ::griphos as gr;
 use gr::{c64, Shared, IntoShared};
 
-use crate::plumbing::{element_subclass, py_enum, py_value};
-use crate::network::{BusPhaseId, bus_phase_ids_to_gr};
+use crate::plumbing::element_subclass;
+use crate::network::{BusTermId, bus_term_ids_to_gr};
 
-py_enum!(TransformerSide, gr::TransformerSide {P, S});
+pub struct TransformerError(gr::TransformerError);
 
-py_value!(WindingPair, gr::WindingPair { pub p: (usize, usize), pub s: (usize, usize) });
+impl From<gr::TransformerError> for TransformerError {
+    fn from(e: gr::TransformerError) -> Self { Self(e) }
+}
+
+impl From<TransformerError> for PyErr {
+    fn from(e: TransformerError) -> PyErr {
+        PyValueError::new_err(e.0.to_string())
+    }
+}
 
 #[gen_stub_pyclass]
 #[pyclass(module = "griphos", unsendable, from_py_object)]
 #[derive(Clone)]
 pub struct TransformerTapsData {
-    pub side: TransformerSide,
+    pub side: usize,
     pub factor: f64,
     pub min_tap: i32,
     pub max_tap: i32,
@@ -26,7 +35,7 @@ pub struct TransformerTapsData {
 #[pymethods]
 impl TransformerTapsData {
     #[new]
-    pub fn new(side: TransformerSide, factor: f64, min_tap: i32, max_tap: i32, n_phases: usize) -> Self {
+    pub fn new(side: usize, factor: f64, min_tap: i32, max_tap: i32, n_phases: usize) -> Self {
         Self { side, factor, min_tap, max_tap, n_phases }
     }
 }
@@ -51,8 +60,8 @@ impl TransformerTaps {
 #[pymethods]
 impl TransformerTaps {
     #[getter]
-    fn side(&self) -> TransformerSide {
-        self.with_taps(|taps| taps.side.into())
+    fn side(&self) -> usize {
+        self.with_taps(|taps| taps.side)
     }
 
     #[getter]
@@ -98,14 +107,14 @@ impl Transformer {
     #[allow(clippy::too_many_arguments)]
     pub fn new_raw(
         uid: &str,
-        bus_phase_ids_0: Vec<BusPhaseId>,
-        bus_phase_ids_1: Vec<BusPhaseId>,
-        winding_pairs: &[WindingPair],
-        nom_turns_ratio: Vec<c64>,
-        z_series: c64,
-        y_shunt: c64,
+        bus_term_ids: Vec<BusTermId>,
+        n_sides: usize,
+        n_phases: usize,
+        nom_turns: Vec<c64>,
         taps: Option<TransformerTapsData>,
-    ) -> Self {
+        z_series: Vec<c64>,
+        terminal_mapping: Vec<Vec<(usize, usize)>>,
+    ) -> Result<Self, TransformerError> {
         let gr_taps = taps.map(
             |taps| gr::TransformerTaps::new(
                 taps.side.into(),
@@ -115,44 +124,86 @@ impl Transformer {
                 taps.n_phases,
             )
         );
-        let gr_bps_0 = bus_phase_ids_to_gr(bus_phase_ids_0);
-        let gr_bps_1 = bus_phase_ids_to_gr(bus_phase_ids_1);
-        let wps_gr: Vec<gr::WindingPair> = winding_pairs.iter().map(|wp| wp.into()).collect();
+        let gr_bts = bus_term_ids_to_gr(bus_term_ids);
         let gr_tx = gr::Transformer::new(
-            &wps_gr,
-            nom_turns_ratio,
+            n_sides,
+            n_phases,
+            nom_turns,
+            gr_taps,
             z_series,
-            y_shunt,
-            gr_taps
+            terminal_mapping,
+        )?;
+        let elem = gr_tx.element(uid, gr_bts).into_shared();
+        Ok(Transformer::from_elem(elem))
+    }
+
+    /// Creates a new two-winding [`Transformer`] with the given vector group, number of phases and other data.
+    ///
+    /// turns_ratio is np/ns. vector_group_str is all lowercase, with the primary always assumed to come first.
+    pub fn new_raw_with_vector_group(
+        uid: &str,
+        bus_term_ids: Vec<BusTermId>,
+        n_phases: usize,
+        nom_turns_ratio: c64,
+        taps: Option<TransformerTapsData>,
+        z_series: (c64, c64),
+        vector_group_str: &str
+    ) -> Result<Transformer, TransformerError> {
+        let gr_taps = taps.map(
+            |taps| gr::TransformerTaps::new(
+                taps.side.into(),
+                taps.factor,
+                taps.min_tap,
+                taps.max_tap,
+                taps.n_phases,
+            )
         );
-        let elem = gr_tx.element(uid, gr_bps_0, gr_bps_1).into_shared();
-        Transformer::from_elem(elem)
+        let gr_bts = bus_term_ids_to_gr(bus_term_ids);
+        let gr_tx = gr::Transformer::new_with_vector_group(
+            n_phases,
+            nom_turns_ratio,
+            gr_taps,
+            z_series,
+            vector_group_str,
+        )?;
+        let elem = gr_tx.element(uid, gr_bts).into_shared();
+        Ok(Transformer::from_elem(elem))
     }
 }
 
 #[pymethods]
 impl Transformer {
-
     #[allow(clippy::too_many_arguments)]
     #[new]
     pub fn new(
         uid: &str,
-        bus_phase_ids_0: Vec<BusPhaseId>,
-        bus_phase_ids_1: Vec<BusPhaseId>,
-        winding_pairs: Vec<WindingPair>,
-        nom_turns_ratio: Vec<c64>,
-        z_series: c64,
-        y_shunt: c64,
+        bus_term_ids: Vec<BusTermId>,
+        n_sides: usize,
+        n_phases: usize,
+        nom_turns: Vec<c64>,
         taps: Option<TransformerTapsData>,
-    ) -> PyClassInitializer<Self> {
-        Self::new_raw(
-            uid, bus_phase_ids_0, bus_phase_ids_1, &winding_pairs, nom_turns_ratio, z_series, y_shunt, taps
-        ).into_initializer()
+        z_series: Vec<c64>,
+        terminal_mapping: Vec<Vec<(usize, usize)>>,
+    ) -> Result<PyClassInitializer<Self>, TransformerError> {
+        Ok(Self::new_raw(uid, bus_term_ids, n_sides, n_phases, nom_turns, taps, z_series, terminal_mapping)?.into_initializer())
     }
 
     #[getter]
-    fn n_phase(self_: PyRef<'_, Self>) -> usize {
-        Self::with_spec(&self_, |s| s.n_phase)
+    pub fn n_windings(self_: PyRef<'_, Self>) -> usize {
+        Self::with_spec(&self_, |s| s.n_windings())
+    }
+
+    pub fn turns(&self, i_side: usize, i_phase: usize) -> c64 {
+        Self::with_spec(&self, |s| s.turns(i_side, i_phase))
+    }
+
+    pub fn turns_ratio(&self, i_side_0: usize, i_side_1: usize, i_phase: usize) -> c64 {
+        Self::with_spec(&self, |s| s.turns_ratio(i_side_0, i_side_1, i_phase))
+    }
+
+    pub fn y_primitive(&self, i_side_0: usize, i_side_1: usize, i_phase: usize) -> Vec<Vec<c64>> {
+        let m = Self::with_spec(&self, |s| s.y_primitive(i_side_0, i_side_1, i_phase));
+        m.row_iter().map(|r| r.iter().copied().collect()).collect()
     }
 }
 

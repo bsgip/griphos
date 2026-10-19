@@ -50,7 +50,7 @@ mod griphos {
         Source, SourceControl
     };
     #[pymodule_export] use super::transformer::{
-        Transformer, TransformerSide, TransformerTaps, TransformerTapsData
+        Transformer, TransformerTaps, TransformerTapsData
     };
 
     #[pymodule_init]
