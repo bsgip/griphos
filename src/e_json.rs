@@ -415,7 +415,7 @@ fn handle_load(
         ejt::Wiring::Delta => {Load::new_delta(bts.len(), None, None, s)},
         ejt::Wiring::Wye => {
             let n_term = bts.len();
-            bts.insert(0, bt!("G", Phase::N));
+            bts.push(bt!("G", Phase::N));
             Load::new_wye(n_term, None, None, s, true)
         },
     };

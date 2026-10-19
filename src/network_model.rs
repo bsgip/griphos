@@ -318,9 +318,9 @@ impl NetworkModel {
             let mut bt_to_nd_idx: HashMap<BusTermId, usize> = HashMap::new();
             for cc in ccs.iter() {
                 // Get v_base by looking at the first bus that has this node.
-                let BusTermId {b: b0, p: p0} = &copper.node_weight(cc[0]).unwrap();
-                let v_base = netw.bus(b0).unwrap().borrow().v_base;
-                let v_nom = v_base * p0.v_nom_pu();
+                let bt0 = copper.node_weight(cc[0]).unwrap();
+                let v_base = netw.bus(&bt0.b).unwrap().borrow().v_base;
+                let v_nom = v_base * bt0.p.v_nom_pu();
 
                 // Create a shared node for this set of copperplated nodes.
                 nodes.push((nodes.len(), NmNode::new(v_nom, false)));
@@ -329,7 +329,7 @@ impl NetworkModel {
                 for &cc_i in cc.iter() {
                     // TODO: Think about what happens if two nodes with different v_base are copperplated.
                     let bt = copper.node_weight(cc_i).unwrap();
-                    assert!(bt.p == *p0, "Can't copperplate two bus/phase pairs with different phases");
+                    assert!(bt.p == bt0.p, "Can't copperplate two bus/phase pairs with different phases: {bt0} {bt}");
                     node.bus_term_ids.push(bt.clone());
                     bt_to_nd_idx.insert(bt.clone(), *nd_idx);
                 }
@@ -621,8 +621,7 @@ mod tests {
         // Setup: create a phase map (adjust based on your actual Phase type)
         let ejson_phase_map = ejson_phase_map_abcng();
 
-        let netw = parse_ejson_file("test_data/netw-i1l1s1.json", &ejson_phase_map)
-            .expect("Failed to parse e-JSON");
+        let netw = parse_ejson_file("test_data/netw-i1l1s1.json", &ejson_phase_map).expect("Failed to parse e-JSON");
         let mods = NetworkModels::new(&netw);
 
         println!("Network:\n{}", &netw);
