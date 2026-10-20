@@ -12,12 +12,20 @@ py_enum!(Phase, gr::Phase { A, B, C, N });
 
 py_value!(BusTermId, gr::BusTermId { pub b: String, pub p: Phase });
 
+/// Create a bus terminal id from a bus uid and a phase.
+#[pyfunction]
+pub fn bt(b: String, p: Phase) -> BusTermId {
+    BusTermId { b, p }
+}
+
 /// Utility function to map a Vec of BusTermIds to griphos equivalent.
 pub(crate) fn bus_term_ids_to_gr(bus_term_ids: Vec<BusTermId>) -> Vec<gr::BusTermId> {
     bus_term_ids.into_iter().map(|x| x.into()).collect()
 }
 
 py_value!(ElemBranchId, gr::ElemBranchId { pub e: String, pub b: usize });
+
+py_value!(ElemBranch, gr::ElemBranch { pub v: c64, pub i: c64 });
 
 py_wrapper!(Bus, gr::Bus);
 

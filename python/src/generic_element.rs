@@ -41,8 +41,11 @@ impl GenericElement {
 
 #[pymethods]
 impl GenericElement {
-
     #[new]
+    #[pyo3(signature = (
+        uid, bus_term_ids, branches, y_const = None, i_const = None, s_const = None, vmag_const = None,
+        vang_const = None, copper_plate = None, grounding = None
+    ))]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         uid: &str,

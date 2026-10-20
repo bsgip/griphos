@@ -41,7 +41,7 @@ mod griphos {
         Load,
     };
     #[pymodule_export] use super::network::{
-        SwitchState, Phase, Bus, Element, Network
+        bt, Bus, Element, Network, Phase, SwitchState,
     };
     #[pymodule_export] use super::network_solvers::{
         SolveNetworkResult, NetworkSolver, solve_network,
@@ -52,6 +52,15 @@ mod griphos {
     #[pymodule_export] use super::transformer::{
         Transformer, TransformerTaps, TransformerTapsData
     };
+    #[pymodule_export] const C_ZERO: gr::c64 = gr::C_ZERO;
+    #[pymodule_export] const C_ONE: gr::c64 = gr::C_ONE;
+    #[pymodule_export] const C_I: gr::c64 = gr::C_I;
+    #[pymodule_export] const SQRT_2: f64 = gr::SQRT_2;
+    #[pymodule_export] const SQRT_2_INV: f64 = gr::SQRT_2_INV;
+    #[pymodule_export] const SQRT_3: f64 = gr::SQRT_3;
+    #[pymodule_export] const SQRT_3_INV: f64 = gr::SQRT_3_INV;
+    #[pymodule_export] const PI: f64 = gr::PI;
+    #[pymodule_export] const TAU: f64 = gr::TAU;
 
     #[pymodule_init]
     fn init(m: &Bound<'_, PyModule>) -> PyResult<()> {
