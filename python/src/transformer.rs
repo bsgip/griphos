@@ -117,7 +117,7 @@ impl Transformer {
     ) -> Result<Self, TransformerError> {
         let gr_taps = taps.map(
             |taps| gr::TransformerTaps::new(
-                taps.side.into(),
+                taps.side,
                 taps.factor,
                 taps.min_tap,
                 taps.max_tap,
@@ -151,7 +151,7 @@ impl Transformer {
     ) -> Result<Transformer, TransformerError> {
         let gr_taps = taps.map(
             |taps| gr::TransformerTaps::new(
-                taps.side.into(),
+                taps.side,
                 taps.factor,
                 taps.min_tap,
                 taps.max_tap,
@@ -194,15 +194,15 @@ impl Transformer {
     }
 
     pub fn turns(&self, i_side: usize, i_phase: usize) -> c64 {
-        Self::with_spec(&self, |s| s.turns(i_side, i_phase))
+        Self::with_spec(self, |s| s.turns(i_side, i_phase))
     }
 
     pub fn turns_ratio(&self, i_side_0: usize, i_side_1: usize, i_phase: usize) -> c64 {
-        Self::with_spec(&self, |s| s.turns_ratio(i_side_0, i_side_1, i_phase))
+        Self::with_spec(self, |s| s.turns_ratio(i_side_0, i_side_1, i_phase))
     }
 
     pub fn y_primitive(&self, i_side_0: usize, i_side_1: usize, i_phase: usize) -> Vec<Vec<c64>> {
-        let m = Self::with_spec(&self, |s| s.y_primitive(i_side_0, i_side_1, i_phase));
+        let m = Self::with_spec(self, |s| s.y_primitive(i_side_0, i_side_1, i_phase));
         m.row_iter().map(|r| r.iter().copied().collect()).collect()
     }
 }

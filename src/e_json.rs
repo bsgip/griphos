@@ -378,7 +378,7 @@ fn handle_transformer(
             turns_ratio,
             tx_taps,
             (C_ZERO, z_s),
-            &vector_group
+            vector_group
         )?.element(id, bts)
     ).unwrap();
 

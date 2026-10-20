@@ -38,7 +38,7 @@ pub mod source;
 pub mod transformer;
 pub mod network_solvers;
 pub mod nodal_rect_solver;
-#[allow(unused)]
+#[allow(clippy::all, unused)]
 mod e_json_generated_types;
 #[allow(unused)]
 pub mod e_json;
