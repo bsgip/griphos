@@ -11,21 +11,29 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Build
-      run: cargo build --verbose
+    - uses: dtolnay/rust-toolchain@stable
 
-    - name: Run tests
-      run: cargo test --verbose
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: |
+          .
+          python
 
     - uses: actions/setup-python@v5
       with:
         python-version: "3.12"
+
+    - name: Run rust tests
+      run: cargo test --verbose
+
+    - name: Run rust tests in python crate
+      run: cargo test --verbose
+      working-directory: python
 
     - name: Install uv
       uses: astral-sh/setup-uv@v3
