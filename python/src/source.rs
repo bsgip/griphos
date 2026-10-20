@@ -5,6 +5,7 @@ use gr::{c64, Shared, IntoShared};
 use crate::plumbing::{element_subclass};
 use crate::network::{BusTermId, bus_term_ids_to_gr};
 
+/// Tagged enum for power/voltage control in sources.
 #[pyclass(eq, from_py_object)]
 #[derive(Clone, PartialEq)]
 pub enum SourceControl {
@@ -53,7 +54,18 @@ impl From<SourceControl> for gr::SourceControl {
     }
 }
 
-element_subclass!(Source, gr::Source);
+element_subclass!(
+    /// A generation source or infeeder that may be voltage controlled.
+    ///
+    /// Args:
+    ///     uid: The ID of the element.
+    ///     bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+    ///     branches: Start and end terminals of each branch (current path) in the element.
+    ///     control: `SourceControl` that specifies the type and parameters of voltage control, if any.
+    ///     grounding: Optional list of terminal indices that are grounded.
+    Source,
+    gr::Source
+);
 
 impl Source {
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
@@ -139,36 +151,102 @@ impl Source {
         Self::new_raw(uid, bus_term_ids, branches, control, grounding).into_initializer()
     }
 
+    /// A new wye-connected slack source with default positive sequence reference angles.
+    ///
+    /// Args:
+    ///     uid: The ID of the element.
+    ///     bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+    ///     vmag: the controlled voltage magnitude, single value for all branches.
+    ///     is_grounded: Is the neutral terminal grounded?
+    ///
+    /// Returns:
+    ///     A new `Source` object.
     #[staticmethod]
-    pub fn new_wye_slack(py: Python<'_>, uid: &str, bus_term_ids: Vec<BusTermId>, vmag: f64, is_grounded: bool)
-    -> PyResult<Py<Self>>
+    pub fn new_wye_slack<'py>(py: Python<'py>, uid: &str, bus_term_ids: Vec<BusTermId>, vmag: f64, is_grounded: bool)
+    -> PyResult<Bound<'py, Self>>
     {
-        Py::new(py, Self::new_wye_slack_raw(uid, bus_term_ids, vmag, is_grounded).into_initializer())
+        Bound::new(py, Self::new_wye_slack_raw(uid, bus_term_ids, vmag, is_grounded).into_initializer())
     }
 
+    /// A new delta-connected slack source with default positive sequence reference angles.
+    ///
+    /// Args:
+    ///     uid: The ID of the element.
+    ///     bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+    ///     vmag: the controlled voltage magnitude, single value for all branches.
+    ///
+    /// Returns:
+    ///     A new `Source` object.
     #[staticmethod]
-    pub fn new_delta_slack(py: Python<'_>, uid: &str, bus_term_ids: Vec<BusTermId>, vmag: f64) -> PyResult<Py<Self>> {
-        Py::new(py, Self::new_delta_slack_raw(uid, bus_term_ids, vmag).into_initializer())
+    pub fn new_delta_slack<'py>(py: Python<'py>, uid: &str, bus_term_ids: Vec<BusTermId>, vmag: f64)
+    -> PyResult<Bound<'py, Self>>
+    {
+        Bound::new(py, Self::new_delta_slack_raw(uid, bus_term_ids, vmag).into_initializer())
     }
 
+    /// A new wye-connected PV source with default positive sequence reference angles.
+    ///
+    /// Args:
+    ///     uid: The ID of the element.
+    ///     bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+    ///     vmag: the controlled voltage magnitude, single value for all branches.
+    ///     is_grounded: Is the neutral terminal grounded?
+    ///
+    /// Returns:
+    ///     A new `Source` object.
     #[staticmethod]
-    pub fn new_wye_pv(py: Python<'_>, uid: &str, bus_term_ids: Vec<BusTermId>, p_tot: f64, vmag: f64, is_grounded: bool) -> PyResult<Py<Self>> {
-        Py::new(py, Self::new_wye_pv_raw(uid, bus_term_ids, p_tot, vmag, is_grounded).into_initializer())
+    pub fn new_wye_pv<'py>(
+        py: Python<'py>, uid: &str, bus_term_ids: Vec<BusTermId>, p_tot: f64, vmag: f64, is_grounded: bool
+    ) -> PyResult<Bound<'py, Self>> {
+        Bound::new(py, Self::new_wye_pv_raw(uid, bus_term_ids, p_tot, vmag, is_grounded).into_initializer())
     }
 
+    /// A new delta-connected PV source with default positive sequence reference angles.
+    ///
+    /// Args:
+    ///     uid: The ID of the element.
+    ///     bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+    ///     p_tot: the total real power, to be equally distributed among the branches.
+    ///     vmag: the controlled voltage magnitude, single value for all branches.
+    ///
+    /// Returns:
+    ///     A new `Source` object.
     #[staticmethod]
-    pub fn new_delta_pv(py: Python<'_>, uid: &str, bus_term_ids: Vec<BusTermId>, p_tot: f64, vmag: f64) -> PyResult<Py<Self>> {
-        Py::new(py, Self::new_delta_pv_raw(uid, bus_term_ids, p_tot, vmag).into_initializer())
+    pub fn new_delta_pv<'py>(
+        py: Python<'py>, uid: &str, bus_term_ids: Vec<BusTermId>, p_tot: f64, vmag: f64
+    ) -> PyResult<Bound<'py, Self>> {
+        Bound::new(py, Self::new_delta_pv_raw(uid, bus_term_ids, p_tot, vmag).into_initializer())
     }
 
+    /// A new wye-connected PQ (no voltage control) source with default positive sequence reference angles.
+    ///
+    /// Args:
+    ///     uid: The ID of the element.
+    ///     bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+    ///     s_tot: the total complex power, to be equally distributed among the branches.
+    ///     is_grounded: Is the neutral terminal grounded?
+    ///
+    /// Returns:
+    ///     A new `Source` object.
     #[staticmethod]
-    pub fn new_wye_pq(py: Python<'_>, uid: &str, bus_term_ids: Vec<BusTermId>, s_tot: c64, is_grounded: bool) -> PyResult<Py<Self>> {
-        Py::new(py, Self::new_wye_pq_raw(uid, bus_term_ids, s_tot, is_grounded).into_initializer())
+    pub fn new_wye_pq<'py>(py: Python<'py>, uid: &str, bus_term_ids: Vec<BusTermId>, s_tot: c64, is_grounded: bool)
+    -> PyResult<Bound<'py, Self>> {
+        Bound::new(py, Self::new_wye_pq_raw(uid, bus_term_ids, s_tot, is_grounded).into_initializer())
     }
 
+    /// A new delta-connected PQ (no voltage control) source with default positive sequence reference angles.
+    ///
+    /// Args:
+    ///     uid: The ID of the element.
+    ///     bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+    ///     s_tot: the total complex power, to be equally distributed among the branches.
+    ///
+    /// Returns:
+    ///     A new `Source` object.
     #[staticmethod]
-    pub fn new_delta_pq(py: Python<'_>, uid: &str, bus_term_ids: Vec<BusTermId>, s_tot: c64) -> PyResult<Py<Self>> {
-        Py::new(py, Self::new_delta_pq_raw(uid, bus_term_ids, s_tot).into_initializer())
+    pub fn new_delta_pq<'py>(py: Python<'py>, uid: &str, bus_term_ids: Vec<BusTermId>, s_tot: c64)
+    -> PyResult<Bound<'py, Self>> {
+        Bound::new(py, Self::new_delta_pq_raw(uid, bus_term_ids, s_tot).into_initializer())
     }
 }
 

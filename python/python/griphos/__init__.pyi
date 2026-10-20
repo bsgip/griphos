@@ -7,82 +7,369 @@ import typing
 __all__ = [
     "Bus",
     "BusTermId",
+    "ElemBranch",
+    "ElemBranchId",
     "Element",
     "Network",
     "Phase",
+    "SolverStatus",
+    "SolverStatusItem",
+    "SwitchState",
+    "TransformerTaps",
+    "TransformerTapsData",
 ]
 
 @typing.final
 class Bus:
+    r"""
+    A bus is a collection of one or more nodes, each distinguished by a different phase.
+    """
     @property
-    def uid(self) -> builtins.str: ...
+    def uid(self) -> builtins.str:
+        r"""
+        Unique ID
+        """
     @property
-    def v_base(self) -> builtins.float: ...
+    def v_base(self) -> builtins.float:
+        r"""
+        Base voltage in chosen units.
+        """
     @property
-    def phases(self) -> builtins.list[Phase]: ...
+    def phases(self) -> builtins.list[Phase]:
+        r"""
+        The phases of each bus terminal/node.
+        """
     @property
-    def vs(self) -> builtins.list[builtins.complex]: ...
+    def vs(self) -> builtins.list[builtins.complex]:
+        r"""
+        The complex voltages of each bus terminal/node.
+        """
     @vs.setter
-    def vs(self, value: typing.Sequence[builtins.complex]) -> None: ...
+    def vs(self, value: typing.Sequence[builtins.complex]) -> None:
+        r"""
+        Set the complex voltages of each bus terminal/node.
+        """
     def __new__(cls, uid: builtins.str, phases: typing.Sequence[Phase], v_base: builtins.float) -> Bus: ...
     def __str__(self) -> builtins.str: ...
 
 @typing.final
 class BusTermId:
+    r"""
+    A bus UID / phase pair, that together serve to identify a single bus terminal.
+    """
     @property
     def b(self) -> builtins.str: ...
-    @b.setter
-    def b(self, value: builtins.str) -> None: ...
     @property
     def p(self) -> Phase: ...
-    @p.setter
-    def p(self, value: Phase) -> None: ...
+    def __eq__(self, other: builtins.object, /) -> builtins.bool: ...
+    def __new__(cls, b: builtins.str, p: Phase) -> BusTermId: ...
 
 @typing.final
+class ElemBranch:
+    r"""
+    Per-branch data of an element
+    """
+    @property
+    def v(self) -> builtins.complex:
+        r"""
+        The voltage of the branch, v_term_0 - v_term_1.
+        """
+    @property
+    def i(self) -> builtins.complex:
+        r"""
+        The current of the branch, oriented from terminal 0 to terminal 1.
+        """
+    def __eq__(self, other: builtins.object, /) -> builtins.bool: ...
+    def __new__(cls, v: builtins.complex, i: builtins.complex) -> ElemBranch: ...
+
+@typing.final
+class ElemBranchId:
+    r"""
+    An element UID / branch index pair, that together serve to identify a particular branch of a particular element.
+    """
+    @property
+    def e(self) -> builtins.str: ...
+    @property
+    def b(self) -> builtins.int: ...
+    def __eq__(self, other: builtins.object, /) -> builtins.bool: ...
+    def __new__(cls, e: builtins.str, b: builtins.int) -> ElemBranchId: ...
+
 class Element:
+    r"""
+    An element is a set of current carrying connections netween terminals. It can include several different types of
+    connection, such as constant y or constant s.
+    """
     @property
-    def uid(self) -> builtins.str: ...
+    def uid(self) -> builtins.str:
+        r"""
+        The element's ID.
+        """
     @property
-    def element_type(self) -> builtins.str: ...
+    def element_type(self) -> builtins.str:
+        r"""
+        The element's type string.
+        """
     @property
-    def n_terms(self) -> builtins.int: ...
+    def n_terms(self) -> builtins.int:
+        r"""
+        The number of terminals on the element.
+        
+        Each terminal connects to a bus terminal i.e. a single phase of a bus.
+        """
     @property
-    def n_branches(self) -> builtins.int: ...
+    def n_branches(self) -> builtins.int:
+        r"""
+        The number of branches in the element.
+        
+        Each branch is a current path between two of the element's terminals.
+        """
     @property
-    def branch_wiring(self) -> builtins.list[tuple[builtins.int, builtins.int]]: ...
+    def branch_wiring(self) -> builtins.list[tuple[builtins.int, builtins.int]]:
+        r"""
+        The start and end terminals of each branch.
+        
+        Each branch is a current path between two of the element's terminals.
+        """
     @property
-    def is_live(self) -> builtins.bool: ...
+    def is_live(self) -> builtins.bool:
+        r"""
+        Is the element live (functioning).
+        
+        Reasons for not being live could be that it is not in service, or that
+        its switch state is not closed.
+        """
     @property
-    def y_const(self) -> builtins.list[tuple[tuple[builtins.int, builtins.int], builtins.complex]]: ...
+    def y_const(self) -> builtins.list[tuple[tuple[builtins.int, builtins.int], builtins.complex]]:
+        r"""
+        The constant branch impedance matrix of the element.
+        
+        Specified as a list of nonzero elements, ((branch_idx_i, branch_idx_j), value)
+        """
     @property
-    def i_const(self) -> builtins.list[tuple[builtins.int, builtins.complex]]: ...
+    def i_const(self) -> builtins.list[tuple[builtins.int, builtins.complex]]:
+        r"""
+        The constant branch current vector of the element.
+        
+        Specified as a list of nonzero elements, (branch_idx, value)
+        """
     @property
-    def s_const(self) -> builtins.list[tuple[builtins.int, builtins.complex]]: ...
+    def s_const(self) -> builtins.list[tuple[builtins.int, builtins.complex]]:
+        r"""
+        The constant branch complex power vector of the element.
+        
+        Specified as a list of nonzero elements, (branch_idx, value)
+        """
     @property
-    def vmag_const(self) -> builtins.list[tuple[builtins.int, builtins.float]]: ...
+    def vmag_const(self) -> builtins.list[tuple[builtins.int, builtins.float]]:
+        r"""
+        The controlled constant voltage magnitude vector of the element.
+        
+        Specified as a list of nonzero elements, (branch_idx, value)
+        """
     @property
-    def vang_const(self) -> builtins.list[tuple[builtins.int, builtins.float]]: ...
+    def vang_const(self) -> builtins.list[tuple[builtins.int, builtins.float]]:
+        r"""
+        The controlled constant voltage angle vector of the element.
+        
+        Specified as a list of nonzero elements, (branch_idx, value)
+        """
     @property
-    def copper_plate(self) -> builtins.list[builtins.list[builtins.int]]: ...
+    def copper_plate(self) -> builtins.list[builtins.list[builtins.int]]:
+        r"""
+        The copperplated terminals of the element.
+        
+        Specified as a list of copperplated terminal groups, each group being a list of terminal indices.
+        """
     @property
-    def grounding(self) -> builtins.list[builtins.int]: ...
+    def grounding(self) -> builtins.list[builtins.int]:
+        r"""
+        The grounded terminals of the element.
+        """
 
 @typing.final
 class Network:
+    r"""
+    A Network represents an entire electricity network.
+    
+    Returns:
+        An empty Network object.
+    """
     @property
-    def n_buses(self) -> builtins.int: ...
+    def n_buses(self) -> builtins.int:
+        r"""
+        The number of `Bus`es in the network.
+        """
     @property
-    def bus_ids(self) -> builtins.list[builtins.str]: ...
+    def buses(self) -> builtins.list[Bus]:
+        r"""
+        The `Bus`es in the network.
+        """
     @property
-    def n_elements(self) -> builtins.int: ...
+    def n_elements(self) -> builtins.int:
+        r"""
+        The number of `Element`s in the network.
+        """
+    @property
+    def elements(self) -> builtins.list[Element]:
+        r"""
+        The `Element`s in the network.
+        """
     def __new__(cls) -> Network: ...
-    def bus(self, uid: builtins.str) -> typing.Optional[Bus]: ...
-    def bus_i(self, i: builtins.int) -> typing.Optional[Bus]: ...
+    def bus(self, uid: builtins.str) -> typing.Optional[Bus]:
+        r"""
+        The `Bus` with given uid in the network.
+        
+        Args:
+            uid: The ID of the returned bus.
+        Returns:
+            The `Bus` object for the bus with the given ID.
+        """
+    def bus_i(self, i: builtins.int) -> typing.Optional[Bus]:
+        r"""
+        The `Bus` with given index in the network.
+        
+        Args:
+            i: The index of the returned bus.
+        Returns:
+            The `Bus` object for the bus with the given index.
+        """
+    def element(self, uid: builtins.str) -> typing.Optional[Element]:
+        r"""
+        The `Element` with given uid in the network.
+        
+        Args:
+            uid: The ID of the returned element.
+        Returns:
+            The `Element` object for the element with the given ID.
+        """
+    def element_i(self, i: builtins.int) -> typing.Optional[Element]:
+        r"""
+        The `Element` with given index in the network.
+        
+        Args:
+            i: The index of the returned element.
+        Returns:
+            The `Element` object for the element with the given index.
+        """
+    def __str__(self) -> builtins.str: ...
+
+@typing.final
+class SolverStatus:
+    r"""
+    The iteration status and final status for a single solver run.
+    """
+    @property
+    def status(self) -> SolverStatusItem: ...
+    @property
+    def iteration_statuses(self) -> builtins.list[SolverStatusItem]: ...
+    def __eq__(self, other: builtins.object, /) -> builtins.bool: ...
+
+@typing.final
+class SolverStatusItem:
+    r"""
+    The solver status for a single iteration or the result of all iterations.
+    """
+    @property
+    def flags(self) -> builtins.int: ...
+    @property
+    def initial_residual(self) -> builtins.float: ...
+    @property
+    def final_residual(self) -> builtins.float: ...
+    @property
+    def total_time_s(self) -> builtins.float: ...
+    @property
+    def linear_solver_time_s(self) -> builtins.float: ...
+    def __eq__(self, other: builtins.object, /) -> builtins.bool: ...
+
+@typing.final
+class TransformerTaps:
+    r"""
+    A tapped transformer's tap settins.
+    """
+    @property
+    def side(self) -> builtins.int:
+        r"""
+        The side of the transformer that is tapped: 0 = primary, 1 = secondary, 3 = tertiary etc.
+        """
+    @property
+    def factor(self) -> builtins.float:
+        r"""
+        The factor by which each tap increase increases the winding count of the given winding.
+        """
+    @property
+    def min_tap(self) -> builtins.int:
+        r"""
+        The minimum possible tap setting.
+        """
+    @property
+    def max_tap(self) -> builtins.int:
+        r"""
+        The maximum possible tap setting.
+        """
+    def get(self, i: builtins.int) -> builtins.int:
+        r"""
+        Get the tap setting for the tap on phase index i.
+        
+        Args:
+            i: The phase index of which to return the tap setting.
+        Returns:
+            The tap setting of phase i.
+        """
+    def set(self, i: builtins.int, setting: builtins.int) -> None:
+        r"""
+        Set the tap setting for the tap on phase index i.
+        
+        Args:
+            i: The phase index of which to return the tap setting.
+            setting: The desired tap setting.
+        """
+    def get_all(self) -> builtins.list[builtins.int]:
+        r"""
+        Get all tap settings.
+        
+        Returns:
+            List of tap settings.
+        """
+    def set_all(self, settings: typing.Sequence[builtins.int]) -> None:
+        r"""
+        Set all tap settings.
+        
+        Args:
+            settings: List of all tap settings.
+        """
+    def __str__(self) -> builtins.str: ...
+
+@typing.final
+class TransformerTapsData:
+    r"""
+    Tap data for tapped transformers.
+    """
+    def __new__(cls, side: builtins.int, factor: builtins.float, min_tap: builtins.int, max_tap: builtins.int) -> TransformerTapsData: ...
 
 @typing.final
 class Phase(enum.Enum):
+    r"""
+    Line or bus phase, A, B, C or N.
+    
+    A, B, C are assumed to form a positive sequence, and N is assumed to be a (possibly grounded) neutral.
+    """
     A = ...
     B = ...
     C = ...
     N = ...
+
+@typing.final
+class SwitchState(enum.Enum):
+    NoSwitch = ...
+    Closed = ...
+    Open = ...
+
+@typing.final
+class SwitchState(enum.Enum):
+    r"""
+    Encodes the state of a switch if present, or the lack of any switch.
+    """
+    NoSwitch = ...
+    Closed = ...
+    Open = ...
 

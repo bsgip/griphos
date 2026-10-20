@@ -1,10 +1,16 @@
 macro_rules! py_value {
-    ($py_name:ident, $rust_ty:path { $($vis:vis $field:ident: $field_ty:ty),* $(,)? }) => {
+    (
+        $(#[$meta:meta])*
+        $py_name:ident, $rust_ty:path {
+            $( $(#[$fmeta:meta])* $vis:vis $field:ident: $field_ty:ty ),* $(,)?
+        }
+    ) => {
+        $(#[$meta])*
         #[pyo3_stub_gen::derive::gen_stub_pyclass]
         #[pyclass(module = "griphos", get_all, eq, frozen, from_py_object)]
         #[derive(Clone, PartialEq)]
         pub struct $py_name {
-            $($vis $field: $field_ty,)*
+            $( $(#[$fmeta])* $vis $field: $field_ty, )*
         }
 
         #[pyo3_stub_gen::derive::gen_stub_pymethods]
@@ -44,12 +50,18 @@ macro_rules! py_value {
 pub(crate) use py_value;
 
 macro_rules! py_enum {
-    ($py_name:ident, $rust_ty:ty { $($variant:ident),* $(,)? }) => {
+    (
+        $(#[$meta:meta])*
+        $py_name:ident, $rust_ty:ty {
+            $( $(#[$vmeta:meta])* $variant:ident ),* $(,)?
+        }
+    ) => {
+        $(#[$meta])*
         #[pyo3_stub_gen::derive::gen_stub_pyclass_enum]
         #[pyclass(module = "griphos", eq, eq_int, from_py_object)]
         #[derive(Clone, Copy, PartialEq, Hash)]
         pub enum $py_name {
-            $($variant,)*
+            $( $(#[$vmeta])* $variant, )*
         }
 
         impl From<&$rust_ty> for $py_name {
@@ -86,9 +98,14 @@ pub(crate) use py_enum;
 /// Boilerplate for a pyclass that just wraps a `Shared<$rust_ty>` handle
 /// (module = "griphos", unsendable, plus any extra bare pyclass flags you
 /// pass, e.g. `subclass`). `#[pymethods]` is left for you to write by hand
-/// right after invoking this.
+/// right after invoking this. Doc comments placed before the class name are
+/// forwarded to the generated struct (and so become the Python docstring).
 macro_rules! py_wrapper {
-    ($py_name:ident, $rust_ty:path $(, $flag:ident)*) => {
+    (
+        $(#[$meta:meta])*
+        $py_name:ident, $rust_ty:path $(, $flag:ident)*
+    ) => {
+        $(#[$meta])*
         #[pyo3_stub_gen::derive::gen_stub_pyclass]
         #[pyclass(module = "griphos", unsendable $(, $flag)*)]
         pub struct $py_name {
@@ -111,7 +128,11 @@ macro_rules! py_wrapper {
 pub(crate) use py_wrapper;
 
 macro_rules! element_subclass {
-    ($name:ident, $spec:ty) => {
+    (
+        $(#[$meta:meta])*
+        $name:ident, $spec:ty
+    ) => {
+        $(#[$meta])*
         #[pyclass(extends=$crate::network::Element, unsendable)]
         pub struct $name {
             // Convenience reference to the parent elem for the purpose of rust code.

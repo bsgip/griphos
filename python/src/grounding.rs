@@ -5,7 +5,17 @@ use gr::{Shared, IntoShared};
 use crate::plumbing::{element_subclass};
 use crate::network::{BusTermId, bus_term_ids_to_gr};
 
-element_subclass!(Grounding, gr::Grounding);
+element_subclass!(
+    /// An element that grounds its bus terminals.
+    ///
+    /// Args:
+    ///     bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+    ///
+    /// Returns:
+    ///     A new `Grounding` object.
+    Grounding,
+    gr::Grounding
+);
 
 impl Grounding {
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
@@ -22,7 +32,6 @@ impl Grounding {
 
 #[pymethods]
 impl Grounding {
-
     #[new]
     pub fn new(
         uid: &str,

@@ -49,6 +49,10 @@ def test_generic_element():
     assert e.uid == "my_ge"
 
 
+def test_transformer_taps():
+    taps_data: gr.TransformerTapsData = gr.TransformerTapsData(
+    )
+
 def test_network():
     netw = gr.parse_ejson_file(f"{TEST_DATA_DIR}/netw-i3l3s3.json")
     results = gr.solve_network(netw, "nodal_rect")

@@ -4,6 +4,9 @@ use crate::foundation::{CooMat, c64};
 use crate::network::{BusTermId, Element, ElementSpec};
 use crate::TypeStrOf;
 
+/// A generic, non-specialized element.
+///
+/// Can be used to directly specify any combination of `y_const`, `i_const`, `s_const`, ...
 #[derive(Debug, Default, TypeStrOf)]
 pub struct GenericElement {
     /// Number of bus terminals.

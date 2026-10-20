@@ -5,7 +5,28 @@ use gr::{CooMat, c64, Shared, IntoShared};
 use crate::plumbing::element_subclass;
 use crate::network::{BusTermId, bus_term_ids_to_gr};
 
-element_subclass!(GenericElement, gr::GenericElement);
+element_subclass!(
+    /// A generic, non-specialized element.
+    ///
+    /// Can be used to directly specify any combination of `y_const`, `i_const`, `s_const`, ...
+    ///
+    /// Args:
+    ///     uid: The ID of the element.
+    ///     bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+    ///     branches: Start and end terminals of each branch (current path) in the element.
+    ///     y_const: The optional constant Y branch impedance matrix, as `((i, j), value)` tuples.
+    ///     i_const: The optional constant I branch impedance vector, as `(i, value)` tuples.
+    ///     s_const: The optional constant S branch impedance vector, as `(i, value)` tuples.
+    ///     vmag_const: The optional controlled constant voltage magnitude vector, as `(i, value)` tuples.
+    ///     vang_const: The optional controlled constant voltage angle vector, as `(i, value)` tuples.
+    ///     copper_plate: The groups of copper-plated (shorted) terminal indices; each group of terminals is shorted.
+    ///     grounding: The grounded terminal indices.
+    ///
+    /// Returns:
+    ///     A new `GenericElement` object.
+    GenericElement,
+    gr::GenericElement
+);
 
 impl GenericElement {
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.

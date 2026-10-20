@@ -6,6 +6,7 @@ use pyo3_stub_gen::derive::{gen_stub_pyclass};
 
 use crate::network::Network;
 
+/// The solver status for a single iteration or the result of all iterations.
 #[gen_stub_pyclass]
 #[pyclass(module = "griphos", get_all, eq, frozen, skip_from_py_object)]
 #[derive(Clone, PartialEq)]
@@ -29,6 +30,7 @@ impl From<&gr::SolverStatusItem> for SolverStatusItem {
     }
 }
 
+/// The iteration status and final status for a single solver run.
 #[gen_stub_pyclass]
 #[pyclass(module = "griphos", get_all, eq, frozen, skip_from_py_object)]
 #[derive(Clone, PartialEq)]
@@ -46,6 +48,8 @@ impl From<&gr::SolverStatus> for SolverStatus {
     }
 }
 
+/// A [`NetworkSolver`] solver solves for the currents and voltages in the network, incluing solving and modifying the
+/// network based on the solution.
 #[pyclass(unsendable)]
 pub struct NetworkSolver(pub Option<Box<dyn gr::NetworkSolver>>);
 
@@ -63,6 +67,10 @@ impl<'a, 'py> FromPyObject<'a, 'py> for NetworkSolver {
     }
 }
 
+/// Return value for solve_network.
+///
+/// [`solve_network`] splits the problem into network into islands, and records results for each island. It also returns
+/// the solvers that were created by the [`solve_network`] call, for possible later reuse.
 #[pyclass]
 pub struct SolveNetworkResult {
     #[pyo3(get)]
@@ -94,6 +102,16 @@ fn unknown_solver_to_pyerr(err: gr::UnknownSolver) -> PyErr {
     PyValueError::new_err(err.to_string()) // assumes UnknownSolver: Display
 }
 
+/// Solves the network using the given solver (specified as a key).
+///
+/// Accepts as the `solvers` argument an optional list of [`NetworkSolver`]s, which, if supplied, will be used for the
+/// new solve call, meaning that we don't need to do the work of creating solvers from scratch. This makes it much more
+/// efficient to perform multiple solve calls, e.g. solve the network every five minutes during a day long horizon.
+///
+/// Args:
+///     netw: The network to solve for.
+///     solver_name: The solver selection key, such as "nodal_rect".
+///     solvers: Optional list of `NetworkSolver`s; if supplied will use these instead of creating new ones.
 #[pyfunction]
 #[pyo3(signature = (netw, solver_name, solvers=None))]
 pub fn solve_network(

@@ -7,7 +7,22 @@ use crate::network::{BusTermId, bus_term_ids_to_gr};
 
 py_enum!(SwitchState, gr::SwitchState {NoSwitch, Closed, Open});
 
-element_subclass!(Connector, gr::Connector);
+element_subclass!(
+    /// A simple connector element joining multiple bus terminals.
+    ///
+    /// Acts as a single node (copper plate) across all of its terminals when
+    /// its switch is closed, and splits them apart when open.
+    ///
+    /// Args:
+    ///     uid: the element ID
+    ///     bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals
+    ///     switch_state: SwitchState that can be NoSwitch, Open or Closed
+    ///
+    /// Returns:
+    ///     New Connector object
+    Connector,
+    gr::Connector
+);
 
 impl Connector {
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
@@ -25,7 +40,6 @@ impl Connector {
 
 #[pymethods]
 impl Connector {
-
     #[new]
     pub fn new(
         uid: &str,
