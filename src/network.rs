@@ -120,8 +120,8 @@ impl fmt::Display for Phase {
 }
 
 /// Returns terminal connections for a standard wye connection. Neutral is always considered to come last by convention.
-pub fn wye_connection(n_phase: usize) -> Result<Vec<(usize, usize)>, String> {
-    match n_phase {
+pub fn wye_connection(n_phases: usize) -> Result<Vec<(usize, usize)>, String> {
+    match n_phases {
         1 => Ok(vec![(0, 1)]),
         2 => Ok(vec![(0, 2), (1, 2)]),
         3 => Ok(vec![(0, 3), (1, 3), (2, 3)]),
@@ -130,8 +130,8 @@ pub fn wye_connection(n_phase: usize) -> Result<Vec<(usize, usize)>, String> {
 }
 
 /// Returns terminal connections for a standard wye connection. Neutral is always considered to come last by convention.
-pub fn delta_connection(n_phase: usize) -> Result<Vec<(usize, usize)>, String> {
-    match n_phase {
+pub fn delta_connection(n_phases: usize) -> Result<Vec<(usize, usize)>, String> {
+    match n_phases {
         1 => Ok(vec![(0, 1)]),
         3 => Ok(vec![(0, 1), (1, 2), (2, 0)]),
         _ => Err(String::from("a delta connection must have 1 or 3 phases"))

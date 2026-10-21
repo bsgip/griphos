@@ -298,14 +298,14 @@ fn handle_line_variant_0(
 ) -> Result<(), String> {
     let bts = get_bts(&cons.0, ejson_phase_map);
     let [bts0, bts1] = bts.as_slice() else {panic!("Expected 2 elements")};
-    let n_phase = bts0.len();
+    let n_phases = bts0.len();
     let in_service = convert_in_service(in_service);
     let z = length * convert_complex(z, Z_FACTOR);
     let z0= length * convert_complex(z0, Z_FACTOR);
     if !b_chg.is_none() {
         warn!("Unimplemented b_chg for e-JSON line. Ignoring.");
     }
-    let elem = netw.add_element(Line::new_from_sym_seq(z, z0, n_phase).unwrap().element(id, bts0.clone(), bts1.clone())).unwrap();
+    let elem = netw.add_element(Line::new_from_sym_seq(z, z0, n_phases).unwrap().element(id, bts0.clone(), bts1.clone())).unwrap();
     elem.borrow_mut().is_in_service = in_service;
     Ok(())
 }
@@ -414,9 +414,9 @@ fn handle_load(
     let spec = match *wiring {
         ejt::Wiring::Delta => {Load::new_delta(bts.len(), None, None, s)},
         ejt::Wiring::Wye => {
-            let n_term = bts.len();
+            let n_terms = bts.len();
             bts.push(bt!("G", Phase::N));
-            Load::new_wye(n_term, None, None, s, true)
+            Load::new_wye(n_terms, None, None, s, true)
         },
     };
     let elem = netw.add_element(spec.element(id, bts)).unwrap();

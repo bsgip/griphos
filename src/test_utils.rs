@@ -136,8 +136,8 @@ pub fn add_source(netw: &mut Network, bus_uid: &str) -> Shared<Element> {
     let (bus, phs) = bus_and_phases(netw, bus_uid);
     assert!(matches!(phs.last(), Some(Phase::N)));
     let bts: Vec<BusTermId> = phs.iter().map(|p| bt!(bus_uid, *p)).collect();
-    let n_phase = phs.len() - 1;
-    netw.add_element(Source::new_wye_slack(bus.borrow().v_base, n_phase, true).element(&uid, bts, true)).unwrap()
+    let n_phases = phs.len() - 1;
+    netw.add_element(Source::new_wye_slack(bus.borrow().v_base, n_phases, true).element(&uid, bts, true)).unwrap()
 }
 
 // Adds a line between two buses involving all phases and with the given z+, z0.
@@ -145,9 +145,9 @@ pub fn add_line(netw: &mut Network, bus_uid_0: &str, bus_uid_1: &str, z: c64) ->
     let uid = elem_uid::<Line>(netw);
     let (_, phs0) = bus_and_phases(netw, bus_uid_0);
     let (_, phs1) = bus_and_phases(netw, bus_uid_1);
-    let n_phase = phs0.len();
+    let n_phases = phs0.len();
     netw.add_element(
-        Line::new_from_sym_seq(z, z, n_phase)
+        Line::new_from_sym_seq(z, z, n_phases)
             .unwrap()
             .element(
                 &uid,
@@ -194,8 +194,8 @@ pub fn add_load(netw: &mut Network, bus_uid: &str, s_tot: c64) -> Shared<Element
     let uid = elem_uid::<Load>(netw);
     let (_, phs) = bus_and_phases(netw, bus_uid);
     let bts: Vec<BusTermId> = phs.iter().map(|p| bt!(bus_uid, *p)).collect();
-    let n_phase = phs.len();
-    let s = vec![s_tot / n_phase as f64; n_phase];
+    let n_phases = phs.len();
+    let s = vec![s_tot / n_phases as f64; n_phases];
     netw.add_element(
         Load::new_wye(
             phs.len(),

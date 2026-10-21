@@ -10,7 +10,7 @@ use crate::TypeStrOf;
 #[derive(Debug, Serialize, TypeStrOf)]
 pub struct Line {
     /// The number of phases (wires).
-    pub n_phase: usize,
+    pub n_phases: usize,
     /// The phase admittance matrix, specified as ((term_0, term_1), y) triples.
     pub y_const: CooMat<c64>,
 }
@@ -24,8 +24,8 @@ impl Line {
     /// # use griphos::{c, c64, Line, y_branch_from_sym_seq};
     /// let line = Line::new(3, y_branch_from_sym_seq(c!(1.0, 1.0), c!(1.0, 1.0), 3).unwrap());
     /// ```
-    pub fn new(n_phase: usize, y_const: CooMat<c64>) -> Line {
-        Line {n_phase, y_const}
+    pub fn new(n_phases: usize, y_const: CooMat<c64>) -> Line {
+        Line {n_phases, y_const}
     }
 
     /// Creates a new line, with the given z and z0.
@@ -36,10 +36,10 @@ impl Line {
     /// # use griphos::{c, c64, Line};
     /// let line = Line::new_from_sym_seq(c!(1.0, 1.0), c!(1.0, 1.0), 3);
     /// ```
-    pub fn new_from_sym_seq(z_plus: c64, z_0: c64, n_phase: usize) -> Result<Line, String> {
-        match y_branch_from_sym_seq(z_plus, z_0, n_phase) {
+    pub fn new_from_sym_seq(z_plus: c64, z_0: c64, n_phases: usize) -> Result<Line, String> {
+        match y_branch_from_sym_seq(z_plus, z_0, n_phases) {
             Ok(y_const) => {
-                Ok(Line{n_phase , y_const})
+                Ok(Line{n_phases , y_const})
             },
             Err(s) => Err(s)
         }
@@ -53,21 +53,21 @@ impl Line {
 }
 
 impl ElementSpec for Line {
-    /// n_phase terminals at the start and n_phase at the end.
+    /// n_phases terminals at the start and n_phases at the end.
     fn n_terms(&self) -> usize {
-        2 * self.n_phase
+        2 * self.n_phases
     }
 
     /// Each wire is a branch.
     fn n_branches(&self) -> usize {
-        self.n_phase
+        self.n_phases
     }
 
     /// Each branch runs from the terminal at one end to the corresponding terminal at the other end.
     ///
     /// Terminals are ordered as, e.g., (a0, b0, c0, a1, b1, c1) where the ends are 0, 1 and phases a, b, c.
     fn branch_wiring(&self) -> Vec<(usize, usize)> {
-        (0..self.n_phase).map(|i| (i, i + self.n_phase)).collect()
+        (0..self.n_phases).map(|i| (i, i + self.n_phases)).collect()
     }
 
     fn y_const(&self) -> CooMat<c64> {
@@ -83,8 +83,8 @@ impl_g_serialize!(Line);
 /// symmnetry in the line geometry. This is why "sym" is used in the name. It
 /// is common to make this assumption as an approximation to the real world
 /// case.
-pub fn y_branch_from_sym_seq(z_plus: c64, mut z_0: c64, n_phase: usize) -> Result<CooMat<c64>, String> {
-    if n_phase == 1 {
+pub fn y_branch_from_sym_seq(z_plus: c64, mut z_0: c64, n_phases: usize) -> Result<CooMat<c64>, String> {
+    if n_phases == 1 {
         // NOTE: How do we treat sequence components with single (and for that matter, two) wire lines?
         // We could effectively use the same matrix elements no matter the number of phases, i.e. picking submatrices
         // of the 3x3 3-wire phase impedance matrix. Comparing to opendss, we can confirm that this all matches for 3
@@ -100,7 +100,7 @@ pub fn y_branch_from_sym_seq(z_plus: c64, mut z_0: c64, n_phase: usize) -> Resul
         z_0 = z_plus;
     }
 
-    if n_phase == 3 {
+    if n_phases == 3 {
         let a: c64 = (2.0 * z_0 + z_plus) / (3.0 * z_0 * z_plus);
         let b: c64 = (-z_0 + z_plus) / (3.0 * z_0 * z_plus);
         Ok(vec![
@@ -108,20 +108,20 @@ pub fn y_branch_from_sym_seq(z_plus: c64, mut z_0: c64, n_phase: usize) -> Resul
             ((1, 0), b), ((1, 1), a), ((1, 2), b),
             ((2, 0), b), ((2, 1), b), ((2, 2), a),
         ])
-    } else if n_phase == 2 {
+    } else if n_phases == 2 {
         let a = (z_0 + 2.0 * z_plus) / (2.0 * z_0 * z_plus + z_plus * z_plus);
         let b = (-z_0 + z_plus) / (2.0 * z_0 * z_plus + z_plus * z_plus);
         Ok(vec![
             ((0, 0), a), ((0, 1), b),
             ((1, 0), b), ((1, 1), a),
         ])
-    } else if n_phase == 1 {
+    } else if n_phases == 1 {
         let a = 3.0 / (z_0 + 2.0 * z_plus);
         Ok(vec![
             ((0, 0), a)
         ])
     }
-    else {Err("n_phase must be 1, 2 or 3".to_string())}
+    else {Err("n_phases must be 1, 2 or 3".to_string())}
 }
 
 #[cfg(test)]
