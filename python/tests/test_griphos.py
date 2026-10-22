@@ -51,6 +51,7 @@ def test_generic_element():
 
 def test_transformer_taps():
     taps_data: gr.TransformerTapsData = gr.TransformerTapsData(
+        0, 0.01, -3, 3
     )
 
 def test_network():
