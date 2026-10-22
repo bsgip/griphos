@@ -592,7 +592,7 @@ class Transformer:
         """
     def __new__(cls, uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], n_sides: builtins.int, n_phases: builtins.int, nom_turns: typing.Sequence[builtins.complex], taps: typing.Optional[TransformerTapsData], z_series: typing.Sequence[builtins.complex], terminal_mapping: typing.Sequence[typing.Sequence[tuple[builtins.int, builtins.int]]]) -> Transformer: ...
     @staticmethod
-    def new_with_vector_group(uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], n_phases: builtins.int, nom_turns: typing.Sequence[builtins.complex], taps: typing.Optional[TransformerTapsData], z_series: tuple[builtins.complex, builtins.complex], vector_group_str: builtins.str) -> Transformer:
+    def new_with_vector_group(uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], n_phases: builtins.int, nom_turns: typing.Sequence[builtins.complex], taps: typing.Optional[TransformerTapsData], z_series: typing.Sequence[builtins.complex], vector_group_str: builtins.str) -> Transformer:
         r"""
         Create a new two-winding transformer with the given vector group.
         
