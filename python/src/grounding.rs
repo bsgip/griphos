@@ -4,13 +4,13 @@ use pyo3_stub_gen::derive::gen_stub_pymethods;
 use ::griphos as gr;
 use gr::{Shared, IntoShared};
 use crate::plumbing::{element_subclass};
-use crate::network::{BusTermId, bus_term_ids_to_gr};
+use crate::network::{BusNodeId, bus_node_ids_to_gr};
 
 element_subclass!(
-    /// An element that grounds its bus terminals.
+    /// An element that grounds its terminals.
     ///
     /// Args:
-    ///     bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+    ///     bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
     ///
     /// Returns:
     ///     A new `Grounding` object.
@@ -22,10 +22,10 @@ impl Grounding {
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
     pub fn new_raw(
         uid: &str,
-        bus_term_ids: Vec<BusTermId>,
+        bus_node_ids: Vec<BusNodeId>,
     ) -> Self {
-        let gr_grounding = gr::Grounding::new(bus_term_ids.len());
-        let bts = bus_term_ids_to_gr(bus_term_ids);
+        let gr_grounding = gr::Grounding::new(bus_node_ids.len());
+        let bts = bus_node_ids_to_gr(bus_node_ids);
         let elem = gr_grounding.element(uid, bts).into_shared();
         Grounding::from_elem(elem)
     }
@@ -37,9 +37,9 @@ impl Grounding {
     #[new]
     pub fn new(
         uid: &str,
-        bus_term_ids: Vec<BusTermId>,
+        bus_node_ids: Vec<BusNodeId>,
     ) -> PyClassInitializer<Self> {
-        Self::new_raw(uid, bus_term_ids).into_initializer()
+        Self::new_raw(uid, bus_node_ids).into_initializer()
     }
 }
 
@@ -51,9 +51,9 @@ mod tests {
     #[test]
     fn test_new_grounding() {
         let bts = vec![
-            BusTermId {b: "bus_1".to_string(), p: Phase::A},
-            BusTermId {b: "bus_1".to_string(), p: Phase::B},
-            BusTermId {b: "bus_1".to_string(), p: Phase::C},
+            BusNodeId {b: "bus_1".to_string(), p: Phase::A},
+            BusNodeId {b: "bus_1".to_string(), p: Phase::B},
+            BusNodeId {b: "bus_1".to_string(), p: Phase::C},
         ];
         let grounding = Grounding::new_raw("new_grounding", bts);
         assert!(grounding.uid() == "new_grounding");

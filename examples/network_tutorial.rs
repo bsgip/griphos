@@ -12,8 +12,8 @@
 // connected and grounded.
 
 use griphos::{
-    Bus, BusTermId, C_ZERO, Line, Load, Network, Phase, SQRT_3, Source,
-    Transformer, bt, c, c64, typical_tx_z_series
+    Bus, BusNodeId, C_ZERO, Line, Load, Network, Phase, SQRT_3, Source,
+    Transformer, bn, c, c64, typical_tx_z_series
 };
 
 fn main() {
@@ -74,7 +74,7 @@ fn main() {
                 // with UID "source"...
                 "source",
                 // and connect to phases ABCN of src_bus, N being neutral.
-                ABCN.iter().map(|ph| bt!("src_bus", *ph)).collect(),
+                ABCN.iter().map(|ph| bn!("src_bus", *ph)).collect(),
                 true
             )
     ).expect("problem adding source");
@@ -84,7 +84,7 @@ fn main() {
     println!("Source element:\n{}", source.borrow());
 
     // Add a three-wire line between the src_bus and tx_mv_bus. The element(...)
-    // member for Lines takes a UID and two lists of BusTermIds: one for the
+    // member for Lines takes a UID and two lists of BusNodeIds: one for the
     // start of the line, and the other for the end of the line. Note how the
     // signature of element() is different than that for Sources, see above.
     netw.add_element(
@@ -93,8 +93,8 @@ fn main() {
             .expect("problem creating line")
             .element(
                 "line",
-                ABC.iter().map(|ph| bt!("src_bus", *ph)).collect(),
-                ABC.iter().map(|ph| bt!("tx_mv_bus", *ph)).collect(),
+                ABC.iter().map(|ph| bn!("src_bus", *ph)).collect(),
+                ABC.iter().map(|ph| bn!("tx_mv_bus", *ph)).collect(),
             )
     ).expect("problem adding line");
 
@@ -110,8 +110,8 @@ fn main() {
         ).expect("problem creating transformer")
             .element(
                 "transformer",
-                ABC.iter().map(|ph| bt!("tx_mv_bus", *ph)).chain(
-                    ABCN.iter().map(|ph| bt!("tx_lv_bus", *ph))
+                ABC.iter().map(|ph| bn!("tx_mv_bus", *ph)).chain(
+                    ABCN.iter().map(|ph| bn!("tx_lv_bus", *ph))
                 ).collect(),  // Secondary phases.
             )
     ).expect("problem adding transformer");
@@ -132,10 +132,10 @@ fn main() {
         ).element(
                 "load",
                 vec![
-                    bt!("tx_lv_bus", Phase::A),
-                    bt!("tx_lv_bus", Phase::B),
-                    bt!("tx_lv_bus", Phase::C),
-                    bt!("tx_lv_bus", Phase::N),
+                    bn!("tx_lv_bus", Phase::A),
+                    bn!("tx_lv_bus", Phase::B),
+                    bn!("tx_lv_bus", Phase::C),
+                    bn!("tx_lv_bus", Phase::N),
                 ]
             )
     ).expect("problem adding load");

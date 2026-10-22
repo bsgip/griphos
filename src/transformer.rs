@@ -205,11 +205,11 @@ impl Transformer {
 
     /// Wraps a transformer in an [`Element`], with the given bus/phase connections.
     ///
-    /// The [`BusTermId`]s are in the order of the terminal indexes used in the terminal_mapping. So for example,
+    /// The [`BusNodeId`]s are in the order of the terminal indexes used in the terminal_mapping. So for example,
     /// a dyn11 transformer has the terminal mapping [[(0,1), (1, 2), (2, 0)], [(3, 6), (4, 6), (5, 6)]], and the
-    /// `BusTermIds` are given as a seven element list whose indices correspond to the numbers in the terminal mapping.
-    pub fn element(self, id: &str, bus_term_ids: Vec<BusTermId>) -> Element {
-        self.element_generic(id, bus_term_ids)
+    /// `BusNodeIds` are given as a seven element list whose indices correspond to the numbers in the terminal mapping.
+    pub fn element(self, id: &str, bus_node_ids: Vec<BusNodeId>) -> Element {
+        self.element_generic(id, bus_node_ids)
     }
 
     /// The number of windings, just `n_sides` x `n_phases`.
@@ -693,11 +693,11 @@ mod tests {
 
         let bus_uid_0 = bus_uid(&netw);
         let bus_0 = netw.add_bus(Bus::new(&bus_uid_0, PHASES_ABCN.to_vec(), 11000.0 * SQRT_3_INV)).unwrap();
-        let bts_abcn_0: Vec<BusTermId> = PHASES_ABCN.iter().map(|p| bt!(bus_uid_0, *p)).collect();
+        let bts_abcn_0: Vec<BusNodeId> = PHASES_ABCN.iter().map(|p| bn!(bus_uid_0, *p)).collect();
 
         let bus_uid_1 = bus_uid(&netw);
         netw.add_bus(Bus::new(&bus_uid_1, PHASES_ABCN.to_vec(), 230.0)).unwrap();
-        let bts_abcn_1: Vec<BusTermId> = PHASES_ABCN.iter().map(|p| bt!(bus_uid_1, *p)).collect();
+        let bts_abcn_1: Vec<BusNodeId> = PHASES_ABCN.iter().map(|p| bn!(bus_uid_1, *p)).collect();
 
         let source_uid = elem_uid::<Source>(&netw);
         netw.add_element(Source::new_wye_slack(bus_0.borrow().v_base, 3, true)
@@ -722,8 +722,8 @@ mod tests {
         let bus0_uid = bus0.borrow().uid();
         let bus1 = netw.bus_i(1).unwrap();
         let bus1_uid = bus1.borrow().uid();
-        let bts = PHASES_ABCN.iter().map(|p| bt!(bus0_uid, *p))
-            .chain(PHASES_ABCN.iter().map(|p| bt!(bus1_uid, *p))).collect();
+        let bts = PHASES_ABCN.iter().map(|p| bn!(bus0_uid, *p))
+            .chain(PHASES_ABCN.iter().map(|p| bn!(bus1_uid, *p))).collect();
         netw.add_element(tx.element("transformer", bts)).unwrap();
 
         let solve_result = solve_network(&mut netw, "nodal_rect", None);

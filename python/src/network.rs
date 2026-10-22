@@ -21,20 +21,20 @@ py_enum!(
 );
 
 py_value!(
-    /// A bus UID / phase pair, that together serve to identify a single bus terminal.
-    BusTermId,
-    gr::BusTermId { pub b: String, pub p: Phase }
+    /// A bus UID / phase pair, that together serve to identify a single bus node.
+    BusNodeId,
+    gr::BusNodeId { pub b: String, pub p: Phase }
 );
 
-/// Create a bus terminal id from a bus uid and a phase.
+/// Create a bus node id from a bus uid and a phase.
 #[pyfunction]
-pub fn bt(b: String, p: Phase) -> BusTermId {
-    BusTermId { b, p }
+pub fn bn(b: String, p: Phase) -> BusNodeId {
+    BusNodeId { b, p }
 }
 
-/// Utility function to map a Vec of BusTermIds to griphos equivalent.
-pub(crate) fn bus_term_ids_to_gr(bus_term_ids: Vec<BusTermId>) -> Vec<gr::BusTermId> {
-    bus_term_ids.into_iter().map(|x| x.into()).collect()
+/// Utility function to map a Vec of BusNodeIds to griphos equivalent.
+pub(crate) fn bus_node_ids_to_gr(bus_node_ids: Vec<BusNodeId>) -> Vec<gr::BusNodeId> {
+    bus_node_ids.into_iter().map(|x| x.into()).collect()
 }
 
 py_value!(
@@ -82,19 +82,19 @@ impl Bus {
         self.inner.borrow().v_base
     }
 
-    /// The phases of each bus terminal/node.
+    /// The phases of each bus node.
     #[getter]
     fn phases(&self) -> Vec<Phase> {
         self.inner.borrow().terms.iter().map(|t| Phase::from(t.phase)).collect()
     }
 
-    /// The complex voltages of each bus terminal/node.
+    /// The complex voltages of each bus node.
     #[getter]
     fn vs(&self) -> Vec<c64> {
         self.inner.borrow().terms.iter().map(|t| t.v).collect()
     }
 
-    /// Set the complex voltages of each bus terminal/node.
+    /// Set the complex voltages of each bus node.
     #[setter]
     fn set_vs(&self, vs: Vec<c64>) {
         for (term, v) in self.inner.borrow_mut().terms.iter_mut().zip(vs) {
@@ -131,7 +131,7 @@ impl Element {
 
     /// The number of terminals on the element.
     ///
-    /// Each terminal connects to a bus terminal i.e. a single phase of a bus.
+    /// Each terminal connects to a bus node i.e. a single phase of a bus.
     #[getter]
     pub fn n_terms(&self) -> usize {
         self.inner.borrow().n_terms()

@@ -3,12 +3,12 @@
 //! [`Network`]s comprise a list of [`Bus`]es and a list of [`Element`]s.
 //!
 //! Buses are nodes of the network, and consist of one or more blobs or bars of conductor with negligible resistance,
-//! the bus terninals, or [`BusTerm`]s. [`BusTerm`]s contain a [`Phase`] label and a voltage. Each [`BusTerm`] is
-//! uniquely labelled by a [`BusTermId`], recording the bus's UID and the phase.
+//! the bus nodes, or [`BusNode`]s. [`BusNode`]s contain a [`Phase`] label and a voltage. Each [`BusNode`] is
+//! uniquely labelled by a [`BusNodeId`], recording the bus's UID and the phase.
 //!
 //! Buses are connected together by elements, which provide conductive pathways (termed *branches* in griphos
-//! terminology) between pairs of bus terminals. Each [`Element`] has a given number of element *terminals* (connection
-//! points), and is connected to the [`Network`] by assigning to each terminal a particular [`BusTermId`]. Each of the
+//! terminology) between pairs of bus nodes. Each [`Element`] has a given number of element *terminals* (connection
+//! points), and is connected to the [`Network`] by assigning to each terminal a particular [`BusNodeId`]. Each of the
 //! element's branches then provides a conductive pathway between a start terminal and an end terminal.
 //!
 //! For example, a three phase line with no neutral wire will have six terminals: three at the start of the line, and
@@ -138,35 +138,35 @@ pub fn delta_connection(n_phases: usize) -> Result<Vec<(usize, usize)>, String> 
     }
 }
 
-/// A bus UID / phase pair, that together serve to identify a single bus terminal.
+/// A bus UID / phase pair, that together serve to identify a single bus node.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct BusTermId {
+pub struct BusNodeId {
     /// Bus uid.
     pub b: String,
     /// Phase.
     pub p: Phase
 }
 
-impl_g_serialize!(BusTermId);
-impl fmt::Display for BusTermId {
+impl_g_serialize!(BusNodeId);
+impl fmt::Display for BusNodeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Remove quotation marks
         write!(f, "{}:{}", self.b, self.p)
     }
 }
 
-/// Macro to create a [`BusTermId`]
+/// Macro to create a [`BusNodeId`]
 ///
 /// # Examples
 ///
 /// ```
-/// # use griphos::{bt, BusTermId, Phase};
-/// let bus_term = bt!("bus_1", Phase::A);
+/// # use griphos::{bn, BusNodeId, Phase};
+/// let bus_node = bn!("bus_1", Phase::A);
 /// ```
 #[macro_export]
-macro_rules! bt {
+macro_rules! bn {
     ($b:expr, $p:expr) => {
-        BusTermId {b: $b.to_string(), p: $p}
+        BusNodeId {b: $b.to_string(), p: $p}
     }
 }
 
@@ -222,15 +222,15 @@ impl fmt::Display for Wiring {
 
 /// Per-phase data of a bus.
 #[derive(Clone, Debug, Serialize)]
-pub struct BusTerm {
+pub struct BusNode {
     /// The phase
     pub phase: Phase,
     /// Voltage
     pub v: c64,
 }
 
-impl_g_serialize!(BusTerm);
-impl_disp_from_fmt!(BusTerm);
+impl_g_serialize!(BusNode);
+impl_disp_from_fmt!(BusNode);
 
 /// A bus is a collection of one or more nodes, each distinguished by a different phase.
 #[derive(Clone, Debug, Serialize)]
@@ -242,29 +242,29 @@ pub struct Bus {
     pub v_base: f64,
 
     /// Terminals
-    pub terms: Vec<BusTerm>,
+    pub terms: Vec<BusNode>,
 }
 
 impl Bus {
     /// Creates a new [`Bus`].
     pub fn new(uid: &str, phases: Vec<Phase>, v_base: f64) -> Bus {
-        let terms: Vec<BusTerm> = phases.iter()
-            .map(|phase| BusTerm {phase: *phase, v: v_base * phase.v_nom_pu()}).collect();
+        let terms: Vec<BusNode> = phases.iter()
+            .map(|phase| BusNode {phase: *phase, v: v_base * phase.v_nom_pu()}).collect();
         Bus {uid: uid.to_string(), v_base, terms}
     }
 
     /// Searches for the terminal of a bus that has phase `p`.
-    pub fn bus_term(&self, p: Phase) -> Option<&BusTerm> {
+    pub fn bus_node(&self, p: Phase) -> Option<&BusNode> {
         self.terms.iter().find(|x| x.phase == p)
     }
 
     /// Searches for the terminal of a bus that has phase `p`, mutable version.
-    pub fn bus_term_mut(&mut self, p: Phase) -> Option<&mut BusTerm> {
+    pub fn bus_node_mut(&mut self, p: Phase) -> Option<&mut BusNode> {
         self.terms.iter_mut().find(|x| x.phase == p)
     }
 
     /// Searches for the terminal index of a bus that has phase `p`.
-    pub fn i_bus_term(&self, p: Phase) -> Option<usize> {
+    pub fn i_bus_node(&self, p: Phase) -> Option<usize> {
         self.terms.iter().position(|x| x.phase == p)
     }
 
@@ -305,7 +305,7 @@ pub struct Element {
     /// Is the element in service / operational.
     pub is_in_service: bool,
     /// Key of which bus/phases the terminals are connected to.
-    pub bus_term_ids: Vec<BusTermId>,
+    pub bus_node_ids: Vec<BusNodeId>,
     /// The branch info, a vector of [`ElemBranch`] of the element.
     pub branches: Vec<ElemBranch>,
 
@@ -315,12 +315,12 @@ pub struct Element {
 
 impl Element {
     /// Creates a new element.
-    pub fn new<T: ElementSpec + 'static>(uid: &str, bus_term_ids: Vec<BusTermId>, spec: T) -> Element {
+    pub fn new<T: ElementSpec + 'static>(uid: &str, bus_node_ids: Vec<BusNodeId>, spec: T) -> Element {
         let n_branches = spec.n_branches();
         Element {
             uid: uid.to_string(),
             is_in_service: true,
-            bus_term_ids,
+            bus_node_ids,
             spec: Box::new(spec),
             branches: vec![ElemBranch {v: c!(0.0, 0.0), i: c!(0.0, 0.0)}; n_branches],
         }
@@ -412,7 +412,7 @@ impl GSerialize for Element {
         state.serialize_field("uid", &self.uid)?;
         state.serialize_field("element_type", &self.element_type())?;
         state.serialize_field("is_in_service", &self.is_in_service)?;
-        state.serialize_field("bus_term_ids", &self.bus_term_ids)?;
+        state.serialize_field("bus_node_ids", &self.bus_node_ids)?;
         state.serialize_field("n_terms", &self.spec.n_terms())?;
         state.serialize_field("branch_wiring", &self.branch_wiring())?;
         state.serialize_field("y_const", &self.spec.y_const())?;
@@ -447,17 +447,17 @@ impl<T: TypeStrOf> TypeStr for T {
 
 /// An element_spec collects together electrical connections of various types such as constant y or constant s.
 pub trait ElementSpec: Any + std::fmt::Debug + Send + Sync + TypeStrOf + TypeStr {
-    fn element_generic(self, uid: &str, bus_term_ids: Vec<BusTermId>) -> Element where Self: Sized + 'static {
+    fn element_generic(self, uid: &str, bus_node_ids: Vec<BusNodeId>) -> Element where Self: Sized + 'static {
         let n_terms = self.n_terms();
         assert!(
-            bus_term_ids.len() == n_terms,
-            "element {} has the wrong number of terminals, have {}, expecting {}", uid, bus_term_ids.len(), n_terms
+            bus_node_ids.len() == n_terms,
+            "element {} has the wrong number of terminals, have {}, expecting {}", uid, bus_node_ids.len(), n_terms
         );
         assert!(
             self.branch_wiring().iter().flat_map(|(i, j)| [i, j]).all(|k| *k < n_terms),
             "wiring for element {} contains terminal indices that are >= the number of terminals", &uid
         );
-        Element::new(uid, bus_term_ids, self)
+        Element::new(uid, bus_node_ids, self)
     }
 
     /// Returns the number of terminals (connection points).

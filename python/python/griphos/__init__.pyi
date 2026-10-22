@@ -6,7 +6,7 @@ import enum
 import typing
 __all__ = [
     "Bus",
-    "BusTermId",
+    "BusNodeId",
     "Connector",
     "ElemBranch",
     "ElemBranchId",
@@ -49,47 +49,47 @@ class Bus:
         """
     def phases(self) -> builtins.list[Phase]:
         r"""
-        The phases of each bus terminal/node.
+        The phases of each bus node.
         """
     def vs(self) -> builtins.list[builtins.complex]:
         r"""
-        The complex voltages of each bus terminal/node.
+        The complex voltages of each bus node.
         """
     def set_vs(self, vs: typing.Sequence[builtins.complex]) -> None:
         r"""
-        Set the complex voltages of each bus terminal/node.
+        Set the complex voltages of each bus node.
         """
     def __str__(self) -> builtins.str: ...
 
 @typing.final
-class BusTermId:
+class BusNodeId:
     r"""
-    A bus UID / phase pair, that together serve to identify a single bus terminal.
+    A bus UID / phase pair, that together serve to identify a single bus node.
     """
     @property
     def b(self) -> builtins.str: ...
     @property
     def p(self) -> Phase: ...
     def __eq__(self, other: builtins.object, /) -> builtins.bool: ...
-    def __new__(cls, b: builtins.str, p: Phase) -> BusTermId: ...
+    def __new__(cls, b: builtins.str, p: Phase) -> BusNodeId: ...
 
 @typing.final
 class Connector:
     r"""
-    A simple connector element joining multiple bus terminals.
+    A simple connector element for joining (copperplating) multiple bus nodes.
     
     Acts as a single node (copper plate) across all of its terminals when
     its switch is closed, and splits them apart when open.
     
     Args:
         uid: the element ID
-        bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals
+        bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals
         switch_state: SwitchState that can be NoSwitch, Open or Closed
     
     Returns:
         New Connector object
     """
-    def new(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], switch_state: SwitchState) -> Connector: ...
+    def new(self, uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], switch_state: SwitchState) -> Connector: ...
 
 @typing.final
 class ElemBranch:
@@ -138,7 +138,7 @@ class Element:
         r"""
         The number of terminals on the element.
         
-        Each terminal connects to a bus terminal i.e. a single phase of a bus.
+        Each terminal connects to a bus node i.e. a single phase of a bus.
         """
     def n_branches(self) -> builtins.int:
         r"""
@@ -209,7 +209,7 @@ class GenericElement:
     
     Args:
         uid: The ID of the element.
-        bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+        bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
         branches: Start and end terminals of each branch (current path) in the element.
         y_const: The optional constant Y branch impedance matrix, as `((i, j), value)` tuples.
         i_const: The optional constant I branch impedance vector, as `(i, value)` tuples.
@@ -222,20 +222,20 @@ class GenericElement:
     Returns:
         A new `GenericElement` object.
     """
-    def new(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], branches: typing.Sequence[tuple[builtins.int, builtins.int]], y_const: typing.Optional[typing.Sequence[tuple[tuple[builtins.int, builtins.int], builtins.complex]]], i_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.complex]]], s_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.complex]]], vmag_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.float]]], vang_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.float]]], copper_plate: typing.Optional[typing.Sequence[typing.Sequence[builtins.int]]], grounding: typing.Optional[typing.Sequence[builtins.int]]) -> GenericElement: ...
+    def new(self, uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], branches: typing.Sequence[tuple[builtins.int, builtins.int]], y_const: typing.Optional[typing.Sequence[tuple[tuple[builtins.int, builtins.int], builtins.complex]]], i_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.complex]]], s_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.complex]]], vmag_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.float]]], vang_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.float]]], copper_plate: typing.Optional[typing.Sequence[typing.Sequence[builtins.int]]], grounding: typing.Optional[typing.Sequence[builtins.int]]) -> GenericElement: ...
 
 @typing.final
 class Grounding:
     r"""
-    An element that grounds its bus terminals.
+    An element that grounds its terminals.
     
     Args:
-        bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+        bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
     
     Returns:
         A new `Grounding` object.
     """
-    def new(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId]) -> Grounding: ...
+    def new(self, uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId]) -> Grounding: ...
 
 @typing.final
 class Line:
@@ -244,22 +244,22 @@ class Line:
     
     Args:
         uid: the element ID
-        bus_term_ids_0: list of BusTermId containing (bus_id, phase) for terminals at the start of the line.
-        bus_term_ids_1: list of BusTermId containing (bus_id, phase) for terminals at the end of the line.
+        bus_node_ids_0: list of BusNodeId containing (bus_id, phase) for terminals at the start of the line.
+        bus_node_ids_1: list of BusNodeId containing (bus_id, phase) for terminals at the end of the line.
         y_const: Branch admittance matrix, as `((i, j) value)` tuples, e.g. 3x3 matrix for 3 phase line.
     
     Returns:
         A new `Line` object.
     """
-    def new(self, uid: builtins.str, bus_term_ids_0: typing.Sequence[BusTermId], bus_term_ids_1: typing.Sequence[BusTermId], y_const: typing.Sequence[tuple[tuple[builtins.int, builtins.int], builtins.complex]]) -> Line: ...
-    def new_from_sym_seq(self, uid: builtins.str, bus_term_ids_0: typing.Sequence[BusTermId], bus_term_ids_1: typing.Sequence[BusTermId], z_plus: builtins.complex, z_0: builtins.complex, n_phases: builtins.int) -> Line:
+    def new(self, uid: builtins.str, bus_node_ids_0: typing.Sequence[BusNodeId], bus_node_ids_1: typing.Sequence[BusNodeId], y_const: typing.Sequence[tuple[tuple[builtins.int, builtins.int], builtins.complex]]) -> Line: ...
+    def new_from_sym_seq(self, uid: builtins.str, bus_node_ids_0: typing.Sequence[BusNodeId], bus_node_ids_1: typing.Sequence[BusNodeId], z_plus: builtins.complex, z_0: builtins.complex, n_phases: builtins.int) -> Line:
         r"""
         A line element, with given z0 and z+. z- is assumed to equal z+.
         
         Args:
             uid: The element ID
-            bus_term_ids_0: List of BusTermId containing (bus_id, phase) for terminals at the start of the line.
-            bus_term_ids_1: List of BusTermId containing (bus_id, phase) for terminals at the end of the line.
+            bus_node_ids_0: List of BusNodeId containing (bus_id, phase) for terminals at the start of the line.
+            bus_node_ids_1: List of BusNodeId containing (bus_id, phase) for terminals at the end of the line.
             z_plus: the positive (also negative) sequence impedance.
             z_0: the zero sequence impedance.
         
@@ -274,7 +274,7 @@ class Load:
     
     Args:
         uid: The ID of the element.
-        bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+        bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
         branches: Start and end terminals of each branch (current path) in the element.
         y_const: The optional constant Y branch impedance matrix, as `((i, j), value)` tuples.
         i_const: The optional constant I branch impedance vector, as `(i, value)` tuples.
@@ -283,26 +283,26 @@ class Load:
     Returns:
         A new `Load` object.
     """
-    def new(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], branches: typing.Sequence[tuple[builtins.int, builtins.int]], y_const: typing.Optional[typing.Sequence[tuple[tuple[builtins.int, builtins.int], builtins.complex]]], i_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.complex]]], s_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.complex]]], grounding: typing.Optional[typing.Sequence[builtins.int]]) -> Load: ...
-    def new_wye(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], y_const: typing.Optional[typing.Sequence[builtins.complex]], i_const: typing.Optional[typing.Sequence[builtins.complex]], s_const: typing.Optional[typing.Sequence[builtins.complex]], is_grounded: builtins.bool) -> Load:
+    def new(self, uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], branches: typing.Sequence[tuple[builtins.int, builtins.int]], y_const: typing.Optional[typing.Sequence[tuple[tuple[builtins.int, builtins.int], builtins.complex]]], i_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.complex]]], s_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.complex]]], grounding: typing.Optional[typing.Sequence[builtins.int]]) -> Load: ...
+    def new_wye(self, uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], y_const: typing.Optional[typing.Sequence[builtins.complex]], i_const: typing.Optional[typing.Sequence[builtins.complex]], s_const: typing.Optional[typing.Sequence[builtins.complex]], is_grounded: builtins.bool) -> Load:
         r"""
         Creates a new wye connected load.
         
         Args:
             uid: The ID of the element.
-            bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals, with the final one being neutral.
+            bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals, with the final one being neutral.
             y_const: Constant impedance component for each phase (branch) of the load.
             i_const: Constant current component for each phase (branch) of the load.
             s_const: Constant complex power component for each phase (branch) of the load.
             is_grounded: Is the neutral (final) terminal grounded
         """
-    def new_delta(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], y_const: typing.Optional[typing.Sequence[builtins.complex]], i_const: typing.Optional[typing.Sequence[builtins.complex]], s_const: typing.Optional[typing.Sequence[builtins.complex]]) -> Load:
+    def new_delta(self, uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], y_const: typing.Optional[typing.Sequence[builtins.complex]], i_const: typing.Optional[typing.Sequence[builtins.complex]], s_const: typing.Optional[typing.Sequence[builtins.complex]]) -> Load:
         r"""
         Creates a new delta connected load.
         
         Args:
             uid: The ID of the element.
-            bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+            bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
             y_const: Constant impedance component for each phase (branch) of the load.
             i_const: Constant current component for each phase (branch) of the load.
             s_const: Constant complex power component for each phase (branch) of the load.
@@ -410,83 +410,83 @@ class Source:
     
     Args:
         uid: The ID of the element.
-        bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+        bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
         branches: Start and end terminals of each branch (current path) in the element.
         control: `SourceControl` that specifies the type and parameters of voltage control, if any.
         grounding: Optional list of terminal indices that are grounded.
     """
-    def new(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], branches: typing.Sequence[tuple[builtins.int, builtins.int]], control: SourceControl, grounding: typing.Optional[typing.Sequence[builtins.int]]) -> Source: ...
-    def new_wye_slack(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], vmag: builtins.float, is_grounded: builtins.bool) -> Source:
+    def new(self, uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], branches: typing.Sequence[tuple[builtins.int, builtins.int]], control: SourceControl, grounding: typing.Optional[typing.Sequence[builtins.int]]) -> Source: ...
+    def new_wye_slack(self, uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], vmag: builtins.float, is_grounded: builtins.bool) -> Source:
         r"""
         A new wye-connected slack source with default positive sequence reference angles.
         
         Args:
             uid: The ID of the element.
-            bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+            bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
             vmag: the controlled voltage magnitude, single value for all branches.
             is_grounded: Is the neutral terminal grounded?
         
         Returns:
             A new `Source` object.
         """
-    def new_delta_slack(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], vmag: builtins.float) -> Source:
+    def new_delta_slack(self, uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], vmag: builtins.float) -> Source:
         r"""
         A new delta-connected slack source with default positive sequence reference angles.
         
         Args:
             uid: The ID of the element.
-            bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+            bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
             vmag: the controlled voltage magnitude, single value for all branches.
         
         Returns:
             A new `Source` object.
         """
-    def new_wye_pv(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], p_tot: builtins.float, vmag: builtins.float, is_grounded: builtins.bool) -> Source:
+    def new_wye_pv(self, uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], p_tot: builtins.float, vmag: builtins.float, is_grounded: builtins.bool) -> Source:
         r"""
         A new wye-connected PV source with default positive sequence reference angles.
         
         Args:
             uid: The ID of the element.
-            bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+            bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
             vmag: the controlled voltage magnitude, single value for all branches.
             is_grounded: Is the neutral terminal grounded?
         
         Returns:
             A new `Source` object.
         """
-    def new_delta_pv(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], p_tot: builtins.float, vmag: builtins.float) -> Source:
+    def new_delta_pv(self, uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], p_tot: builtins.float, vmag: builtins.float) -> Source:
         r"""
         A new delta-connected PV source with default positive sequence reference angles.
         
         Args:
             uid: The ID of the element.
-            bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+            bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
             p_tot: the total real power, to be equally distributed among the branches.
             vmag: the controlled voltage magnitude, single value for all branches.
         
         Returns:
             A new `Source` object.
         """
-    def new_wye_pq(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], s_tot: builtins.complex, is_grounded: builtins.bool) -> Source:
+    def new_wye_pq(self, uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], s_tot: builtins.complex, is_grounded: builtins.bool) -> Source:
         r"""
         A new wye-connected PQ (no voltage control) source with default positive sequence reference angles.
         
         Args:
             uid: The ID of the element.
-            bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+            bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
             s_tot: the total complex power, to be equally distributed among the branches.
             is_grounded: Is the neutral terminal grounded?
         
         Returns:
             A new `Source` object.
         """
-    def new_delta_pq(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], s_tot: builtins.complex) -> Source:
+    def new_delta_pq(self, uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], s_tot: builtins.complex) -> Source:
         r"""
         A new delta-connected PQ (no voltage control) source with default positive sequence reference angles.
         
         Args:
             uid: The ID of the element.
-            bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+            bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
             s_tot: the total complex power, to be equally distributed among the branches.
         
         Returns:
@@ -513,7 +513,7 @@ class Transformer:
     
     Args:
         uid: The ID of the element.
-        bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals
+        bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals
         n_sides: The number of "sides" (primary, secondary, tertiary...); 2 for a normal 2-winding transformer.
         n_phases: The number of "phases" (windings on each side); 3 for a 3 phase transformer, etc.
         nom_turns: The nominal number of turns on each side, normally normalised to be relative to the primary which
@@ -526,14 +526,14 @@ class Transformer:
     Returns:
         A new transformer object.
     """
-    def new(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], n_sides: builtins.int, n_phases: builtins.int, nom_turns: typing.Sequence[builtins.complex], taps: typing.Optional[TransformerTapsData], z_series: typing.Sequence[builtins.complex], terminal_mapping: typing.Sequence[typing.Sequence[tuple[builtins.int, builtins.int]]]) -> Transformer: ...
-    def new_with_vector_group(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], n_phases: builtins.int, nom_turns: typing.Sequence[builtins.complex], taps: typing.Optional[TransformerTapsData], z_series: tuple[builtins.complex, builtins.complex], vector_group_str: builtins.str) -> Transformer:
+    def new(self, uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], n_sides: builtins.int, n_phases: builtins.int, nom_turns: typing.Sequence[builtins.complex], taps: typing.Optional[TransformerTapsData], z_series: typing.Sequence[builtins.complex], terminal_mapping: typing.Sequence[typing.Sequence[tuple[builtins.int, builtins.int]]]) -> Transformer: ...
+    def new_with_vector_group(self, uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], n_phases: builtins.int, nom_turns: typing.Sequence[builtins.complex], taps: typing.Optional[TransformerTapsData], z_series: tuple[builtins.complex, builtins.complex], vector_group_str: builtins.str) -> Transformer:
         r"""
         Create a new two-winding transformer with the given vector group.
         
         Args:
             uid: The ID of the element.
-            bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals, with the final one being neutral.
+            bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals, with the final one being neutral.
             n_phases:
             nom_turns_ratio: The turns ratio, np/ns.
             taps: Optional `TransformerTapsData` specifying the transformer's taps.

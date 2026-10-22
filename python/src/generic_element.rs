@@ -4,7 +4,7 @@ use pyo3_stub_gen::derive::gen_stub_pymethods;
 use ::griphos as gr;
 use gr::{CooMat, c64, Shared, IntoShared};
 use crate::plumbing::element_subclass;
-use crate::network::{BusTermId, bus_term_ids_to_gr};
+use crate::network::{BusNodeId, bus_node_ids_to_gr};
 
 element_subclass!(
     /// A generic, non-specialized element.
@@ -13,7 +13,7 @@ element_subclass!(
     ///
     /// Args:
     ///     uid: The ID of the element.
-    ///     bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+    ///     bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
     ///     branches: Start and end terminals of each branch (current path) in the element.
     ///     y_const: The optional constant Y branch impedance matrix, as `((i, j), value)` tuples.
     ///     i_const: The optional constant I branch impedance vector, as `(i, value)` tuples.
@@ -34,7 +34,7 @@ impl GenericElement {
     #[allow(clippy::too_many_arguments)]
     pub fn new_raw(
         uid: &str,
-        bus_term_ids: Vec<BusTermId>,
+        bus_node_ids: Vec<BusNodeId>,
         branches: Vec<(usize, usize)>,
         y_const: Option<CooMat<c64>>,
         i_const: Option<Vec<(usize, c64)>>,
@@ -45,7 +45,7 @@ impl GenericElement {
         grounding: Option<Vec<usize>>,
     ) -> Self {
         let gr_generic_element = gr::GenericElement::new(
-            bus_term_ids.len(),
+            bus_node_ids.len(),
             branches,
             y_const.unwrap_or_default(),
             i_const.unwrap_or_default(),
@@ -55,7 +55,7 @@ impl GenericElement {
             copper_plate.unwrap_or_default(),
             grounding.unwrap_or_default(),
         );
-        let gr_bts = bus_term_ids_to_gr(bus_term_ids);
+        let gr_bts = bus_node_ids_to_gr(bus_node_ids);
         let elem = gr_generic_element.element(uid, gr_bts).into_shared();
         GenericElement::from_elem(elem)
     }
@@ -66,13 +66,13 @@ impl GenericElement {
 impl GenericElement {
     #[new]
     #[pyo3(signature = (
-        uid, bus_term_ids, branches, y_const = None, i_const = None, s_const = None, vmag_const = None,
+        uid, bus_node_ids, branches, y_const = None, i_const = None, s_const = None, vmag_const = None,
         vang_const = None, copper_plate = None, grounding = None
     ))]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         uid: &str,
-        bus_term_ids: Vec<BusTermId>,
+        bus_node_ids: Vec<BusNodeId>,
         branches: Vec<(usize, usize)>,
         y_const: Option<CooMat<c64>>,
         i_const: Option<Vec<(usize, c64)>>,
@@ -83,7 +83,7 @@ impl GenericElement {
         grounding: Option<Vec<usize>>,
     ) -> PyClassInitializer<Self> {
         Self::new_raw(
-            uid, bus_term_ids, branches, y_const, i_const, s_const,
+            uid, bus_node_ids, branches, y_const, i_const, s_const,
             vmag_const, vang_const, copper_plate, grounding
         ).into_initializer()
     }
@@ -98,10 +98,10 @@ mod tests {
     #[test]
     fn test_new_generic_element() {
         let bts = vec![
-            BusTermId {b: "bus_1".to_string(), p: Phase::N},
-            BusTermId {b: "bus_1".to_string(), p: Phase::A},
-            BusTermId {b: "bus_1".to_string(), p: Phase::B},
-            BusTermId {b: "bus_1".to_string(), p: Phase::C},
+            BusNodeId {b: "bus_1".to_string(), p: Phase::N},
+            BusNodeId {b: "bus_1".to_string(), p: Phase::A},
+            BusNodeId {b: "bus_1".to_string(), p: Phase::B},
+            BusNodeId {b: "bus_1".to_string(), p: Phase::C},
         ];
         let branches = vec![(0, 1), (0, 2), (0, 3)];
         let y_const = vec![

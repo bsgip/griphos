@@ -5,7 +5,7 @@ use serde::Serialize;
 use crate::network::*;
 use crate::TypeStrOf;
 
-/// A simple connector element joining multiple bus terminals.
+/// A simple connector element joining multiple bus nodes.
 ///
 /// Acts as a single node (copper plate) across all of its terminals when
 /// its switch is closed, and splits them apart when open.
@@ -21,20 +21,20 @@ impl Connector {
         Connector {n_terms, switch_state}
     }
 
-    /// Wraps this connector as an [`Element`], bound to the given bus terminal IDs.
+    /// Wraps this connector as an [`Element`], bound to the given bus node IDs.
     ///
-    /// `bus_term_ids` must have length [`Connector::n_terms`].
+    /// `bus_node_ids` must have length [`Connector::n_terms`].
     ///
     /// # Examples
     ///
     /// ```
-    /// # use griphos::{bt, BusTermId, Connector, Phase, SwitchState};
+    /// # use griphos::{bn, BusNodeId, Connector, Phase, SwitchState};
     /// let connector = Connector::new(2, SwitchState::Closed);
-    /// let element = connector.element("c1", vec![bt!("bus_1", Phase::A), bt!("bus_2", Phase::A)]);
+    /// let element = connector.element("c1", vec![bn!("bus_1", Phase::A), bn!("bus_2", Phase::A)]);
     /// ```
-    pub fn element(self, uid: &str, bus_term_ids: Vec<BusTermId>) -> Element {
-        assert!(bus_term_ids.len() == self.n_terms, "connector {} expects {} bus terminals", uid, self.n_terms);
-        self.element_generic(uid, bus_term_ids)
+    pub fn element(self, uid: &str, bus_node_ids: Vec<BusNodeId>) -> Element {
+        assert!(bus_node_ids.len() == self.n_terms, "connector {} expects {} bus nodes", uid, self.n_terms);
+        self.element_generic(uid, bus_node_ids)
     }
 }
 

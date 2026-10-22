@@ -161,7 +161,7 @@ fn convert_to_network(schema: Root, ejson_phase_map: &HashMap<String, Phase>) ->
     let _ = netw.add_bus(Bus::new("G", vec![Phase::N], 1.0));
 
     // Make sure it's explicitly grounded.
-    let _ = netw.add_element(Grounding::new(1).element("G", vec![bt!("G", Phase::N)])).unwrap();
+    let _ = netw.add_element(Grounding::new(1).element("G", vec![bn!("G", Phase::N)])).unwrap();
 
     let vt = schema.voltage_type; // TODO
     let comps = &schema.components;
@@ -248,14 +248,14 @@ fn convert_in_service(in_service: &Option<ejt::InService>) -> bool {
 fn get_bts(
     cons: &[ejt::Connection],
     ejson_phase_map: &HashMap<String, Phase>
-) -> Vec<Vec<BusTermId>> {
+) -> Vec<Vec<BusNodeId>> {
     let bus_ids: Vec<&String> = cons.iter().map(|x| {&x.node}).collect();
     let phs: Vec<Vec<Phase>> = cons.iter().map(|x| {convert_phases(&x.phs, ejson_phase_map)}).collect();
     bus_ids.iter().cloned().zip(phs.iter())
-        .map(|(b, ps)| ps.iter().cloned().map(|p| bt!(b.clone(), p)).collect()).collect()
+        .map(|(b, ps)| ps.iter().cloned().map(|p| bn!(b.clone(), p)).collect()).collect()
 }
 
-fn flatten_bts(bts: &[Vec<BusTermId>]) -> Vec<BusTermId> {
+fn flatten_bts(bts: &[Vec<BusNodeId>]) -> Vec<BusNodeId> {
     bts.iter().flatten().cloned().collect()
 }
 
@@ -279,10 +279,10 @@ fn handle_infeeder(
     let con = &cons[0];
     let bus_id: &str = &con.node;
     let phs = convert_phases(&con.phs, ejson_phase_map);
-    // Construct BusTerms that always have ground last.
-    let mut bts: Vec<BusTermId> = Vec::with_capacity(phs.len() + 1);
-    phs.iter().filter(|p| !matches!(p, Phase::N)).for_each(|p| bts.push(bt!(bus_id, *p)));
-    bts.push(bt!("G".to_string(), Phase::N));
+    // Construct BusNodes that always have ground last.
+    let mut bts: Vec<BusNodeId> = Vec::with_capacity(phs.len() + 1);
+    phs.iter().filter(|p| !matches!(p, Phase::N)).for_each(|p| bts.push(bn!(bus_id, *p)));
+    bts.push(bn!("G".to_string(), Phase::N));
     let in_service = convert_in_service(in_service);
     let vmag = v_setpoint.0 * V_FACTOR;
     let elem = netw.add_element(Source::new_wye_slack(vmag, bts.len() - 1, true).element(id, bts, true)).unwrap();
@@ -346,7 +346,7 @@ fn handle_transformer(
         },
     };
 
-    let bts: Vec<BusTermId> = bts[0].iter().chain(bts[1].iter()).cloned().collect();
+    let bts: Vec<BusNodeId> = bts[0].iter().chain(bts[1].iter()).cloned().collect();
 
     let n_winding_pairs = n_winding_pairs.as_ref().expect("Currenly n_winding_pairs is required").0 as usize;
 
@@ -416,7 +416,7 @@ fn handle_load(
         ejt::Wiring::Delta => {Load::new_delta(bts.len(), None, None, s)},
         ejt::Wiring::Wye => {
             let n_terms = bts.len();
-            bts.push(bt!("G", Phase::N));
+            bts.push(bn!("G", Phase::N));
             Load::new_wye(n_terms, None, None, s, true)
         },
     };

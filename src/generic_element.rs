@@ -1,7 +1,7 @@
 //! A generic element that can have various functions.
 
 use crate::foundation::{CooMat, c64};
-use crate::network::{BusTermId, Element, ElementSpec};
+use crate::network::{BusNodeId, Element, ElementSpec};
 use crate::TypeStrOf;
 
 /// A generic, non-specialized element.
@@ -9,7 +9,7 @@ use crate::TypeStrOf;
 /// Can be used to directly specify any combination of `y_const`, `i_const`, `s_const`, ...
 #[derive(Debug, Default, TypeStrOf)]
 pub struct GenericElement {
-    /// Number of bus terminals.
+    /// Number of terminals.
     pub n_terms: usize,
     /// Branch wiring, as a vector of `(term_0, term_1)` tuples.
     pub branch_wiring: Vec<(usize, usize)>,
@@ -29,7 +29,7 @@ pub struct GenericElement {
     pub vang_const: Vec<(usize, f64)>,
     /// Copper-plated (shorted) branches
     pub copper_plate: Vec<Vec<usize>>,
-    /// Grounded bus terminals.
+    /// Grounded bus nodes.
     pub grounding: Vec<usize>,
 }
 
@@ -46,9 +46,9 @@ impl GenericElement {
         }
     }
 
-    /// Wraps a GenericElement in an Element, with given bus terminal connections.
-    pub fn element(self, id: &str, bus_term_ids: Vec<BusTermId>) -> Element {
-        self.element_generic(id, bus_term_ids)
+    /// Wraps a GenericElement in an Element, with given bus nodes connections.
+    pub fn element(self, id: &str, bus_node_ids: Vec<BusNodeId>) -> Element {
+        self.element_generic(id, bus_node_ids)
     }
 }
 

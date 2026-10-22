@@ -6,7 +6,7 @@ use ::griphos as gr;
 use gr::{c64, Shared, IntoShared};
 
 use crate::plumbing::{element_subclass, py_wrapper};
-use crate::network::{BusTermId, bus_term_ids_to_gr};
+use crate::network::{BusNodeId, bus_node_ids_to_gr};
 
 /// Describes various types transformer errors.
 #[derive(Debug)]
@@ -148,7 +148,7 @@ element_subclass!(
     ///
     /// Args:
     ///     uid: The ID of the element.
-    ///     bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals
+    ///     bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals
     ///     n_sides: The number of "sides" (primary, secondary, tertiary...); 2 for a normal 2-winding transformer.
     ///     n_phases: The number of "phases" (windings on each side); 3 for a 3 phase transformer, etc.
     ///     nom_turns: The nominal number of turns on each side, normally normalised to be relative to the primary which
@@ -170,7 +170,7 @@ impl Transformer {
     #[allow(clippy::too_many_arguments)]
     pub fn new_raw(
         uid: &str,
-        bus_term_ids: Vec<BusTermId>,
+        bus_node_ids: Vec<BusNodeId>,
         n_sides: usize,
         n_phases: usize,
         nom_turns: Vec<c64>,
@@ -187,7 +187,7 @@ impl Transformer {
                 n_phases,
             )
         );
-        let gr_bts = bus_term_ids_to_gr(bus_term_ids);
+        let gr_bts = bus_node_ids_to_gr(bus_node_ids);
         let gr_tx = gr::Transformer::new(
             n_sides,
             n_phases,
@@ -205,7 +205,7 @@ impl Transformer {
     /// turns_ratio is np/ns. vector_group_str is all lowercase, with the primary always assumed to come first.
     pub fn new_raw_with_vector_group(
         uid: &str,
-        bus_term_ids: Vec<BusTermId>,
+        bus_node_ids: Vec<BusNodeId>,
         n_phases: usize,
         nom_turns: Vec<c64>,
         taps: Option<TransformerTapsData>,
@@ -221,7 +221,7 @@ impl Transformer {
                 n_phases,
             )
         );
-        let gr_bts = bus_term_ids_to_gr(bus_term_ids);
+        let gr_bts = bus_node_ids_to_gr(bus_node_ids);
         let gr_tx = gr::Transformer::new_with_vector_group(
             n_phases,
             nom_turns,
@@ -241,7 +241,7 @@ impl Transformer {
     #[new]
     pub fn new(
         uid: &str,
-        bus_term_ids: Vec<BusTermId>,
+        bus_node_ids: Vec<BusNodeId>,
         n_sides: usize,
         n_phases: usize,
         nom_turns: Vec<c64>,
@@ -249,14 +249,14 @@ impl Transformer {
         z_series: Vec<c64>,
         terminal_mapping: Vec<Vec<(usize, usize)>>,
     ) -> Result<PyClassInitializer<Self>, TransformerError> {
-        Ok(Self::new_raw(uid, bus_term_ids, n_sides, n_phases, nom_turns, taps, z_series, terminal_mapping)?.into_initializer())
+        Ok(Self::new_raw(uid, bus_node_ids, n_sides, n_phases, nom_turns, taps, z_series, terminal_mapping)?.into_initializer())
     }
 
     /// Create a new two-winding transformer with the given vector group.
     ///
     /// Args:
     ///     uid: The ID of the element.
-    ///     bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals, with the final one being neutral.
+    ///     bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals, with the final one being neutral.
     ///     n_phases:
     ///     nom_turns_ratio: The turns ratio, np/ns.
     ///     taps: Optional `TransformerTapsData` specifying the transformer's taps.
@@ -267,7 +267,7 @@ impl Transformer {
     pub fn new_with_vector_group<'py>(
         py: Python<'py>,
         uid: &str,
-        bus_term_ids: Vec<BusTermId>,
+        bus_node_ids: Vec<BusNodeId>,
         n_phases: usize,
         nom_turns: Vec<c64>,
         taps: Option<TransformerTapsData>,
@@ -275,7 +275,7 @@ impl Transformer {
         vector_group_str: &str
     ) -> PyResult<Bound<'py, Self>> {
         Bound::new(py, Self::new_raw_with_vector_group(
-            uid, bus_term_ids, n_phases, nom_turns, taps, z_series, vector_group_str
+            uid, bus_node_ids, n_phases, nom_turns, taps, z_series, vector_group_str
         )?.into_initializer())
     }
 
@@ -350,25 +350,25 @@ impl Transformer {
 #[cfg(test)]
 mod tests {
     use ::griphos as gr;
-    use crate::network::{bt, Phase};
+    use crate::network::{bn, Phase};
     use crate::transformer::{Transformer, TransformerTapsData};
     use gr::{c, c64, C_ZERO};
 
     #[test]
     fn test() {
         let taps_data = TransformerTapsData::new(0, 0.05, -3, 3);
-        let bus_terms = vec![
-            bt("bus_0".to_string(), Phase::A),
-            bt("bus_0".to_string(), Phase::B),
-            bt("bus_0".to_string(), Phase::C),
-            bt("bus_1".to_string(), Phase::A),
-            bt("bus_1".to_string(), Phase::B),
-            bt("bus_1".to_string(), Phase::C),
-            bt("bus_1".to_string(), Phase::N),
+        let bus_nodes = vec![
+            bn("bus_0".to_string(), Phase::A),
+            bn("bus_0".to_string(), Phase::B),
+            bn("bus_0".to_string(), Phase::C),
+            bn("bus_1".to_string(), Phase::A),
+            bn("bus_1".to_string(), Phase::B),
+            bn("bus_1".to_string(), Phase::C),
+            bn("bus_1".to_string(), Phase::N),
         ];
         let tx = Transformer::new_raw_with_vector_group(
             "tx",
-            bus_terms,
+            bus_nodes,
             3,
             vec![c!(11000.0, 0.0), c!(230.0, 0.0)],
             Some(taps_data),

@@ -1,11 +1,11 @@
-//! Grounding elements that ground bus terminals.
+//! Grounding elements that ground their terminals.
 
 use serde::Serialize;
 
 use crate::network::*;
 use crate::TypeStrOf;
 
-/// An element that grounds its bus terminals.
+/// An element that grounds its terminals.
 #[derive(Debug, Serialize, TypeStrOf)]
 pub struct Grounding {
     /// The number of terminals to ground.
@@ -19,8 +19,8 @@ impl Grounding {
     }
 
     /// Wraps grounding in an [`Element`] with the given terminal mapping.
-    pub fn element(self, id: &str, bus_term_ids: Vec<BusTermId>) -> Element {
-        self.element_generic(id, bus_term_ids)
+    pub fn element(self, id: &str, bus_node_ids: Vec<BusNodeId>) -> Element {
+        self.element_generic(id, bus_node_ids)
     }
 }
 

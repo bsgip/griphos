@@ -57,10 +57,10 @@ pub fn add_bus(netw: &mut Network, phases: Vec<Phase>) -> Shared<Bus> {
 
 // Adds a constant Y generic element.
 pub fn add_y_const(
-    netw: &mut Network, bus_term_0: BusTermId, bus_term_1: BusTermId, y_const: c64
+    netw: &mut Network, bus_node_0: BusNodeId, bus_node_1: BusNodeId, y_const: c64
 ) -> Shared<Element> {
     let uid = elem_uid::<GenericElement>(netw);
-    let bts = vec![bus_term_0, bus_term_1];
+    let bts = vec![bus_node_0, bus_node_1];
     netw.add_element(
         GenericElement {
             n_terms: 2,
@@ -73,10 +73,10 @@ pub fn add_y_const(
 
 // Adds a constant I generic element.
 pub fn add_i_const(
-    netw: &mut Network, bus_term_0: BusTermId, bus_term_1: BusTermId, i_const: c64
+    netw: &mut Network, bus_node_0: BusNodeId, bus_node_1: BusNodeId, i_const: c64
 ) -> Shared<Element> {
     let uid = elem_uid::<GenericElement>(netw);
-    let bts = vec![bus_term_0, bus_term_1];
+    let bts = vec![bus_node_0, bus_node_1];
     netw.add_element(
         GenericElement {
             n_terms: 2,
@@ -89,10 +89,10 @@ pub fn add_i_const(
 
 // Adds a constant S generic element.
 pub fn add_s_const(
-    netw: &mut Network, bus_term_0: BusTermId, bus_term_1: BusTermId, s_const: c64
+    netw: &mut Network, bus_node_0: BusNodeId, bus_node_1: BusNodeId, s_const: c64
 ) -> Shared<Element> {
     let uid = elem_uid::<GenericElement>(netw);
-    let bts = vec![bus_term_0, bus_term_1];
+    let bts = vec![bus_node_0, bus_node_1];
     netw.add_element(
         GenericElement {
             n_terms: 2,
@@ -105,10 +105,10 @@ pub fn add_s_const(
 
 // Adds a constant V (slack) generic element.
 pub fn add_v_const(
-    netw: &mut Network, bus_term_0: BusTermId, bus_term_1: BusTermId, v_const: f64
+    netw: &mut Network, bus_node_0: BusNodeId, bus_node_1: BusNodeId, v_const: f64
 ) -> Shared<Element> {
     let uid = elem_uid::<GenericElement>(netw);
-    let bts = vec![bus_term_0, bus_term_1];
+    let bts = vec![bus_node_0, bus_node_1];
     netw.add_element(
         GenericElement {
             n_terms: 2,
@@ -122,11 +122,11 @@ pub fn add_v_const(
 
 // Adds a grounding.
 pub fn add_ground(
-    netw: &mut Network, bus_term: BusTermId
+    netw: &mut Network, bus_node: BusNodeId
 ) -> Shared<Element> {
     let uid = &elem_uid::<Grounding>(netw);
     netw.add_element(
-        Grounding::new(1).element(uid, vec![bus_term])
+        Grounding::new(1).element(uid, vec![bus_node])
     ).unwrap()
 }
 
@@ -135,7 +135,7 @@ pub fn add_source(netw: &mut Network, bus_uid: &str) -> Shared<Element> {
     let uid = elem_uid::<Source>(netw);
     let (bus, phs) = bus_and_phases(netw, bus_uid);
     assert!(matches!(phs.last(), Some(Phase::N)));
-    let bts: Vec<BusTermId> = phs.iter().map(|p| bt!(bus_uid, *p)).collect();
+    let bts: Vec<BusNodeId> = phs.iter().map(|p| bn!(bus_uid, *p)).collect();
     let n_phases = phs.len() - 1;
     netw.add_element(Source::new_wye_slack(bus.borrow().v_base, n_phases, true).element(&uid, bts, true)).unwrap()
 }
@@ -151,8 +151,8 @@ pub fn add_line(netw: &mut Network, bus_uid_0: &str, bus_uid_1: &str, z: c64) ->
             .unwrap()
             .element(
                 &uid,
-                phs0.iter().map(|p| bt!(bus_uid_0, *p)).collect(),
-                phs1.iter().map(|p| bt!(bus_uid_1, *p)).collect(),
+                phs0.iter().map(|p| bn!(bus_uid_0, *p)).collect(),
+                phs1.iter().map(|p| bn!(bus_uid_1, *p)).collect(),
             )).unwrap()
 }
 
@@ -169,11 +169,11 @@ pub fn add_tx(netw: &mut Network, bus_uid_g: &str, bus_uid_p: &str, bus_uid_s: &
     let (buss, phss) = bus_and_phases(netw, bus_uid_s);
     assert!(phss == [Phase::A]);
 
-    let bts: Vec<BusTermId> = vec![
-        bt!(bus_uid_p, Phase::A),
-        bt!(bus_uid_g, Phase::N),
-        bt!(bus_uid_s, Phase::A),
-        bt!(bus_uid_g, Phase::N)
+    let bts: Vec<BusNodeId> = vec![
+        bn!(bus_uid_p, Phase::A),
+        bn!(bus_uid_g, Phase::N),
+        bn!(bus_uid_s, Phase::A),
+        bn!(bus_uid_g, Phase::N)
     ];
     let nom_turns = vec![c!(busp.borrow().v_base, 0.0), c!(buss.borrow().v_base, 0.0)];
     let zs = typical_tx_z_series(1000.0e3, buss.borrow().v_base);
@@ -193,7 +193,7 @@ pub fn add_tx(netw: &mut Network, bus_uid_g: &str, bus_uid_p: &str, bus_uid_s: &
 pub fn add_load(netw: &mut Network, bus_uid: &str, s_tot: c64) -> Shared<Element> {
     let uid = elem_uid::<Load>(netw);
     let (_, phs) = bus_and_phases(netw, bus_uid);
-    let bts: Vec<BusTermId> = phs.iter().map(|p| bt!(bus_uid, *p)).collect();
+    let bts: Vec<BusNodeId> = phs.iter().map(|p| bn!(bus_uid, *p)).collect();
     let n_phases = phs.len();
     let s = vec![s_tot / n_phases as f64; n_phases];
     netw.add_element(

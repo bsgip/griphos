@@ -1,5 +1,5 @@
 import griphos as gr
-from griphos import bt
+from griphos import bn
 
 from pathlib import Path
 
@@ -36,9 +36,9 @@ def test_generic_element():
     e: gr.GenericElement = gr.GenericElement(
         "my_ge",
         [
-            bt("bus_1", gr.Phase.A),
-            bt("bus_1", gr.Phase.B),
-            bt("bus_1", gr.Phase.C),
+            bn("bus_1", gr.Phase.A),
+            bn("bus_1", gr.Phase.B),
+            bn("bus_1", gr.Phase.C),
         ],
         [(0, 1), (1, 2), (2, 0)],
         y_const=yc
