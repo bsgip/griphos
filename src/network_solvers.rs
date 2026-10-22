@@ -178,8 +178,8 @@ pub(crate) fn info_csvec<T, IStorage, DStorage>(
     log_csvec(vec, vec_name, row_names, |args| info!("{}", args));
 }
 
-/// A [`NetworkSolver`] specifies assumed behaviour of a solver, incluing solving and modifying the network based on the
-/// solution.
+/// A [`NetworkSolver`] solver solves for the currents and voltages in the network, incluing solving and modifying the
+/// network based on the solution.
 pub trait NetworkSolver: Any {
     /// Solves power flow (or whatever).
     fn solve(&mut self) -> SolverStatus;
