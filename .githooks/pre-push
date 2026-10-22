@@ -1,0 +1,15 @@
+#!/bin/sh
+set -e
+
+repo_root="$(git rev-parse --show-toplevel)"
+stub="python/python/griphos/__init__.pyi"
+
+echo "Checking Python stubs are up to date..."
+(cd "$repo_root/python" && cargo run --quiet --bin stub_gen)
+
+if ! git -C "$repo_root" diff --quiet HEAD -- "$stub"; then
+    echo "ERROR: $stub is out of date." >&2
+    echo "The regenerated version is in your working tree; review, commit, and push again." >&2
+    git -C "$repo_root" --no-pager diff --stat HEAD -- "$stub" >&2
+    exit 1
+fi
