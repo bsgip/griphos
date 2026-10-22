@@ -183,7 +183,7 @@ pub fn add_tx(netw: &mut Network, bus_uid_g: &str, bus_uid_p: &str, bus_uid_s: &
             1,
             nom_turns,
             None,
-            (C_ZERO, zs),
+            vec![C_ZERO, zs],
             "ynyn0"
         ).unwrap().element(&uid, bts)
     ).unwrap()

@@ -209,7 +209,7 @@ impl Transformer {
         n_phases: usize,
         nom_turns: Vec<c64>,
         taps: Option<TransformerTapsData>,
-        z_series: (c64, c64),
+        z_series: Vec<c64>,
         vector_group_str: &str
     ) -> Result<Transformer, TransformerError> {
         let gr_taps = taps.map(
@@ -271,7 +271,7 @@ impl Transformer {
         n_phases: usize,
         nom_turns: Vec<c64>,
         taps: Option<TransformerTapsData>,
-        z_series: (c64, c64),
+        z_series: Vec<c64>,
         vector_group_str: &str
     ) -> PyResult<Bound<'py, Self>> {
         Bound::new(py, Self::new_raw_with_vector_group(
@@ -372,7 +372,7 @@ mod tests {
             3,
             vec![c!(11000.0, 0.0), c!(230.0, 0.0)],
             Some(taps_data),
-            (C_ZERO, c!(0.0, 1e-3)),
+            vec![C_ZERO, c!(0.0, 1e-3)],
             "dyn11"
         ).unwrap();
         let taps = tx.taps().unwrap();

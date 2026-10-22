@@ -378,7 +378,7 @@ fn handle_transformer(
             n_winding_pairs,
             turns,
             tx_taps,
-            (C_ZERO, z_s),
+            vec![C_ZERO, z_s],
             vector_group
         )?.element(id, bts)
     ).unwrap();

@@ -49,10 +49,41 @@ def test_generic_element():
     assert e.uid == "my_ge"
 
 
-def test_transformer_taps():
+def test_transformer():
     taps_data: gr.TransformerTapsData = gr.TransformerTapsData(
         0, 0.01, -3, 3
     )
+
+    tx: gr.Transformer = gr.Transformer.new_with_vector_group(
+        "tx",
+        [
+            bn("bus_p", gr.Phase.A),
+            bn("bus_p", gr.Phase.B),
+            bn("bus_p", gr.Phase.C),
+            bn("bus_s", gr.Phase.A),
+            bn("bus_s", gr.Phase.B),
+            bn("bus_s", gr.Phase.C),
+            bn("bus_s", gr.Phase.N),
+        ],
+        3,
+        [11000+0j, 230+0j],
+        taps_data,
+        [0+0j, 0+0.01j],
+        "dyn11"
+    )
+
+    taps = tx.taps
+    assert tx.turns_ratio(0, 1, 0) == (11000+0j)/(230+0j)
+    assert tx.turns_ratio(0, 1, 1) == (11000+0j)/(230+0j)
+    assert tx.turns(0, 0) == 11000+0j
+    assert tx.turns(0, 1) == 11000+0j
+    assert tx.turns(1, 0) == 230+0j
+    assert tx.turns(1, 1) == 230+0j
+    taps.set(1, 1)
+    assert tx.turns(0, 0) == 11000+0j
+    assert tx.turns(0, 1) == 1.01 * 11000+0j
+    assert tx.turns(1, 0) == 230+0j
+    assert tx.turns(1, 1) == 230+0j
 
 def test_network():
     netw = gr.parse_ejson_file(f"{TEST_DATA_DIR}/netw-i3l3s3.json")

@@ -105,7 +105,7 @@ fn main() {
             3,                                      // 3 phases.
             vec![c!(11000.0, 0.0), c!(230.0, 0.0)], // scaled turns = [11000, 230].
             None,                                   // No taps.
-            (C_ZERO, zs),                           // Series impedance (z_p, z_s).
+            vec![C_ZERO, zs],                       // Series impedance [z_p, z_s].
             "dyn11"                                 // Vector group string, lowercase.
         ).expect("problem creating transformer")
             .element(

@@ -194,13 +194,12 @@ impl Transformer {
         n_phases: usize,
         nom_turns: Vec<c64>,
         taps: Option<TransformerTaps>,
-        z_series: (c64, c64),
+        z_series: Vec<c64>,
         vector_group_str: &str
     ) -> Result<Transformer, TransformerError> {
         let vg: VectorGroup = VectorGroup::from_str(vector_group_str)?;
         let term_mapping = terminal_mapping_from_vector_group(&vg, n_phases)?;
-        let zs: Vec<c64> = vec![z_series.0, z_series.1];
-        Transformer::new(2, n_phases, nom_turns, taps, zs, term_mapping)
+        Transformer::new(2, n_phases, nom_turns, taps, z_series, term_mapping)
     }
 
     /// Wraps a transformer in an [`Element`], with the given bus/phase connections.
@@ -715,7 +714,7 @@ mod tests {
     fn solve_with_vg(vg: &str) -> Vec<Vec<(f64, f64)>> {
         const ZS: c64 = c!(0.0, 0.01);
         let nom_turns = vec![c!(47.826, 0.0), C_ONE];
-        let tx = Transformer::new_with_vector_group(3, nom_turns, None, (C_ZERO, ZS), vg).unwrap();
+        let tx = Transformer::new_with_vector_group(3, nom_turns, None, vec![C_ZERO, ZS], vg).unwrap();
 
         let mut netw = base_netw();
         let bus0 = netw.bus_i(0).unwrap();
