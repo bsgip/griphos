@@ -102,11 +102,11 @@ fn main() {
     let zs = typical_tx_z_series(500.0e3, 230.0); // Utility function for typical transformer series impedance.
     netw.add_element(
         Transformer::new_with_vector_group(
-            3,                  // 3 phases, i.e. 3 pairs of coupled windings
-            47.826.into(),      // complex ratio = 11 kV / 230 V
-            None,               // No taps for this transformer.
-            (C_ZERO, zs),       // Series impedance (z_primary, z_secondary).
-            "dyn11"             // Vector group string, all lowercase.
+            3,                                      // 3 phases.
+            vec![c!(11000.0, 0.0), c!(230.0, 0.0)], // scaled turns = [11000, 230].
+            None,                                   // No taps.
+            (C_ZERO, zs),                           // Series impedance (z_p, z_s).
+            "dyn11"                                 // Vector group string, lowercase.
         ).expect("problem creating transformer")
             .element(
                 "transformer",

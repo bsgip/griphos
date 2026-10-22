@@ -17,8 +17,7 @@ pub struct TransformerTaps {
 
     /// Tap factor.
     ///
-    /// For a transformer primary winding at tap i, the tapped number of turns is nom_turns * (1 + i *  factor).
-    /// For a transformer secondary winding at tap i, the tapped ratio is nom_turns / (1 + i *  factor)
+    /// The tapped number of turns is nom_turns * (1 + i *  factor).
     pub factor: f64,
 
     /// Minimum allowable tap.
@@ -90,7 +89,7 @@ impl From<TransformerError> for String {
 /// There are `n_sides x n_phases` windings, ordered as, e.g. `[PA, SA, PB, SB, PC, SC]` for a 2-winding 3-phase
 /// transformer, where `P` is primary, `S` is secondary, and `A, B, C` are the phases. This means, for example, that the
 /// primitive branch impedance matrix is block diagonal matrix organised as three 2x2 blocks. It depends only on the
-/// following: `n_sides`, `n_phases`, the leakage impedance of each winding, and the relative turns ratios
+/// following: `n_sides`, `n_phases`, the leakage impedance of each winding, and the relative turns.
 /// between the windings.
 ///
 /// After calculating the primitive branch impedance matrix, we can map terminals to branches in various permutations.
@@ -151,7 +150,7 @@ impl Transformer {
     /// n_phases:
     ///     The number of phases, i.e. 1 for a single phase transformer, 3 for a 3-phase transformer.
     /// nom_turns:
-    ///     The normalised number of turns on each side - only the ratios matter.
+    ///     The normalised number of turns on each side - only the ratios between the values matter.
     /// taps:
     ///     Optional taps as TransformerTaps.
     /// z_series:
@@ -189,17 +188,17 @@ impl Transformer {
 
     /// Creates a new two-winding [`Transformer`] with the given vector group, number of phases and other data.
     ///
-    /// turns_ratio is np/ns. vector_group_str is all lowercase, with the primary always assumed to come first.
+    /// nom_turns is the nominal turns count for each winding - only the ratios between the values matter.
+    /// vector_group_str is all lowercase, with the primary always assumed to come first.
     pub fn new_with_vector_group(
         n_phases: usize,
-        nom_turns_ratio: c64,
+        nom_turns: Vec<c64>,
         taps: Option<TransformerTaps>,
         z_series: (c64, c64),
         vector_group_str: &str
     ) -> Result<Transformer, TransformerError> {
         let vg: VectorGroup = VectorGroup::from_str(vector_group_str)?;
         let term_mapping = terminal_mapping_from_vector_group(&vg, n_phases)?;
-        let nom_turns = vec![nom_turns_ratio, C_ONE];
         let zs: Vec<c64> = vec![z_series.0, z_series.1];
         Transformer::new(2, n_phases, nom_turns, taps, zs, term_mapping)
     }
@@ -714,9 +713,9 @@ mod tests {
     use crate::network_solvers::solve_network;
 
     fn solve_with_vg(vg: &str) -> Vec<Vec<(f64, f64)>> {
-        const TURNS: c64 = c!(47.826, 0.0);
         const ZS: c64 = c!(0.0, 0.01);
-        let tx = Transformer::new_with_vector_group(3, TURNS, None, (C_ZERO, ZS), vg).unwrap();
+        let nom_turns = vec![c!(47.826, 0.0), C_ONE];
+        let tx = Transformer::new_with_vector_group(3, nom_turns, None, (C_ZERO, ZS), vg).unwrap();
 
         let mut netw = base_netw();
         let bus0 = netw.bus_i(0).unwrap();

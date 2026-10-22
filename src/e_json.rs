@@ -362,6 +362,7 @@ fn handle_transformer(
     let y_shunt = match z0_s {Some(c) => 1.0 / convert_complex(c, Y_FACTOR), None => c!(0.0, 0.0)};
 
     let turns_ratio: c64 = convert_complex(nom_turns_ratio, 1.0);
+    let turns: Vec<c64> = vec![C_ONE, 1.0 / turns_ratio];
 
     let tx_taps = if let Some(tap_side) = tap_side && let Some(factor) = tap_factor && let Some(tap_range) = tap_range {
         let side = match tap_side {TapSide::Primary => 0, TapSide::Secondary => 1};
@@ -375,7 +376,7 @@ fn handle_transformer(
     netw.add_element(
         Transformer::new_with_vector_group(
             n_winding_pairs,
-            turns_ratio,
+            turns,
             tx_taps,
             (C_ZERO, z_s),
             vector_group

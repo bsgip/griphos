@@ -207,7 +207,7 @@ impl Transformer {
         uid: &str,
         bus_term_ids: Vec<BusTermId>,
         n_phases: usize,
-        nom_turns_ratio: c64,
+        nom_turns: Vec<c64>,
         taps: Option<TransformerTapsData>,
         z_series: (c64, c64),
         vector_group_str: &str
@@ -224,7 +224,7 @@ impl Transformer {
         let gr_bts = bus_term_ids_to_gr(bus_term_ids);
         let gr_tx = gr::Transformer::new_with_vector_group(
             n_phases,
-            nom_turns_ratio,
+            nom_turns,
             gr_taps,
             z_series,
             vector_group_str,
@@ -269,13 +269,13 @@ impl Transformer {
         uid: &str,
         bus_term_ids: Vec<BusTermId>,
         n_phases: usize,
-        nom_turns_ratio: c64,
+        nom_turns: Vec<c64>,
         taps: Option<TransformerTapsData>,
         z_series: (c64, c64),
         vector_group_str: &str
     ) -> PyResult<Bound<'py, Self>> {
         Bound::new(py, Self::new_raw_with_vector_group(
-            uid, bus_term_ids, n_phases, nom_turns_ratio, taps, z_series, vector_group_str
+            uid, bus_term_ids, n_phases, nom_turns, taps, z_series, vector_group_str
         )?.into_initializer())
     }
 
@@ -370,7 +370,7 @@ mod tests {
             "tx",
             bus_terms,
             3,
-            c!(27.612, 0.0),
+            vec![c!(11000.0, 0.0), c!(230.0, 0.0)],
             Some(taps_data),
             (C_ZERO, c!(0.0, 1e-3)),
             "dyn11"

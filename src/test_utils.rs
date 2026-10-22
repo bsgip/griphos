@@ -175,13 +175,13 @@ pub fn add_tx(netw: &mut Network, bus_uid_g: &str, bus_uid_p: &str, bus_uid_s: &
         bt!(bus_uid_s, Phase::A),
         bt!(bus_uid_g, Phase::N)
     ];
-    let ratio = c!(busp.borrow().v_base / buss.borrow().v_base, 0.0);
+    let nom_turns = vec![c!(busp.borrow().v_base, 0.0), c!(buss.borrow().v_base, 0.0)];
     let zs = typical_tx_z_series(1000.0e3, buss.borrow().v_base);
 
     netw.add_element(
         Transformer::new_with_vector_group(
             1,
-            ratio,
+            nom_turns,
             None,
             (C_ZERO, zs),
             "ynyn0"
