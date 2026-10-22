@@ -343,11 +343,24 @@ macro_rules! c {
     ($re:expr, $im:expr) => {
         c64 {re:$re as f64, im:$im as f64}
     };
+    ($s:literal) => {
+        parse_complex($s).unwrap()
+    };
+}
+
+/// Creates a real [`c64`].
+#[macro_export]
+macro_rules! cr {
     ($re:expr) => {
         c64 {re:$re as f64, im:0.0}
     };
-    ($s:literal) => {
-        parse_complex($s).unwrap()
+}
+
+/// Creates an imaginary [`c64`].
+#[macro_export]
+macro_rules! ci {
+    ($im:expr) => {
+        c64 {re: 0.0, im:$im as f64}
     };
 }
 
