@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use ::griphos as gr;
 use gr::{CooMat, c64, Shared, IntoShared};
@@ -73,8 +74,8 @@ impl Load {
 }
 
 #[pymethods]
+#[gen_stub_pymethods]
 impl Load {
-
     #[new]
     pub fn new(
         uid: &str,

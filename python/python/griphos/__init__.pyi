@@ -7,16 +7,30 @@ import typing
 __all__ = [
     "Bus",
     "BusTermId",
+    "Connector",
     "ElemBranch",
     "ElemBranchId",
     "Element",
+    "GenericElement",
+    "Grounding",
+    "Line",
+    "Load",
     "Network",
+    "NetworkSolver",
     "Phase",
+    "SolveNetworkResult",
     "SolverStatus",
     "SolverStatusItem",
+    "Source",
+    "SourceControl",
     "SwitchState",
+    "Transformer",
     "TransformerTaps",
     "TransformerTapsData",
+    "ejson_phase_map_abcng",
+    "ejson_phase_map_rwbng",
+    "parse_ejson",
+    "solve_network",
 ]
 
 @typing.final
@@ -24,32 +38,27 @@ class Bus:
     r"""
     A bus is a collection of one or more nodes, each distinguished by a different phase.
     """
-    @property
+    def new(self, uid: builtins.str, phases: typing.Sequence[Phase], v_base: builtins.float) -> Bus: ...
     def uid(self) -> builtins.str:
         r"""
         Unique ID
         """
-    @property
     def v_base(self) -> builtins.float:
         r"""
         Base voltage in chosen units.
         """
-    @property
     def phases(self) -> builtins.list[Phase]:
         r"""
         The phases of each bus terminal/node.
         """
-    @property
     def vs(self) -> builtins.list[builtins.complex]:
         r"""
         The complex voltages of each bus terminal/node.
         """
-    @vs.setter
-    def vs(self, value: typing.Sequence[builtins.complex]) -> None:
+    def set_vs(self, vs: typing.Sequence[builtins.complex]) -> None:
         r"""
         Set the complex voltages of each bus terminal/node.
         """
-    def __new__(cls, uid: builtins.str, phases: typing.Sequence[Phase], v_base: builtins.float) -> Bus: ...
     def __str__(self) -> builtins.str: ...
 
 @typing.final
@@ -63,6 +72,24 @@ class BusTermId:
     def p(self) -> Phase: ...
     def __eq__(self, other: builtins.object, /) -> builtins.bool: ...
     def __new__(cls, b: builtins.str, p: Phase) -> BusTermId: ...
+
+@typing.final
+class Connector:
+    r"""
+    A simple connector element joining multiple bus terminals.
+    
+    Acts as a single node (copper plate) across all of its terminals when
+    its switch is closed, and splits them apart when open.
+    
+    Args:
+        uid: the element ID
+        bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals
+        switch_state: SwitchState that can be NoSwitch, Open or Closed
+    
+    Returns:
+        New Connector object
+    """
+    def new(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], switch_state: SwitchState) -> Connector: ...
 
 @typing.final
 class ElemBranch:
@@ -99,38 +126,32 @@ class Element:
     An element is a set of current carrying connections netween terminals. It can include several different types of
     connection, such as constant y or constant s.
     """
-    @property
     def uid(self) -> builtins.str:
         r"""
         The element's ID.
         """
-    @property
     def element_type(self) -> builtins.str:
         r"""
         The element's type string.
         """
-    @property
     def n_terms(self) -> builtins.int:
         r"""
         The number of terminals on the element.
         
         Each terminal connects to a bus terminal i.e. a single phase of a bus.
         """
-    @property
     def n_branches(self) -> builtins.int:
         r"""
         The number of branches in the element.
         
         Each branch is a current path between two of the element's terminals.
         """
-    @property
     def branch_wiring(self) -> builtins.list[tuple[builtins.int, builtins.int]]:
         r"""
         The start and end terminals of each branch.
         
         Each branch is a current path between two of the element's terminals.
         """
-    @property
     def is_live(self) -> builtins.bool:
         r"""
         Is the element live (functioning).
@@ -138,52 +159,153 @@ class Element:
         Reasons for not being live could be that it is not in service, or that
         its switch state is not closed.
         """
-    @property
     def y_const(self) -> builtins.list[tuple[tuple[builtins.int, builtins.int], builtins.complex]]:
         r"""
         The constant branch impedance matrix of the element.
         
         Specified as a list of nonzero elements, ((branch_idx_i, branch_idx_j), value)
         """
-    @property
     def i_const(self) -> builtins.list[tuple[builtins.int, builtins.complex]]:
         r"""
         The constant branch current vector of the element.
         
         Specified as a list of nonzero elements, (branch_idx, value)
         """
-    @property
     def s_const(self) -> builtins.list[tuple[builtins.int, builtins.complex]]:
         r"""
         The constant branch complex power vector of the element.
         
         Specified as a list of nonzero elements, (branch_idx, value)
         """
-    @property
     def vmag_const(self) -> builtins.list[tuple[builtins.int, builtins.float]]:
         r"""
         The controlled constant voltage magnitude vector of the element.
         
         Specified as a list of nonzero elements, (branch_idx, value)
         """
-    @property
     def vang_const(self) -> builtins.list[tuple[builtins.int, builtins.float]]:
         r"""
         The controlled constant voltage angle vector of the element.
         
         Specified as a list of nonzero elements, (branch_idx, value)
         """
-    @property
     def copper_plate(self) -> builtins.list[builtins.list[builtins.int]]:
         r"""
         The copperplated terminals of the element.
         
         Specified as a list of copperplated terminal groups, each group being a list of terminal indices.
         """
-    @property
     def grounding(self) -> builtins.list[builtins.int]:
         r"""
         The grounded terminals of the element.
+        """
+
+@typing.final
+class GenericElement:
+    r"""
+    A generic, non-specialized element.
+    
+    Can be used to directly specify any combination of `y_const`, `i_const`, `s_const`, ...
+    
+    Args:
+        uid: The ID of the element.
+        bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+        branches: Start and end terminals of each branch (current path) in the element.
+        y_const: The optional constant Y branch impedance matrix, as `((i, j), value)` tuples.
+        i_const: The optional constant I branch impedance vector, as `(i, value)` tuples.
+        s_const: The optional constant S branch impedance vector, as `(i, value)` tuples.
+        vmag_const: The optional controlled constant voltage magnitude vector, as `(i, value)` tuples.
+        vang_const: The optional controlled constant voltage angle vector, as `(i, value)` tuples.
+        copper_plate: The groups of copper-plated (shorted) terminal indices; each group of terminals is shorted.
+        grounding: The grounded terminal indices.
+    
+    Returns:
+        A new `GenericElement` object.
+    """
+    def new(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], branches: typing.Sequence[tuple[builtins.int, builtins.int]], y_const: typing.Optional[typing.Sequence[tuple[tuple[builtins.int, builtins.int], builtins.complex]]], i_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.complex]]], s_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.complex]]], vmag_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.float]]], vang_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.float]]], copper_plate: typing.Optional[typing.Sequence[typing.Sequence[builtins.int]]], grounding: typing.Optional[typing.Sequence[builtins.int]]) -> GenericElement: ...
+
+@typing.final
+class Grounding:
+    r"""
+    An element that grounds its bus terminals.
+    
+    Args:
+        bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+    
+    Returns:
+        A new `Grounding` object.
+    """
+    def new(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId]) -> Grounding: ...
+
+@typing.final
+class Line:
+    r"""
+    A line element, with given phase admittance matrix.
+    
+    Args:
+        uid: the element ID
+        bus_term_ids_0: list of BusTermId containing (bus_id, phase) for terminals at the start of the line.
+        bus_term_ids_1: list of BusTermId containing (bus_id, phase) for terminals at the end of the line.
+        y_const: Branch admittance matrix, as `((i, j) value)` tuples, e.g. 3x3 matrix for 3 phase line.
+    
+    Returns:
+        A new `Line` object.
+    """
+    def new(self, uid: builtins.str, bus_term_ids_0: typing.Sequence[BusTermId], bus_term_ids_1: typing.Sequence[BusTermId], y_const: typing.Sequence[tuple[tuple[builtins.int, builtins.int], builtins.complex]]) -> Line: ...
+    def new_from_sym_seq(self, uid: builtins.str, bus_term_ids_0: typing.Sequence[BusTermId], bus_term_ids_1: typing.Sequence[BusTermId], z_plus: builtins.complex, z_0: builtins.complex, n_phases: builtins.int) -> Line:
+        r"""
+        A line element, with given z0 and z+. z- is assumed to equal z+.
+        
+        Args:
+            uid: The element ID
+            bus_term_ids_0: List of BusTermId containing (bus_id, phase) for terminals at the start of the line.
+            bus_term_ids_1: List of BusTermId containing (bus_id, phase) for terminals at the end of the line.
+            z_plus: the positive (also negative) sequence impedance.
+            z_0: the zero sequence impedance.
+        
+        Returns:
+            A new `Line` object.
+        """
+
+@typing.final
+class Load:
+    r"""
+    A load element, using a ZIP load model.
+    
+    Args:
+        uid: The ID of the element.
+        bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+        branches: Start and end terminals of each branch (current path) in the element.
+        y_const: The optional constant Y branch impedance matrix, as `((i, j), value)` tuples.
+        i_const: The optional constant I branch impedance vector, as `(i, value)` tuples.
+        s_const: The optional constant S branch impedance vector, as `(i, value)` tuples.
+        grounding: The optional grounded terminal indices.
+    Returns:
+        A new `Load` object.
+    """
+    def new(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], branches: typing.Sequence[tuple[builtins.int, builtins.int]], y_const: typing.Optional[typing.Sequence[tuple[tuple[builtins.int, builtins.int], builtins.complex]]], i_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.complex]]], s_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.complex]]], grounding: typing.Optional[typing.Sequence[builtins.int]]) -> Load: ...
+    def new_wye(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], y_const: typing.Optional[typing.Sequence[builtins.complex]], i_const: typing.Optional[typing.Sequence[builtins.complex]], s_const: typing.Optional[typing.Sequence[builtins.complex]], is_grounded: builtins.bool) -> Load:
+        r"""
+        Creates a new wye connected load.
+        
+        Args:
+            uid: The ID of the element.
+            bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals, with the final one being neutral.
+            y_const: Constant impedance component for each phase (branch) of the load.
+            i_const: Constant current component for each phase (branch) of the load.
+            s_const: Constant complex power component for each phase (branch) of the load.
+            is_grounded: Is the neutral (final) terminal grounded
+        """
+    def new_delta(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], y_const: typing.Optional[typing.Sequence[builtins.complex]], i_const: typing.Optional[typing.Sequence[builtins.complex]], s_const: typing.Optional[typing.Sequence[builtins.complex]]) -> Load:
+        r"""
+        Creates a new delta connected load.
+        
+        Args:
+            uid: The ID of the element.
+            bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+            y_const: Constant impedance component for each phase (branch) of the load.
+            i_const: Constant current component for each phase (branch) of the load.
+            s_const: Constant complex power component for each phase (branch) of the load.
         """
 
 @typing.final
@@ -194,27 +316,15 @@ class Network:
     Returns:
         An empty Network object.
     """
-    @property
+    def new(self) -> Network: ...
     def n_buses(self) -> builtins.int:
         r"""
         The number of `Bus`es in the network.
         """
-    @property
     def buses(self) -> builtins.list[Bus]:
         r"""
         The `Bus`es in the network.
         """
-    @property
-    def n_elements(self) -> builtins.int:
-        r"""
-        The number of `Element`s in the network.
-        """
-    @property
-    def elements(self) -> builtins.list[Element]:
-        r"""
-        The `Element`s in the network.
-        """
-    def __new__(cls) -> Network: ...
     def bus(self, uid: builtins.str) -> typing.Optional[Bus]:
         r"""
         The `Bus` with given uid in the network.
@@ -232,6 +342,14 @@ class Network:
             i: The index of the returned bus.
         Returns:
             The `Bus` object for the bus with the given index.
+        """
+    def n_elements(self) -> builtins.int:
+        r"""
+        The number of `Element`s in the network.
+        """
+    def elements(self) -> builtins.list[Element]:
+        r"""
+        The `Element`s in the network.
         """
     def element(self, uid: builtins.str) -> typing.Optional[Element]:
         r"""
@@ -254,54 +372,246 @@ class Network:
     def __str__(self) -> builtins.str: ...
 
 @typing.final
+class NetworkSolver:
+    r"""
+    A [`NetworkSolver`] solver solves for the currents and voltages in the network, incluing solving and modifying the
+    network based on the solution.
+    """
+    ...
+
+@typing.final
+class SolveNetworkResult:
+    r"""
+    Return value for solve_network.
+    
+    [`solve_network`] splits the problem into network into islands, and records results for each island. It also returns
+    the solvers that were created by the [`solve_network`] call, for possible later reuse.
+    """
+    ...
+
+@typing.final
 class SolverStatus:
     r"""
     The iteration status and final status for a single solver run.
     """
-    @property
-    def status(self) -> SolverStatusItem: ...
-    @property
-    def iteration_statuses(self) -> builtins.list[SolverStatusItem]: ...
-    def __eq__(self, other: builtins.object, /) -> builtins.bool: ...
+    ...
 
 @typing.final
 class SolverStatusItem:
     r"""
     The solver status for a single iteration or the result of all iterations.
     """
-    @property
-    def flags(self) -> builtins.int: ...
-    @property
-    def initial_residual(self) -> builtins.float: ...
-    @property
-    def final_residual(self) -> builtins.float: ...
-    @property
-    def total_time_s(self) -> builtins.float: ...
-    @property
-    def linear_solver_time_s(self) -> builtins.float: ...
-    def __eq__(self, other: builtins.object, /) -> builtins.bool: ...
+    ...
+
+@typing.final
+class Source:
+    r"""
+    A generation source or infeeder that may be voltage controlled.
+    
+    Args:
+        uid: The ID of the element.
+        bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+        branches: Start and end terminals of each branch (current path) in the element.
+        control: `SourceControl` that specifies the type and parameters of voltage control, if any.
+        grounding: Optional list of terminal indices that are grounded.
+    """
+    def new(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], branches: typing.Sequence[tuple[builtins.int, builtins.int]], control: SourceControl, grounding: typing.Optional[typing.Sequence[builtins.int]]) -> Source: ...
+    def new_wye_slack(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], vmag: builtins.float, is_grounded: builtins.bool) -> Source:
+        r"""
+        A new wye-connected slack source with default positive sequence reference angles.
+        
+        Args:
+            uid: The ID of the element.
+            bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+            vmag: the controlled voltage magnitude, single value for all branches.
+            is_grounded: Is the neutral terminal grounded?
+        
+        Returns:
+            A new `Source` object.
+        """
+    def new_delta_slack(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], vmag: builtins.float) -> Source:
+        r"""
+        A new delta-connected slack source with default positive sequence reference angles.
+        
+        Args:
+            uid: The ID of the element.
+            bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+            vmag: the controlled voltage magnitude, single value for all branches.
+        
+        Returns:
+            A new `Source` object.
+        """
+    def new_wye_pv(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], p_tot: builtins.float, vmag: builtins.float, is_grounded: builtins.bool) -> Source:
+        r"""
+        A new wye-connected PV source with default positive sequence reference angles.
+        
+        Args:
+            uid: The ID of the element.
+            bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+            vmag: the controlled voltage magnitude, single value for all branches.
+            is_grounded: Is the neutral terminal grounded?
+        
+        Returns:
+            A new `Source` object.
+        """
+    def new_delta_pv(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], p_tot: builtins.float, vmag: builtins.float) -> Source:
+        r"""
+        A new delta-connected PV source with default positive sequence reference angles.
+        
+        Args:
+            uid: The ID of the element.
+            bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+            p_tot: the total real power, to be equally distributed among the branches.
+            vmag: the controlled voltage magnitude, single value for all branches.
+        
+        Returns:
+            A new `Source` object.
+        """
+    def new_wye_pq(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], s_tot: builtins.complex, is_grounded: builtins.bool) -> Source:
+        r"""
+        A new wye-connected PQ (no voltage control) source with default positive sequence reference angles.
+        
+        Args:
+            uid: The ID of the element.
+            bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+            s_tot: the total complex power, to be equally distributed among the branches.
+            is_grounded: Is the neutral terminal grounded?
+        
+        Returns:
+            A new `Source` object.
+        """
+    def new_delta_pq(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], s_tot: builtins.complex) -> Source:
+        r"""
+        A new delta-connected PQ (no voltage control) source with default positive sequence reference angles.
+        
+        Args:
+            uid: The ID of the element.
+            bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals.
+            s_tot: the total complex power, to be equally distributed among the branches.
+        
+        Returns:
+            A new `Source` object.
+        """
+
+@typing.final
+class Transformer:
+    r"""
+    A power transformer.
+    
+    A transformer model is based on a primitive model, where we only care about the windings. The primitive model
+    has `n_sides` sides (which is, e.g., 2 for a 2-winding transformer and 3 for a 3-winding transformer), and
+    `n_phases` phases, which is the number of phases.
+    
+    There are `n_sides x n_phases` windings, ordered as, e.g. `[PA, SA, PB, SB, PC, SC]` for a 2-winding 3-phase
+    transformer, where `P` is primary, `S` is secondary, and `A, B, C` are the phases. This means, for example, that the
+    primitive branch impedance matrix is block diagonal matrix organised as three 2x2 blocks. It depends only on the
+    following: `n_sides`, `n_phases`, the leakage impedance of each winding, and the relative turns ratios
+    between the windings.
+    
+    After calculating the primitive branch impedance matrix, we can map terminals to branches in various permutations.
+    This allows us to distinguish, for example, between a DYN11 and a DYN1 transformer.
+    
+    Args:
+        uid: The ID of the element.
+        bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals
+        n_sides: The number of "sides" (primary, secondary, tertiary...); 2 for a normal 2-winding transformer.
+        n_phases: The number of "phases" (windings on each side); 3 for a 3 phase transformer, etc.
+        nom_turns: The nominal number of turns on each side, normally normalised to be relative to the primary which
+            is therefore 1.
+        taps: Optional `TransformerTapsData` specifying the transformer's taps.
+        z_series: Series impedance, one complex number per side, which is the impedance of each winding on that side.
+        terminal_mapping: One entry per side, each such entry containing one `(i, j)` tuple per phase, where `i` is
+            the index of the start terminal of the winding, and `j` is the index of the end terminal.
+    
+    Returns:
+        A new transformer object.
+    """
+    def new(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], n_sides: builtins.int, n_phases: builtins.int, nom_turns: typing.Sequence[builtins.complex], taps: typing.Optional[TransformerTapsData], z_series: typing.Sequence[builtins.complex], terminal_mapping: typing.Sequence[typing.Sequence[tuple[builtins.int, builtins.int]]]) -> Transformer: ...
+    def new_with_vector_group(self, uid: builtins.str, bus_term_ids: typing.Sequence[BusTermId], n_phases: builtins.int, nom_turns_ratio: builtins.complex, taps: typing.Optional[TransformerTapsData], z_series: tuple[builtins.complex, builtins.complex], vector_group_str: builtins.str) -> Transformer:
+        r"""
+        Create a new two-winding transformer with the given vector group.
+        
+        Args:
+            uid: The ID of the element.
+            bus_term_ids: list of BusTermId containing (bus_id, phase) for terminals, with the final one being neutral.
+            n_phases:
+            nom_turns_ratio: The turns ratio, np/ns.
+            taps: Optional `TransformerTapsData` specifying the transformer's taps.
+            z_series: Series impedance, one complex number per side, which is the impedance of each winding on that side.
+            vector_group_str: The vector group, all lowercase.
+        """
+    def n_sides(self) -> builtins.int:
+        r"""
+        The number of sides (primary/secondary/tertiary...).
+        
+        Normal two-winding transformers have two sides, primary and secondary, while three-winding transformers
+        have an additional tertiary winding. This is distinct from the number of phases of the transformer, e.g. we can
+        have a three-phase, two-winding transformer. We reserve the term "winding" to mean a *single* winding of wire,
+        i.e. a particular phase of a side.
+        """
+    def n_phases(self) -> builtins.int:
+        r"""
+        Number of phases (single phase, three phase, etc.).
+        """
+    def n_windings(self) -> builtins.int:
+        r"""
+        The number of windings, just `n_sides` x `n_phases`.
+        """
+    def nom_turns(self) -> builtins.list[builtins.complex]:
+        r"""
+        The nominal number of turns per side, scaled by an arbitrary factor.
+        
+        Only the ratios between the sides matter. So for a two winding transformer, we can use [np/ns, 1.0] or
+        equivalently [1.0, ns/np]. For a three winding transformer, it is easiest to use [1.0, ns/np, nt/np].
+        """
+    def taps(self) -> typing.Optional[TransformerTaps]:
+        r"""
+        Optional TransformerTaps (if the transformer is tapped).
+        """
+    def turns(self, i_side: builtins.int, i_phase: builtins.int) -> builtins.complex:
+        r"""
+        The scaled number of turns for side `i_side` and phase index `i_phase`.
+        """
+    def turns_ratio(self, i_side_0: builtins.int, i_side_1: builtins.int, i_phase: builtins.int) -> builtins.complex:
+        r"""
+        The turns ratio, `turns(i_side_0, i_phase) / turns(i_side_1, i_phase)`
+        
+        Args:
+            i_side_0: The first side index.
+            i_side_1: The second side index.
+            i_phase: The phase index for both sides.
+        Returns:
+            The turns ratio.
+        """
+    def y_primitive(self, i_side_0: builtins.int, i_side_1: builtins.int, i_phase: builtins.int) -> builtins.list[builtins.list[builtins.complex]]:
+        r"""
+        The primative branch impedance matrix for a single pair of windings with given phase and sides.
+        
+        Args:
+            i_side_0: The first side index.
+            i_side_1: The second side index.
+            i_phase: The phase index for both sides.
+        Returns:
+            The primative branch impedance matrix.
+        """
 
 @typing.final
 class TransformerTaps:
     r"""
     A tapped transformer's tap settins.
     """
-    @property
     def side(self) -> builtins.int:
         r"""
         The side of the transformer that is tapped: 0 = primary, 1 = secondary, 3 = tertiary etc.
         """
-    @property
     def factor(self) -> builtins.float:
         r"""
         The factor by which each tap increase increases the winding count of the given winding.
         """
-    @property
     def min_tap(self) -> builtins.int:
         r"""
         The minimum possible tap setting.
         """
-    @property
     def max_tap(self) -> builtins.int:
         r"""
         The maximum possible tap setting.
@@ -344,7 +654,7 @@ class TransformerTapsData:
     r"""
     Tap data for tapped transformers.
     """
-    def __new__(cls, side: builtins.int, factor: builtins.float, min_tap: builtins.int, max_tap: builtins.int) -> TransformerTapsData: ...
+    def new(self, side: builtins.int, factor: builtins.float, min_tap: builtins.int, max_tap: builtins.int) -> TransformerTapsData: ...
 
 @typing.final
 class Phase(enum.Enum):
@@ -357,6 +667,15 @@ class Phase(enum.Enum):
     B = ...
     C = ...
     N = ...
+
+@typing.final
+class SourceControl(enum.Enum):
+    r"""
+    Tagged enum for power/voltage control in sources.
+    """
+    SL = ...
+    PV = ...
+    PQ = ...
 
 @typing.final
 class SwitchState(enum.Enum):
@@ -372,4 +691,27 @@ class SwitchState(enum.Enum):
     NoSwitch = ...
     Closed = ...
     Open = ...
+
+def ejson_phase_map_abcng() -> builtins.dict[builtins.str, Phase]: ...
+
+def ejson_phase_map_rwbng() -> builtins.dict[builtins.str, Phase]: ...
+
+def parse_ejson(file: typing.Any, phase_map: typing.Mapping[builtins.str, Phase]) -> Network:
+    r"""
+    Parse an e-JSON file like object into a Network.
+    """
+
+def solve_network(netw: Network, solver_name: builtins.str, solvers: typing.Optional[typing.Sequence[NetworkSolver]]) -> SolveNetworkResult:
+    r"""
+    Solves the network using the given solver (specified as a key).
+    
+    Accepts as the `solvers` argument an optional list of [`NetworkSolver`]s, which, if supplied, will be used for the
+    new solve call, meaning that we don't need to do the work of creating solvers from scratch. This makes it much more
+    efficient to perform multiple solve calls, e.g. solve the network every five minutes during a day long horizon.
+    
+    Args:
+        netw: The network to solve for.
+        solver_name: The solver selection key, such as "nodal_rect".
+        solvers: Optional list of `NetworkSolver`s; if supplied will use these instead of creating new ones.
+    """
 

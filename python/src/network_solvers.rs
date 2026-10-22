@@ -2,13 +2,13 @@ use ::griphos as gr;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::Borrowed;
-use pyo3_stub_gen::derive::{gen_stub_pyclass};
+use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pyfunction};
 
 use crate::network::Network;
 
 /// The solver status for a single iteration or the result of all iterations.
-#[gen_stub_pyclass]
 #[pyclass(module = "griphos", get_all, eq, frozen, skip_from_py_object)]
+#[gen_stub_pyclass]
 #[derive(Clone, PartialEq)]
 pub struct SolverStatusItem {
     pub flags: u8,
@@ -31,8 +31,8 @@ impl From<&gr::SolverStatusItem> for SolverStatusItem {
 }
 
 /// The iteration status and final status for a single solver run.
-#[gen_stub_pyclass]
 #[pyclass(module = "griphos", get_all, eq, frozen, skip_from_py_object)]
+#[gen_stub_pyclass]
 #[derive(Clone, PartialEq)]
 pub struct SolverStatus {
     pub status: SolverStatusItem,
@@ -51,6 +51,7 @@ impl From<&gr::SolverStatus> for SolverStatus {
 /// A [`NetworkSolver`] solver solves for the currents and voltages in the network, incluing solving and modifying the
 /// network based on the solution.
 #[pyclass(unsendable)]
+#[gen_stub_pyclass]
 pub struct NetworkSolver(pub Option<Box<dyn gr::NetworkSolver>>);
 
 impl<'a, 'py> FromPyObject<'a, 'py> for NetworkSolver {
@@ -72,6 +73,7 @@ impl<'a, 'py> FromPyObject<'a, 'py> for NetworkSolver {
 /// [`solve_network`] splits the problem into network into islands, and records results for each island. It also returns
 /// the solvers that were created by the [`solve_network`] call, for possible later reuse.
 #[pyclass]
+#[gen_stub_pyclass]
 pub struct SolveNetworkResult {
     #[pyo3(get)]
     pub statuses: Vec<SolverStatus>,
@@ -114,6 +116,7 @@ fn unknown_solver_to_pyerr(err: gr::UnknownSolver) -> PyErr {
 ///     solvers: Optional list of `NetworkSolver`s; if supplied will use these instead of creating new ones.
 #[pyfunction]
 #[pyo3(signature = (netw, solver_name, solvers=None))]
+#[gen_stub_pyfunction]
 pub fn solve_network(
     py: Python,
     netw: &mut Network,

@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use ::griphos as gr;
 use gr::{Shared, IntoShared};
@@ -31,6 +32,7 @@ impl Grounding {
 }
 
 #[pymethods]
+#[gen_stub_pymethods]
 impl Grounding {
     #[new]
     pub fn new(

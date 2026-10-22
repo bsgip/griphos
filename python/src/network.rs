@@ -60,8 +60,8 @@ py_wrapper!(
     gr::Bus
 );
 
-#[gen_stub_pymethods]
 #[pymethods]
+#[gen_stub_pymethods]
 impl Bus {
     #[new]
     fn new(uid: &str, phases: Vec<Phase>, v_base: f64) -> Bus {
@@ -114,8 +114,8 @@ py_wrapper!(
     gr::Element, subclass
 );
 
-#[gen_stub_pymethods]
 #[pymethods]
+#[gen_stub_pymethods]
 impl Element {
     /// The element's ID.
     #[getter]
@@ -232,8 +232,8 @@ impl Network {
     }
 }
 
-#[gen_stub_pymethods]
 #[pymethods]
+#[gen_stub_pymethods]
 impl Network {
     #[new]
     pub fn new() -> Network {
@@ -310,5 +310,15 @@ impl Network {
 
     fn __str__(&self) -> String {
         format!("{}", self.inner.borrow())
+    }
+}
+
+// KLUDGE-ish: generate stubs involging &mut Network.
+impl pyo3_stub_gen::PyStubType for &mut Network {
+    fn type_input() -> pyo3_stub_gen::TypeInfo {
+        <Network as pyo3_stub_gen::PyStubType>::type_input()
+    }
+    fn type_output() -> pyo3_stub_gen::TypeInfo {
+        <Network as pyo3_stub_gen::PyStubType>::type_output()
     }
 }

@@ -2,12 +2,14 @@ use std::collections::HashMap;
 
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
+use pyo3_stub_gen::derive::gen_stub_pyfunction;
 
 use crate::network::{Network, Phase};
 use crate::py_file_reader::PyFileReader;
 
 /// Parse an e-JSON file like object into a Network.
 #[pyfunction]
+#[gen_stub_pyfunction]
 pub fn parse_ejson(
     file: &Bound<'_, PyAny>,
     phase_map: HashMap<String, Phase>,
@@ -24,12 +26,14 @@ pub fn parse_ejson(
 }
 
 #[pyfunction]
+#[gen_stub_pyfunction]
 pub fn ejson_phase_map_abcng() -> HashMap<String, Phase> {
     ::griphos::e_json::ejson_phase_map_abcng().into_iter().map(|(k, v)| (k, Phase::from(v)))
         .collect()
 }
 
 #[pyfunction]
+#[gen_stub_pyfunction]
 pub fn ejson_phase_map_rwbng() -> HashMap<String, Phase> {
     ::griphos::e_json::ejson_phase_map_rwbng().into_iter().map(|(k, v)| (k, Phase::from(v)))
         .collect()

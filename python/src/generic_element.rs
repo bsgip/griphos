@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use ::griphos as gr;
 use gr::{CooMat, c64, Shared, IntoShared};
@@ -61,6 +62,7 @@ impl GenericElement {
 }
 
 #[pymethods]
+#[gen_stub_pymethods]
 impl GenericElement {
     #[new]
     #[pyo3(signature = (

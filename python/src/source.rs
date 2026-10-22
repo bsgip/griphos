@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use pyo3_stub_gen::derive::{gen_stub_pyclass_enum, gen_stub_pymethods};
 
 use ::griphos as gr;
 use gr::{c64, Shared, IntoShared};
@@ -7,6 +8,7 @@ use crate::network::{BusTermId, bus_term_ids_to_gr};
 
 /// Tagged enum for power/voltage control in sources.
 #[pyclass(eq, from_py_object)]
+#[gen_stub_pyclass_enum]
 #[derive(Clone, PartialEq)]
 pub enum SourceControl {
     SL {vmag: Vec<f64>, vang: Vec<f64>},
@@ -138,6 +140,7 @@ impl Source {
 }
 
 #[pymethods]
+#[gen_stub_pymethods]
 impl Source {
 
     #[new]
@@ -254,6 +257,7 @@ impl Source {
 mod tests {
     use crate::network::Phase;
     use super::*;
+    use gr::PI;
 
     #[test]
     fn test_new_source() {
@@ -265,7 +269,7 @@ mod tests {
         let branches = vec![(0, 1), (1, 2), (2, 0)];
         let source = Source::new_raw(
             "new_source", bts, branches,
-            SourceControl::SL {vmag: vec![1.0, 1.0, 1.0], vang: vec![0.0, -2.0*3.14/3.0, 2.0*3.14/3.0]}, None
+            SourceControl::SL {vmag: vec![1.0, 1.0, 1.0], vang: vec![0.0, -2.0*PI/3.0, 2.0*PI/3.0]}, None
         );
         assert!(source.uid() == "new_source");
         assert!(source.elem.borrow().vmag_const() == vec![(0, 1.0), (1, 1.0), (2, 1.0)]);

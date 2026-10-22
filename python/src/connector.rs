@@ -1,11 +1,15 @@
 use pyo3::prelude::*;
+use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use ::griphos as gr;
 use gr::{Shared, IntoShared};
 use crate::plumbing::{element_subclass, py_enum};
 use crate::network::{BusTermId, bus_term_ids_to_gr};
 
-py_enum!(SwitchState, gr::SwitchState {NoSwitch, Closed, Open});
+py_enum!(
+    SwitchState,
+    gr::SwitchState {NoSwitch, Closed, Open}
+);
 
 element_subclass!(
     /// A simple connector element joining multiple bus terminals.
@@ -39,6 +43,7 @@ impl Connector {
 }
 
 #[pymethods]
+#[gen_stub_pymethods]
 impl Connector {
     #[new]
     pub fn new(

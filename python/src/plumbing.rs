@@ -133,6 +133,7 @@ macro_rules! element_subclass {
         $name:ident, $spec:ty
     ) => {
         $(#[$meta])*
+        #[pyo3_stub_gen::derive::gen_stub_pyclass]
         #[pyclass(extends=$crate::network::Element, unsendable)]
         pub struct $name {
             // Convenience reference to the parent elem for the purpose of rust code.

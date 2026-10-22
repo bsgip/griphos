@@ -23,8 +23,8 @@ impl From<TransformerError> for PyErr {
 }
 
 /// Tap data for tapped transformers.
-#[gen_stub_pyclass]
 #[pyclass(module = "griphos", unsendable, from_py_object)]
+#[gen_stub_pyclass]
 #[derive(Clone)]
 pub struct TransformerTapsData {
     /// Which side (0 = primary, 1 = secondary, 2 = tertiary (for two-winding transformers) etc.
@@ -37,8 +37,8 @@ pub struct TransformerTapsData {
     pub max_tap: i32,
 }
 
-#[gen_stub_pymethods]
 #[pymethods]
+#[gen_stub_pymethods]
 impl TransformerTapsData {
     #[new]
     pub fn new(side: usize, factor: f64, min_tap: i32, max_tap: i32) -> Self {
@@ -63,8 +63,8 @@ impl TransformerTaps {
     }
 }
 
-#[gen_stub_pymethods]
 #[pymethods]
+#[gen_stub_pymethods]
 impl TransformerTaps {
     /// The side of the transformer that is tapped: 0 = primary, 1 = secondary, 3 = tertiary etc.
     #[getter]
@@ -235,6 +235,7 @@ impl Transformer {
 }
 
 #[pymethods]
+#[gen_stub_pymethods]
 impl Transformer {
     #[allow(clippy::too_many_arguments)]
     #[new]

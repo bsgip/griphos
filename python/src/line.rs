@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use ::griphos as gr;
 use gr::{CooMat, c64, Shared, IntoShared};
@@ -55,6 +56,7 @@ impl Line {
 }
 
 #[pymethods]
+#[gen_stub_pymethods]
 impl Line {
     #[new]
     pub fn new(
