@@ -7,16 +7,24 @@ use crate::TypeStrOf;
 /// A load element, using a ZIP load model.
 #[derive(Debug, TypeStrOf)]
 pub struct Load {
-    /// The number of terminals.
-    pub n_terms: usize,
+    /// The number of live (non-neutral) terminals.
+    pub n_live_terms: usize,
+
+    /// Is there an extra neutral terminal?
+    pub has_neutral: bool,
+
     /// The branch wiring entries, each item in the form (term_0_idx, term_1_idx)
     pub branch_wiring: Vec<(usize, usize)>,
+
     /// constant Y component of ZIP model, equivalent to Z in ZIP.
     pub y_const: CooMat<c64>,
+
     /// constant I component of ZIP model, equivalent to I in ZIP.
     pub i_const: Vec<(usize, c64)>,
+
     /// constant S component of ZIP model, equivalent to P in ZIP.
     pub s_const: Vec<(usize, c64)>,
+
     /// Index of any grounded terminal(s), normally the neutral terminal of the load if there is one.
     pub grounding: Vec<usize>,
 }
@@ -24,7 +32,8 @@ pub struct Load {
 impl Load {
     /// Creates a new load.
     pub fn new(
-        n_terms: usize,
+        n_live_terms: usize,
+        has_neutral: bool,
         branch_wiring: Vec<(usize, usize)>,
         y_const: Option<CooMat<c64>>,
         i_const: Option<Vec<(usize, c64)>>,
