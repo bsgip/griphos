@@ -31,8 +31,8 @@ impl Grounding {
     }
 }
 
-#[pymethods]
 #[gen_stub_pymethods]
+#[pymethods]
 impl Grounding {
     #[new]
     pub fn new(

@@ -60,8 +60,8 @@ py_wrapper!(
     gr::Bus
 );
 
-#[pymethods]
 #[gen_stub_pymethods]
+#[pymethods]
 impl Bus {
     #[new]
     fn new(uid: &str, phases: Vec<Phase>, v_base: f64) -> Bus {
@@ -114,8 +114,8 @@ py_wrapper!(
     gr::Element, subclass
 );
 
-#[pymethods]
 #[gen_stub_pymethods]
+#[pymethods]
 impl Element {
     /// The element's ID.
     #[getter]
@@ -232,8 +232,8 @@ impl Network {
     }
 }
 
-#[pymethods]
 #[gen_stub_pymethods]
+#[pymethods]
 impl Network {
     #[new]
     pub fn new() -> Network {

@@ -37,8 +37,8 @@ pub struct TransformerTapsData {
     pub max_tap: i32,
 }
 
-#[pymethods]
 #[gen_stub_pymethods]
+#[pymethods]
 impl TransformerTapsData {
     #[new]
     pub fn new(side: usize, factor: f64, min_tap: i32, max_tap: i32) -> Self {
@@ -63,8 +63,8 @@ impl TransformerTaps {
     }
 }
 
-#[pymethods]
 #[gen_stub_pymethods]
+#[pymethods]
 impl TransformerTaps {
     /// The side of the transformer that is tapped: 0 = primary, 1 = secondary, 3 = tertiary etc.
     #[getter]
@@ -234,8 +234,8 @@ impl Transformer {
     }
 }
 
-#[pymethods]
 #[gen_stub_pymethods]
+#[pymethods]
 impl Transformer {
     #[allow(clippy::too_many_arguments)]
     #[new]

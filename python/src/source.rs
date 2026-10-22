@@ -139,8 +139,8 @@ impl Source {
     }
 }
 
-#[pymethods]
 #[gen_stub_pymethods]
+#[pymethods]
 impl Source {
 
     #[new]

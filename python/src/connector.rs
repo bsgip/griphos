@@ -42,8 +42,8 @@ impl Connector {
     }
 }
 
-#[pymethods]
 #[gen_stub_pymethods]
+#[pymethods]
 impl Connector {
     #[new]
     pub fn new(

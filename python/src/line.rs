@@ -55,8 +55,8 @@ impl Line {
     }
 }
 
-#[pymethods]
 #[gen_stub_pymethods]
+#[pymethods]
 impl Line {
     #[new]
     pub fn new(

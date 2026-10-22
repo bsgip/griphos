@@ -61,8 +61,8 @@ impl GenericElement {
     }
 }
 
-#[pymethods]
 #[gen_stub_pymethods]
+#[pymethods]
 impl GenericElement {
     #[new]
     #[pyo3(signature = (

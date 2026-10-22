@@ -73,8 +73,8 @@ impl Load {
     }
 }
 
-#[pymethods]
 #[gen_stub_pymethods]
+#[pymethods]
 impl Load {
     #[new]
     pub fn new(
