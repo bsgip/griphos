@@ -35,6 +35,17 @@ jobs:
       run: cargo test --verbose
       working-directory: python
 
+    - name: Check Python stubs are up to date
+      working-directory: python
+      run: |
+        cargo run --bin stub_gen
+        if [ -n "$(git status --porcelain -- .)" ]; then
+          echo "::error::Generated .pyi stubs are out of date. Run 'cargo run --bin stub_gen' in python/ and commit the result."
+          git status --short -- .
+          git diff -- .
+          exit 1
+        fi
+
     - name: Install uv
       uses: astral-sh/setup-uv@v3
 
