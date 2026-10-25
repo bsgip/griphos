@@ -447,7 +447,7 @@ impl<T: TypeStrOf> TypeStr for T {
 
 /// An element_spec collects together electrical connections of various types such as constant y or constant s.
 pub trait ElementSpec: Any + std::fmt::Debug + Send + Sync + TypeStrOf + TypeStr {
-    fn element_generic(self, uid: &str, bus_node_ids: Vec<BusNodeId>) -> Element where Self: Sized + 'static {
+    fn wrap_in_element(self, uid: &str, bus_node_ids: Vec<BusNodeId>) -> Element where Self: Sized + 'static {
         let n_terms = self.n_terms();
         assert!(
             bus_node_ids.len() == n_terms,

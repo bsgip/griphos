@@ -34,7 +34,7 @@ impl Connector {
     /// ```
     pub fn element(self, uid: &str, bus_node_ids: Vec<BusNodeId>) -> Element {
         assert!(bus_node_ids.len() == self.n_terms, "connector {} expects {} bus nodes", uid, self.n_terms);
-        self.element_generic(uid, bus_node_ids)
+        self.wrap_in_element(uid, bus_node_ids)
     }
 }
 

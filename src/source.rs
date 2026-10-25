@@ -112,7 +112,7 @@ impl Source {
                 |(i0, i1)| (bus_node_ids[*i0].p.v_nom_pu() - bus_node_ids[*i1].p.v_nom_pu()).arg()
             ).collect();
         }
-        self.element_generic(id, bus_node_ids)
+        self.wrap_in_element(id, bus_node_ids)
     }
 }
 

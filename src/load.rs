@@ -99,7 +99,7 @@ impl Load {
 
     /// Wraps a [`Load`] in a new [`Element`], with the given terminal mapping.
     pub fn element(self, id: &str, bus_node_ids: Vec<BusNodeId>) -> Element {
-        self.element_generic(id, bus_node_ids)
+        self.wrap_in_element(id, bus_node_ids)
     }
 }
 

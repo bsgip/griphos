@@ -208,7 +208,7 @@ impl Transformer {
     /// a dyn11 transformer has the terminal mapping [[(0,1), (1, 2), (2, 0)], [(3, 6), (4, 6), (5, 6)]], and the
     /// `BusNodeIds` are given as a seven element list whose indices correspond to the numbers in the terminal mapping.
     pub fn element(self, id: &str, bus_node_ids: Vec<BusNodeId>) -> Element {
-        self.element_generic(id, bus_node_ids)
+        self.wrap_in_element(id, bus_node_ids)
     }
 
     /// The number of windings, just `n_sides` x `n_phases`.

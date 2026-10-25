@@ -48,7 +48,7 @@ impl GenericElement {
 
     /// Wraps a GenericElement in an Element, with given bus nodes connections.
     pub fn element(self, id: &str, bus_node_ids: Vec<BusNodeId>) -> Element {
-        self.element_generic(id, bus_node_ids)
+        self.wrap_in_element(id, bus_node_ids)
     }
 }
 
