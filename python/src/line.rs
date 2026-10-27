@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use ::griphos as gr;
-use gr::{CooMat, c64, Shared, IntoShared};
+use gr::{CooMat, c64};
 use crate::plumbing::element_subclass;
 use crate::network::{BusNodeId, bus_node_ids_to_gr};
 
@@ -33,8 +33,8 @@ impl Line {
         let gr_line = gr::Line::new(n_phases, y_const);
         let gr_bts_0 = bus_node_ids_to_gr(bus_node_ids_0);
         let gr_bts_1 = bus_node_ids_to_gr(bus_node_ids_1);
-        let elem = gr_line.element(uid, gr_bts_0, gr_bts_1).into_shared();
-        Line::from_elem(elem)
+        let elem = gr_line.into_element(uid, gr_bts_0, gr_bts_1);
+        Line::from_typed(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
@@ -50,8 +50,8 @@ impl Line {
         let gr_bts_1 = bus_node_ids_to_gr(bus_node_ids_1);
         let elem = gr::Line::new_from_sym_seq(z_plus, z_0, n_phases)
             .expect("Problem constructing line")
-            .element(uid, gr_bts_0, gr_bts_1).into_shared();
-        Line::from_elem(elem)
+            .into_element(uid, gr_bts_0, gr_bts_1);
+        Line::from_typed(elem)
     }
 }
 
@@ -108,11 +108,10 @@ mod tests {
         let bts1 = vec![BusNodeId {b: "bus_2".to_string(), p: Phase::A}];
         let y_const = vec![((0, 0), c!(1.0, 0.0))];
         let line = Line::new_raw("new_line", bts0, bts1, y_const.clone());
-        assert!(line.uid() == "new_line");
-        line.with_spec(|x| assert!(x.y_const == line.elem.borrow().y_const()));
-        assert!(line.elem.borrow().i_const() == vec![]);
-        assert!(line.elem.borrow().s_const() == vec![]);
-        assert!(line.elem.borrow().vmag_const() == vec![]);
-        assert!(line.elem.borrow().vang_const() == vec![]);
+        let line_ref = line.elem.borrow();
+        assert!(line_ref.uid() == "new_line");
+        assert!(line_ref.y_const() == y_const);
+        assert!(line_ref.i_const().is_empty());
+        assert!(line_ref.s_const().is_empty());
     }
 }

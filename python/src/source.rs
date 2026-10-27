@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass_enum, gen_stub_pymethods};
 
 use ::griphos as gr;
-use gr::{c64, Shared, IntoShared};
+use gr::c64;
 use crate::plumbing::{element_subclass};
 use crate::network::{BusNodeId, bus_node_ids_to_gr};
 
@@ -80,8 +80,8 @@ impl Source {
     ) -> Self {
         let gr_source = gr::Source::new(bus_node_ids.len(), branches, control.into(), grounding);
         let bts = bus_node_ids_to_gr(bus_node_ids);
-        let elem = gr_source.element(uid, bts, false).into_shared();
-        Source::from_elem(elem)
+        let elem = gr_source.into_element(uid, bts, false);
+        Source::from_typed(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
@@ -89,8 +89,8 @@ impl Source {
         let n_phases = bus_node_ids.len() - 1;
         let gr_source = gr::Source::new_wye_slack(vmag, n_phases, is_grounded);
         let bts = bus_node_ids_to_gr(bus_node_ids);
-        let elem = gr_source.element(uid, bts, true).into_shared();
-        Source::from_elem(elem)
+        let elem = gr_source.into_element(uid, bts, true);
+        Source::from_typed(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
@@ -98,8 +98,8 @@ impl Source {
         let n_phases = bus_node_ids.len();
         let gr_source = gr::Source::new_delta_slack(vmag, n_phases);
         let bts = bus_node_ids_to_gr(bus_node_ids);
-        let elem = gr_source.element(uid, bts, true).into_shared();
-        Source::from_elem(elem)
+        let elem = gr_source.into_element(uid, bts, true);
+        Source::from_typed(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
@@ -107,8 +107,8 @@ impl Source {
         let n_phases = bus_node_ids.len() - 1;
         let gr_source = gr::Source::new_wye_pv(p_tot, vmag, n_phases, is_grounded);
         let bts = bus_node_ids_to_gr(bus_node_ids);
-        let elem = gr_source.element(uid, bts, true).into_shared();
-        Source::from_elem(elem)
+        let elem = gr_source.into_element(uid, bts, true);
+        Source::from_typed(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
@@ -116,8 +116,8 @@ impl Source {
         let n_phases = bus_node_ids.len();
         let gr_source = gr::Source::new_delta_pv(p_tot, vmag, n_phases);
         let bts = bus_node_ids_to_gr(bus_node_ids);
-        let elem = gr_source.element(uid, bts, true).into_shared();
-        Source::from_elem(elem)
+        let elem = gr_source.into_element(uid, bts, true);
+        Source::from_typed(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
@@ -125,8 +125,8 @@ impl Source {
         let n_phases = bus_node_ids.len() - 1;
         let gr_source = gr::Source::new_wye_pq(s_tot, n_phases, is_grounded);
         let bts = bus_node_ids_to_gr(bus_node_ids);
-        let elem = gr_source.element(uid, bts, true).into_shared();
-        Source::from_elem(elem)
+        let elem = gr_source.into_element(uid, bts, true);
+        Source::from_typed(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
@@ -134,8 +134,8 @@ impl Source {
         let n_phases = bus_node_ids.len();
         let gr_source = gr::Source::new_delta_pq(s_tot, n_phases);
         let bts = bus_node_ids_to_gr(bus_node_ids);
-        let elem = gr_source.element(uid, bts, true).into_shared();
-        Source::from_elem(elem)
+        let elem = gr_source.into_element(uid, bts, true);
+        Source::from_typed(elem)
     }
 }
 
@@ -271,7 +271,8 @@ mod tests {
             "new_source", bts, branches,
             SourceControl::SL {vmag: vec![1.0, 1.0, 1.0], vang: vec![0.0, -2.0*PI/3.0, 2.0*PI/3.0]}, None
         );
-        assert!(source.uid() == "new_source");
-        assert!(source.elem.borrow().vmag_const() == vec![(0, 1.0), (1, 1.0), (2, 1.0)]);
+        let source_ref = source.elem.borrow();
+        assert!(source_ref.uid() == "new_source");
+        assert!(source_ref.vmag_const() == vec![(0, 1.0), (1, 1.0), (2, 1.0)]);
     }
 }

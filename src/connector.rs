@@ -30,11 +30,11 @@ impl Connector {
     /// ```
     /// # use griphos::{bn, BusNodeId, Connector, Phase, SwitchState};
     /// let connector = Connector::new(2, SwitchState::Closed);
-    /// let element = connector.element("c1", vec![bn!("bus_1", Phase::A), bn!("bus_2", Phase::A)]);
+    /// let element = connector.into_element("c1", vec![bn!("bus_1", Phase::A), bn!("bus_2", Phase::A)]);
     /// ```
-    pub fn element(self, uid: &str, bus_node_ids: Vec<BusNodeId>) -> Element {
+    pub fn into_element(self, uid: &str, bus_node_ids: Vec<BusNodeId>) -> Element<Self> {
         assert!(bus_node_ids.len() == self.n_terms, "connector {} expects {} bus nodes", uid, self.n_terms);
-        self.wrap_in_element(uid, bus_node_ids)
+        Element::<Self>::new(uid.to_string(), bus_node_ids, self)
     }
 }
 

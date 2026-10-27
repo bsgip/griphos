@@ -70,7 +70,7 @@ fn main() {
         // it's a wye connection - the `true` grounds the neutral).
         Source::new_wye_slack(V_MV, 3, true)
             // Wrap it in it's own element...
-            .element(
+            .into_element(
                 // with UID "source"...
                 "source",
                 // and connect to phases ABCN of src_bus, N being neutral.
@@ -91,7 +91,7 @@ fn main() {
         // z = 0.4+0.4j, z0 = 0.9+1.2j, n_phase = 3
         Line::new_from_sym_seq(c!(0.4, 0.4), c!(0.9, 1.2), 3)
             .expect("problem creating line")
-            .element(
+            .into_element(
                 "line",
                 ABC.iter().map(|ph| bn!("src_bus", *ph)).collect(),
                 ABC.iter().map(|ph| bn!("tx_mv_bus", *ph)).collect(),
@@ -108,7 +108,7 @@ fn main() {
             vec![C_ZERO, zs],                       // Series impedance [z_p, z_s].
             "dyn11"                                 // Vector group string, lowercase.
         ).expect("problem creating transformer")
-            .element(
+            .into_element(
                 "transformer",
                 ABC.iter().map(|ph| bn!("tx_mv_bus", *ph)).chain(
                     ABCN.iter().map(|ph| bn!("tx_lv_bus", *ph))
@@ -129,7 +129,7 @@ fn main() {
             Some(vec![c!(1e3, 0.5e3), c!(2e3, 0.4e3), c!(1.5e3, 0.1e3)]),
             // Star point is grounded.
             true
-        ).element(
+        ).into_element(
                 "load",
                 vec![
                     bn!("tx_lv_bus", Phase::A),

@@ -280,12 +280,11 @@ impl NetworkModel {
 
         // Insert copper plate connections as edges.
         for e in netw.elements() {
-            let e = e.borrow();
-            let cps = e.copper_plate();
+            let cps = e.borrow().copper_plate();
             for cp in cps {
-                let gnodei = bt_to_gnode[&e.bus_node_ids[cp[0]]];
+                let gnodei = bt_to_gnode[&e.borrow().bus_node_ids()[cp[0]]];
                 for j in &cp[1..] {
-                    let gnodej = bt_to_gnode[&e.bus_node_ids[cp[*j]]];
+                    let gnodej = bt_to_gnode[&e.borrow().bus_node_ids()[cp[*j]]];
                     copper.update_edge(gnodei, gnodej, ());
                 }
             }
@@ -295,10 +294,9 @@ impl NetworkModel {
         // effect that there is a single ground node.
         let mut first_ground: Option<NodeIndex> = None;
         for e in netw.elements() {
-            let e = e.borrow();
-            let gnd = e.grounding();
+            let gnd = e.borrow().grounding();
             for i in gnd {
-                let gnodei = bt_to_gnode[&e.bus_node_ids[i]];
+                let gnodei = bt_to_gnode[&e.borrow().bus_node_ids()[i]];
                 if let Some(g0) = first_ground {
                     copper.update_edge(gnodei, g0, ());
                 } else {
@@ -339,7 +337,7 @@ impl NetworkModel {
             // Set grounding flag
             for e in netw.elements() {
                 for i in e.borrow().grounding() {
-                    let nd = &mut nodes[bt_to_nd_idx[&e.borrow().bus_node_ids[i]]];
+                    let nd = &mut nodes[bt_to_nd_idx[&e.borrow().bus_node_ids()[i]]];
                     nd.1.is_grounded = true;
                     nd.1.v = Some(c!(0.0, 0.0));
                 }
@@ -380,10 +378,10 @@ impl NetworkModel {
         for elem in netw.elements() {
             let elem = elem.borrow();
             for (ibr, (i, j)) in elem.branch_wiring().iter().enumerate() {
-                let indi = self.bt_to_nd_idx[&elem.bus_node_ids[*i]];
-                let indj = self.bt_to_nd_idx[&elem.bus_node_ids[*j]];
+                let indi = self.bt_to_nd_idx[&elem.bus_node_ids()[*i]];
+                let indj = self.bt_to_nd_idx[&elem.bus_node_ids()[*j]];
                 let v_nom = self.nodes[indi].v_nom - self.nodes[indj].v_nom;
-                self.eb_to_br_idx.insert(eb!(elem.uid, ibr), self.branches.len());
+                self.eb_to_br_idx.insert(eb!(elem.uid(), ibr), self.branches.len());
                 self.branches.push(NmBranch::new(indi, indj, v_nom));
             }
         }
@@ -406,18 +404,19 @@ impl NetworkModel {
 
     fn elem_sparse_vec<F, T>(&self, netw: &Network, f: F) -> Result<CsVec<T>, String>
     where
-        F: Fn(&Element) -> Vec<(usize, T)>,
+        F: Fn(&ElementBorrowed) -> Vec<(usize, T)>,
         T: Clone + Add<Output = T> + MulAssign<f64>
     {
         let n_branches = self.branches.len();
         let mut entries: Vec<(usize, T)> = Vec::with_capacity(n_branches);
-        netw.foreach_element(|elem| {
-            for (i, x) in f(elem) {
-                let eb = eb!(&elem.uid, i);
+        for elem in netw.elements() {
+            let elem = elem.borrow();
+            for (i, x) in f(&elem) {
+                let eb = eb!(&elem.uid(), i);
                 let idx_br = self.eb_to_br_idx[&eb];
                 entries.push((idx_br, x));
             }
-        });
+        };
         entries.sort_by_key(|(idx, _)| *idx);
         let (indices, data): (Vec<_>, Vec<_>) = entries.into_iter().unzip();
         let vec: CsVec<T> = CsVec::new(n_branches, indices, data);
@@ -426,20 +425,21 @@ impl NetworkModel {
 
     fn elem_sparse_mat<F, T>(&self, netw: &Network, f: F) -> Result<CsMat<T>, String>
     where
-        F: Fn(&Element) -> CooMat<T>,
+        F: Fn(&ElementBorrowed) -> CooMat<T>,
         T: Clone + Add<Output = T>
     {
         let n_branches = self.branches.len();
         let mut tri = TriMat::<T>::new((n_branches, n_branches));
-        netw.foreach_element(|elem| {
-            for ((i, j), x) in f(elem) {
-                let eb_i = eb!(&elem.uid, i);
-                let eb_j = eb!(&elem.uid, j);
+        for elem in netw.elements() {
+            let elem = elem.borrow();
+            for ((i, j), x) in f(&elem) {
+                let eb_i = eb!(&elem.uid(), i);
+                let eb_j = eb!(&elem.uid(), j);
                 let idx_br_i = self.eb_to_br_idx[&eb_i];
                 let idx_br_j = self.eb_to_br_idx[&eb_j];
                 tri.add_triplet(idx_br_i, idx_br_j, x);
             }
-        });
+        };
         Ok(tri.to_csc())
     }
 
@@ -505,7 +505,7 @@ impl NetworkModel {
             let br = &self.branches[*br_idx];
             let elem_shared = netw.element(&eb.e).unwrap();
             let mut elem = elem_shared.borrow_mut();
-            let elem_br = &mut elem.branches[eb.b];
+            let elem_br = &mut elem.branches_mut()[eb.b];
             if let Some(v) = br.v_01 {
                 elem_br.v = v;
             }
@@ -568,11 +568,11 @@ mod tests {
 
         netw.add_element(
             (GenericElement {n_terms: 2, branch_wiring: vec![(0, 1)], y_const, ..Default::default()})
-                .element("y01", vec![bn!("bus_0", Phase::A), bn!("bus_1", Phase::A)])).unwrap();
+                .into_element("y01", vec![bn!("bus_0", Phase::A), bn!("bus_1", Phase::A)])).unwrap();
 
         netw.add_element(
             (GenericElement {n_terms: 2, copper_plate, ..Default::default()})
-                .element("cp12", vec![bn!("bus_1", Phase::A), bn!("bus_2", Phase::A)])).unwrap();
+                .into_element("cp12", vec![bn!("bus_1", Phase::A), bn!("bus_2", Phase::A)])).unwrap();
 
         let mods = NetworkModels::new(&netw);
         assert!(mods.master.nodes.len() == 2);
@@ -602,16 +602,16 @@ mod tests {
         // should be 0, 1, 1, 2
         netw.add_element(
             (GenericElement {n_terms: 2, branch_wiring: vec![(0, 1)], y_const: y_const.clone(), ..Default::default()})
-                .element("y01", bts(0, 1))).unwrap();
+                .into_element("y01", bts(0, 1))).unwrap();
         netw.add_element(
             (GenericElement {n_terms: 2, branch_wiring: vec![(0, 1)], y_const: y_const.clone(), ..Default::default()})
-                .element("y12", bts(1, 2))).unwrap();
+                .into_element("y12", bts(1, 2))).unwrap();
         netw.add_element(
             (GenericElement {n_terms: 2, grounding: vec![0, 1], ..Default::default()})
-            .element("g12", bts(1, 2))).unwrap();
+            .into_element("g12", bts(1, 2))).unwrap();
         netw.add_element(
             (GenericElement {n_terms: 2, branch_wiring: vec![(0, 1)], y_const, ..Default::default()})
-            .element("y23", bts(2, 3))).unwrap();
+            .into_element("y23", bts(2, 3))).unwrap();
         let mods = NetworkModels::new(&netw);
         assert!(mods.master.nodes.len() == 3);
     }

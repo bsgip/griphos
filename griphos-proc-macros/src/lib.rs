@@ -10,7 +10,7 @@ pub fn derive_has_type_str(input: TokenStream) -> TokenStream {
 
     quote! {
         impl TypeStrOf for #name {
-            fn type_str_of() -> &'static str { #name_str }
+            fn type_str_of() -> String { #name_str.to_string() }
         }
     }
     .into()

@@ -127,6 +127,35 @@ macro_rules! py_wrapper {
 }
 pub(crate) use py_wrapper;
 
+/// Like `py_wrapper!`, but for a Rust type that is itself a shared handle
+/// (e.g. `gr::Element`), so no `Shared<..>` layer is wanted.
+macro_rules! py_handle_wrapper {
+    (
+        $(#[$meta:meta])*
+        $py_name:ident, $rust_ty:ty $(, $flag:ident)*
+    ) => {
+        $(#[$meta])*
+        #[pyo3_stub_gen::derive::gen_stub_pyclass]
+        #[pyclass(module = "griphos", unsendable $(, $flag)*)]
+        pub struct $py_name {
+            pub(crate) inner: $rust_ty,
+        }
+
+        impl From<$rust_ty> for $py_name {
+            fn from(inner: $rust_ty) -> Self {
+                $py_name { inner }
+            }
+        }
+
+        impl From<$py_name> for $rust_ty {
+            fn from(v: $py_name) -> Self {
+                v.inner
+            }
+        }
+    };
+}
+pub(crate) use py_handle_wrapper;
+
 macro_rules! element_subclass {
     (
         $(#[$meta:meta])*
@@ -136,36 +165,28 @@ macro_rules! element_subclass {
         #[pyo3_stub_gen::derive::gen_stub_pyclass]
         #[pyclass(extends=$crate::network::Element, unsendable)]
         pub struct $name {
-            // Convenience reference to the parent elem for the purpose of rust code.
-            elem: Shared<gr::Element>,
+            elem: gr::Element<$spec>, // same Rc as the parent's handle
         }
 
         #[allow(unused)]
         impl $name {
-            fn from_elem(elem: Shared<gr::Element>) -> Self {
-                Self { elem }
+            fn from_typed(elem: gr::Element<$spec>) -> Self { Self { elem } }
+
+            fn try_from_elem(elem: &gr::Element) -> Option<Self> {
+                elem.downcast::<$spec>().map(Self::from_typed)
             }
 
             fn into_initializer(self) -> PyClassInitializer<Self> {
-                PyClassInitializer::from($crate::network::Element { inner: self.elem.clone() })
+                PyClassInitializer::from($crate::network::Element { inner: self.elem.erase() })
                     .add_subclass(self)
             }
 
-            fn with_spec<R>(&self, f: impl FnOnce(&$spec) -> R) -> R {
-                let elem = self.elem.borrow();
-                let spec = elem.as_type::<$spec>().expect("type mismatch");
-                f(spec)
+            /// Build the Python object (parent and subclass together).
+            fn into_py_object(self, py: Python<'_>) -> PyResult<Py<Self>> {
+                Py::new(py, self.into_initializer())
             }
 
-            fn with_spec_mut<R>(&self, f: impl FnOnce(&mut $spec) -> R) -> R {
-                let mut elem = self.elem.borrow_mut();
-                let spec = elem.as_type_mut::<$spec>().expect("type mismatch");
-                f(spec)
-            }
-
-            fn uid(&self) -> String {
-                self.elem.borrow().uid.clone()
-            }
+            fn elem(&self) -> &gr::Element<$spec> { &self.elem }
         }
     };
 }

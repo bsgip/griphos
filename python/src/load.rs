@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use ::griphos as gr;
-use gr::{CooMat, c64, Shared, IntoShared};
+use gr::{CooMat, c64};
 use crate::plumbing::element_subclass;
 use crate::network::{BusNodeId, bus_node_ids_to_gr};
 
@@ -37,8 +37,8 @@ impl Load {
         let n_terms = bus_node_ids.len();
         let gr_load = gr::Load::new(n_terms, branches, y_const, i_const, s_const, grounding);
         let gr_bts = bus_node_ids_to_gr(bus_node_ids);
-        let elem = gr_load.element(uid, gr_bts).into_shared();
-        Load::from_elem(elem)
+        let elem = gr_load.into_element(uid, gr_bts);
+        Load::from_typed(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
@@ -53,8 +53,8 @@ impl Load {
         let n_phases = bus_node_ids.len() - 1;
         let gr_load = gr::Load::new_wye(n_phases, y_const, i_const, s_const, is_grounded);
         let gr_bts = bus_node_ids_to_gr(bus_node_ids);
-        let elem = gr_load.element(uid, gr_bts).into_shared();
-        Load::from_elem(elem)
+        let elem = gr_load.into_element(uid, gr_bts);
+        Load::from_typed(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
@@ -68,8 +68,8 @@ impl Load {
         let n_phases = bus_node_ids.len();
         let gr_load = gr::Load::new_delta(n_phases, y_const, i_const, s_const);
         let gr_bts = bus_node_ids_to_gr(bus_node_ids);
-        let elem = gr_load.element(uid, gr_bts).into_shared();
-        Load::from_elem(elem)
+        let elem = gr_load.into_element(uid, gr_bts);
+        Load::from_typed(elem)
     }
 }
 
@@ -151,11 +151,10 @@ mod tests {
             c!(1.0, 0.0),
         ];
         let load = Load::new_raw_wye("new_load", bts, Some(y_const.clone()), None, None, true);
-        assert!(load.uid() == "new_load");
-        load.with_spec(|x| assert!(x.y_const == load.elem.borrow().y_const()));
-        assert!(load.elem.borrow().i_const() == vec![]);
-        assert!(load.elem.borrow().s_const() == vec![]);
-        assert!(load.elem.borrow().vmag_const() == vec![]);
-        assert!(load.elem.borrow().vang_const() == vec![]);
+        let load_ref = load.elem.borrow();
+        assert!(load_ref.uid() == "new_load");
+        assert!(load_ref.y_const() == y_const.iter().enumerate().map(|(i, x)| ((i, i), *x)).collect::<CooMat<c64>>());
+        assert!(load_ref.i_const().is_empty());
+        assert!(load_ref.s_const().is_empty());
     }
 }

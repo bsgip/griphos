@@ -42,7 +42,10 @@
 use std::any::Any;
 use std::collections::HashSet;
 use std::fmt;
+use std::fmt::Display;
 use std::hash::{Hash};
+use std::ops::{Deref, DerefMut};
+use std::marker::PhantomData;
 use std::vec::Vec;
 
 use indexmap::map::Entry;
@@ -253,6 +256,11 @@ impl Bus {
         Bus {uid: uid.to_string(), v_base, terms}
     }
 
+    /// Reterns the unique ID of the Bus.
+    pub fn uid(&self) -> String {
+        self.uid.clone()
+    }
+
     /// Searches for the terminal of a bus that has phase `p`.
     pub fn bus_node(&self, p: Phase) -> Option<&BusNode> {
         self.terms.iter().find(|x| x.phase == p)
@@ -279,13 +287,11 @@ impl Bus {
     }
 }
 
-impl HasUid for Bus {fn uid(&self) -> String {self.uid.clone()}}
-
 impl_g_serialize!(Bus);
 impl_disp_from_fmt!(Bus);
 
 /// Per-branch data of an element
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct ElemBranch {
     /// Branch voltage. For branch (i, j), v is defined v_i - v_j.
     pub v: c64,
@@ -296,170 +302,40 @@ pub struct ElemBranch {
 impl_g_serialize!(ElemBranch);
 impl_disp_from_fmt!(ElemBranch);
 
-/// An element is a set of current carrying connections netween terminals. It can include several different types of
-/// connection, such as constant y or constant s.
-#[derive(std::fmt::Debug)]
-pub struct Element {
-    /// Unique ID
-    pub uid: String,
-    /// Is the element in service / operational.
-    pub is_in_service: bool,
-    /// Key of which bus/phases the terminals are connected to.
-    pub bus_node_ids: Vec<BusNodeId>,
-    /// The branch info, a vector of [`ElemBranch`] of the element.
-    pub branches: Vec<ElemBranch>,
-
-    // The specialized behaviour of the element, an object that implements ElementSpec.
-    spec: Box<dyn ElementSpec>,
+#[derive(Debug)]
+pub struct ElementCommon {
+    pub uid: String,                    // Unique ID
+    pub is_in_service: bool,            // Is the element in service / operational.
+    pub bus_node_ids: Vec<BusNodeId>,   // Key of which bus/phases the terminals are connected to.
+    pub branches: Vec<ElemBranch>,      // The branch info, a vector of [`ElemBranch`] of the element.
 }
-
-impl Element {
-    /// Creates a new element.
-    pub fn new<T: ElementSpec + 'static>(uid: &str, bus_node_ids: Vec<BusNodeId>, spec: T) -> Element {
-        let n_branches = spec.n_branches();
-        Element {
-            uid: uid.to_string(),
-            is_in_service: true,
-            bus_node_ids,
-            spec: Box::new(spec),
-            branches: vec![ElemBranch {v: c!(0.0, 0.0), i: c!(0.0, 0.0)}; n_branches],
-        }
-    }
-
-    /// Type string of an element, corresponding to the dynamic type of its `spec`.
-    pub fn element_type(&self) -> &str {
-        self.spec.type_str()
-    }
-
-    /// Downcasts an element's `spec` to the given type, which must implement [`ElementSpec`].
-    pub fn as_type<T: 'static>(&self) -> Option<&T> {
-        self.spec.downcast_ref::<T>()
-    }
-
-    /// Downcasts an element's `spec` to the given type, which must implement [`ElementSpec`], mutable version.
-    pub fn as_type_mut<T: 'static>(&mut self) -> Option<&mut T> {
-        self.spec.downcast_mut::<T>()
-    }
-
-    /// Returns the number of terminals of the element.
-    pub fn n_terms(&self) -> usize {
-        self.spec.n_terms()
-    }
-
-    /// Returns the number of branches of the element.
-    pub fn n_branches(&self) -> usize {
-        if self.is_live() {self.spec.n_branches()} else {0}
-    }
-
-    /// Returns the branch wiring as a vector of (i, j) terminal connections.
-    pub fn branch_wiring(&self) -> Vec<(usize, usize)> {
-        if self.is_live() {self.spec.branch_wiring()} else {vec![]}
-    }
-
-    /// Is the element live (in service and switched on if there is a swtich).
-    pub fn is_live(&self) -> bool {
-        self.is_in_service && self.spec.is_live()
-    }
-
-    /// Returns the constant y branch impedance matrix.
-    ///
-    /// The row and column indices correspond to branch indices. Off diagonal elements can occur e.g. due to magnetic
-    /// coupling in lines for example. In a line, y_const is the phase impedance matrix, as distinct from the nodal
-    /// impedance matrix. For a three-phase line, the former is a 3x3 matrix, and the latter is a 6x6 matrix.
-    pub fn y_const(&self) -> CooMat<c64> {
-        if self.is_live() {self.spec.y_const()} else {vec![]}
-    }
-
-    /// Returns the constant I component, where the indices are branch indices and the value is the constant current
-    /// component.
-    pub fn i_const(&self) -> Vec<(usize, c64)> {
-        if self.is_live() {self.spec.i_const()} else {vec![]}
-    }
-
-    /// Returns the constant S component, where the indices are branch indices and the value is the constant S
-    /// component.
-    pub fn s_const(&self) -> Vec<(usize, c64)> {
-        if self.is_live() {self.spec.s_const()} else {vec![]}
-    }
-
-    /// Returns the constant voltage magnitude, where the indices are branch indices and the values are the voltage
-    /// magnitudes.
-    pub fn vmag_const(&self) -> Vec<(usize, f64)> {
-        if self.is_live() {self.spec.vmag_const()} else {vec![]}
-    }
-
-    /// Returns the constant voltage angle, where the indices are branch indices and the values are the voltage angles.
-    pub fn vang_const(&self) -> Vec<(usize, f64)> {
-        if self.is_live() {self.spec.vang_const()} else {vec![]}
-    }
-
-    /// Returns indices of copper-plated branches, where the terminals of each such branch are shorted together.
-    pub fn copper_plate(&self) -> Vec<Vec<usize>> {
-        if self.is_live() {self.spec.copper_plate()} else {vec![]}
-    }
-
-    /// Returns the indices of grounded terminals.
-    pub fn grounding(&self) -> Vec<usize> {
-        if self.is_live() {self.spec.grounding()} else {vec![]}
-    }
-}
-
-impl HasUid for Element {fn uid(&self) -> String {self.uid.clone()}}
-
-impl GSerialize for Element {
-    fn g_serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
-        let mut state = serializer.serialize_struct("Element", 4)?;
-        state.serialize_field("uid", &self.uid)?;
-        state.serialize_field("element_type", &self.element_type())?;
-        state.serialize_field("is_in_service", &self.is_in_service)?;
-        state.serialize_field("bus_node_ids", &self.bus_node_ids)?;
-        state.serialize_field("n_terms", &self.spec.n_terms())?;
-        state.serialize_field("branch_wiring", &self.branch_wiring())?;
-        state.serialize_field("y_const", &self.spec.y_const())?;
-        state.serialize_field("i_const", &self.spec.i_const())?;
-        state.serialize_field("s_const", &self.spec.s_const())?;
-        state.serialize_field("vmag_const", &self.spec.vmag_const())?;
-        state.serialize_field("vang_const", &self.spec.vang_const())?;
-        state.serialize_field("copper_plate", &self.spec.copper_plate())?;
-        state.serialize_field("grounding", &self.spec.grounding())?;
-        state.end()
-    }
-}
-
-impl_disp_from_fmt!(Element);
 
 /// Trait for types that have an associated type_str string. Each ElementSpec must implement this by hand.
 pub trait TypeStrOf {
-    fn type_str_of() -> &'static str where Self: Sized;
+    fn type_str_of() -> String where Self: Sized;
 }
 
 /// Bridge to allow calling on an instance; don't re-implement, machinery to allow dynamic type strings.
 pub trait TypeStr {
-    fn type_str(&self) -> &'static str;
+    fn type_str(&self) -> String;
 }
 
 /// Blanket implementation of TypeStr for all types, machinery to allow dynamic type strings.
 impl<T: TypeStrOf> TypeStr for T {
-    fn type_str(&self) -> &'static str {
+    fn type_str(&self) -> String {
         T::type_str_of()
     }
 }
 
+/// Parameter bundle that is convenient for the constraints of generic [`ElementSpec`]s.
+///
+/// The machinery here simply means any generic `ElementSpec`, say `Foo<T: ElementSpecParam>`, will work, so long as T
+/// obeys the constraints.
+pub trait ElementSpecParam: std::fmt::Debug + Send + Sync + 'static {}
+impl<T: std::fmt::Debug + Send + Sync + 'static> ElementSpecParam for T {}
+
 /// An element_spec collects together electrical connections of various types such as constant y or constant s.
 pub trait ElementSpec: Any + std::fmt::Debug + Send + Sync + TypeStrOf + TypeStr {
-    fn wrap_in_element(self, uid: &str, bus_node_ids: Vec<BusNodeId>) -> Element where Self: Sized + 'static {
-        let n_terms = self.n_terms();
-        assert!(
-            bus_node_ids.len() == n_terms,
-            "element {} has the wrong number of terminals, have {}, expecting {}", uid, bus_node_ids.len(), n_terms
-        );
-        assert!(
-            self.branch_wiring().iter().flat_map(|(i, j)| [i, j]).all(|k| *k < n_terms),
-            "wiring for element {} contains terminal indices that are >= the number of terminals", &uid
-        );
-        Element::new(uid, bus_node_ids, self)
-    }
-
     /// Returns the number of terminals (connection points).
     fn n_terms(&self) -> usize;
 
@@ -547,16 +423,294 @@ pub trait ElementSpec: Any + std::fmt::Debug + Send + Sync + TypeStrOf + TypeStr
 }
 
 impl dyn ElementSpec {
-    /// Downcasts an [`ElementSpec`] to type `T`.
-    fn downcast_ref<T: Any>(&self) -> Option<&T> {
+    pub fn is<S: ElementSpec>(&self) -> bool {
         let any: &dyn Any = self;
-        any.downcast_ref::<T>()
+        any.is::<S>()
     }
 
-    /// Mutably downcasts an [`ElementSpec`] to type `T`.
-    fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
+    pub fn downcast_ref<S: ElementSpec>(&self) -> Option<&S> {
+        let any: &dyn Any = self;
+        any.downcast_ref()
+    }
+
+    pub fn downcast_mut<S: ElementSpec>(&mut self) -> Option<&mut S> {
         let any: &mut dyn Any = self;
-        any.downcast_mut::<T>()
+        any.downcast_mut()
+    }
+}
+
+#[derive(Debug)]
+pub struct Foo<T> {
+    pub t: T,
+}
+
+#[derive(Debug)]
+struct ElementInner {
+    // The common data.
+    common: ElementCommon,
+
+    // The specialised (dynamic) behaviour of the element.
+    spec: Box<dyn ElementSpec>,
+}
+
+/// An element is a set of current carrying connections netween terminals. It can include several different types of
+/// connection, such as constant y or constant s.
+#[derive(Debug)]
+pub struct Element<S: ElementSpec + ?Sized = dyn ElementSpec> {
+    inner: Shared<ElementInner>,
+    _m: PhantomData<fn(&S)>,
+}
+
+impl Element {
+    pub fn is<S: ElementSpec>(&self) -> bool {
+        self.borrow().spec.is::<S>()
+    }
+
+    pub fn downcast<S: ElementSpec>(&self) -> Option<Element<S>> {
+        self.is::<S>().then(|| Element::from_inner(self.inner.clone()))
+    }
+
+    pub fn borrow(&self) -> ElementBorrowed<'_> {
+        let (common, spec) = Borrowed::map_split(self.inner.borrow(), |i| {(&i.common, i.spec.as_ref())});
+        ElementBorrowed { common, spec }
+    }
+
+    pub fn borrow_mut(&self) -> ElementBorrowedMut<'_> {
+        let (common, spec) = BorrowedMut::map_split(self.inner.borrow_mut(), |i| {(&mut i.common, i.spec.as_mut())});
+        ElementBorrowedMut { common, spec }
+    }
+}
+
+impl<S: ElementSpec + ?Sized> Element<S> {
+    fn from_inner(inner: Shared<ElementInner>) -> Element<S> {
+        Element { inner, _m: PhantomData }
+    }
+
+    /// Upcasts to a generic Element.
+    pub fn erase(&self) -> Element {
+        Element::from_inner(self.inner.clone())
+    }
+}
+
+impl<S: ElementSpec> Element<S> {
+    pub fn new(
+        uid: String, bus_node_ids: Vec<BusNodeId>, spec: S,
+    ) -> Self {
+        let n_terms = spec.n_terms();
+        assert!(bus_node_ids.len() == n_terms, "Element expects {} bus_node_ids", n_terms);
+        let n_branches = spec.n_branches();
+        let branches = vec![ElemBranch::default(); n_branches];
+        let common = ElementCommon { uid, is_in_service: true, bus_node_ids, branches };
+        Self::from_inner(ElementInner { common, spec: Box::new(spec) }.into_shared())
+    }
+
+    pub fn borrow(&self) -> ElementBorrowed<'_, S> {
+        let (common, spec) = Borrowed::map_split(self.inner.borrow(), |i| {
+            (&i.common, i.spec.as_ref().downcast_ref::<S>().expect("spec type invariant"))
+        });
+        ElementBorrowed { common, spec }
+    }
+
+    pub fn borrow_mut(&self) -> ElementBorrowedMut<'_, S> {
+        let (common, spec) = BorrowedMut::map_split(self.inner.borrow_mut(), |i| {
+            (&mut i.common, i.spec.as_mut().downcast_mut::<S>().expect("spec type invariant"))
+        });
+        ElementBorrowedMut { common, spec }
+    }
+}
+
+impl<S: ElementSpec + ?Sized> Clone for Element<S> {
+    fn clone(&self) -> Self {
+        Element { inner: self.inner.clone(), _m: PhantomData }
+    }
+}
+
+pub struct ElementGuard<C, P> {
+    common: C, // Borrowed<ElementCommon> or BorrowedMut<ElementCommon>
+    spec: P,   // Borrowed<S> or BorrowedMut<S>
+}
+
+pub type ElementBorrowed<'a, S = dyn ElementSpec> = ElementGuard<Borrowed<'a, ElementCommon>, Borrowed<'a, S>>;
+pub type ElementBorrowedMut<'a, S = dyn ElementSpec> = ElementGuard<BorrowedMut<'a, ElementCommon>, BorrowedMut<'a, S>>;
+
+impl<C, P> ElementGuard<C, P>
+where
+    C: Deref<Target = ElementCommon>,
+    P: Deref,
+    P::Target: ElementSpec,
+{
+    /// Returns the unique ID of the element.
+    pub fn uid(&self) -> String {
+        self.common.uid.clone()
+    }
+
+    /// Returns the in_service status of the element.
+    pub fn is_in_service(&self) -> bool {
+        self.common.is_in_service
+    }
+
+    /// Returns a reference to the [`BusNodId`]s of the element.
+    pub fn bus_node_ids(&self) -> &[BusNodeId] {
+        &self.common.bus_node_ids
+    }
+
+    /// Returns a reference to the [`ElemBranch`]es of the element.
+    pub fn branches(&self) -> &[ElemBranch] {
+        &self.common.branches
+    }
+
+    /// Type string of an element, corresponding to the dynamic type of its `spec`.
+    pub fn element_type(&self) -> String {
+        self.spec.type_str()
+    }
+
+    /// Returns the number of terminals of the element.
+    pub fn n_terms(&self) -> usize {
+        self.spec.n_terms()
+    }
+
+    /// Returns the number of branches of the element.
+    pub fn n_branches(&self) -> usize {
+        if self.is_live() {self.spec.n_branches()} else {0}
+    }
+
+    /// Returns the branch wiring as a vector of (i, j) terminal connections.
+    pub fn branch_wiring(&self) -> Vec<(usize, usize)> {
+        if self.is_live() {self.spec.branch_wiring()} else {vec![]}
+    }
+
+    /// Is the element live (in service and switched on if there is a swtich).
+    pub fn is_live(&self) -> bool {
+        self.is_in_service() && self.spec.is_live()
+    }
+
+    /// Returns the constant y branch impedance matrix.
+    ///
+    /// The row and column indices correspond to branch indices. Off diagonal elements can occur e.g. due to magnetic
+    /// coupling in lines for example. In a line, y_const is the phase impedance matrix, as distinct from the nodal
+    /// impedance matrix. For a three-phase line, the former is a 3x3 matrix, and the latter is a 6x6 matrix.
+    pub fn y_const(&self) -> CooMat<c64> {
+        if self.is_live() {self.spec.y_const()} else {vec![]}
+    }
+
+    /// Returns the constant I component, where the indices are branch indices and the value is the constant current
+    /// component.
+    pub fn i_const(&self) -> Vec<(usize, c64)> {
+        if self.is_live() {self.spec.i_const()} else {vec![]}
+    }
+
+    /// Returns the constant S component, where the indices are branch indices and the value is the constant S
+    /// component.
+    pub fn s_const(&self) -> Vec<(usize, c64)> {
+        if self.is_live() {self.spec.s_const()} else {vec![]}
+    }
+
+    /// Returns the constant voltage magnitude, where the indices are branch indices and the values are the voltage
+    /// magnitudes.
+    pub fn vmag_const(&self) -> Vec<(usize, f64)> {
+        if self.is_live() {self.spec.vmag_const()} else {vec![]}
+    }
+
+    /// Returns the constant voltage angle, where the indices are branch indices and the values are the voltage angles.
+    pub fn vang_const(&self) -> Vec<(usize, f64)> {
+        if self.is_live() {self.spec.vang_const()} else {vec![]}
+    }
+
+    /// Returns indices of copper-plated branches, where the terminals of each such branch are shorted together.
+    pub fn copper_plate(&self) -> Vec<Vec<usize>> {
+        if self.is_live() {self.spec.copper_plate()} else {vec![]}
+    }
+
+    /// Returns the indices of grounded terminals.
+    pub fn grounding(&self) -> Vec<usize> {
+        if self.is_live() {self.spec.grounding()} else {vec![]}
+    }
+
+    /// Writes the fields common to every element into an open struct serializer.
+    fn serialize_common_fields<T: SerializeStruct>(&self, state: &mut T) -> Result<(), T::Error> {
+        state.serialize_field("uid", &self.common.uid)?;
+        state.serialize_field("element_type", &self.element_type())?;
+        state.serialize_field("is_in_service", &self.is_in_service())?;
+        state.serialize_field("bus_node_ids", &self.bus_node_ids())?;
+        state.serialize_field("n_terms", &self.n_terms())?;
+        state.serialize_field("branches", &self.branches())?;
+        state.serialize_field("branch_wiring", &self.branch_wiring())?;
+        state.serialize_field("y_const", &self.y_const())?;
+        state.serialize_field("i_const", &self.i_const())?;
+        state.serialize_field("s_const", &self.s_const())?;
+        state.serialize_field("vmag_const", &self.vmag_const())?;
+        state.serialize_field("vang_const", &self.vang_const())?;
+        state.serialize_field("copper_plate", &self.copper_plate())?;
+        state.serialize_field("grounding", &self.grounding())?;
+        Ok(())
+    }
+}
+
+impl<'a, S: ElementSpec + ?Sized> ElementBorrowedMut<'a, S> {
+    /// Returns the in_service status of the element.
+    pub fn set_is_in_service(&mut self, is_in_service: bool) {
+        self.common.is_in_service = is_in_service
+    }
+
+    /// Returns a reference to the [`ElemBranch`]es of the element.
+    pub fn branches_mut(&mut self) -> &mut [ElemBranch] {
+        &mut self.common.branches
+    }
+}
+
+impl<C, P> Deref for ElementGuard<C, P>
+where
+    P: Deref,
+{
+    type Target = P::Target;
+    fn deref(&self) -> &P::Target { &self.spec }
+}
+
+impl<C, P> DerefMut for ElementGuard<C, P>
+where
+    P: DerefMut,
+{
+    fn deref_mut(&mut self) -> &mut P::Target { &mut self.spec }
+}
+
+impl<'a> GSerialize for ElementBorrowed<'a> {
+    fn g_serialize<T>(&self, serializer: T) -> Result<T::Ok, T::Error> where T: serde::Serializer {
+        let mut state = serializer.serialize_struct("Element", 15)?;
+        self.serialize_common_fields(&mut state)?;
+        state.end()
+    }
+}
+
+impl<'a> Display for ElementBorrowed<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.g_format(f)
+    }
+}
+
+impl<'a, S: ElementSpec + GSerialize> GSerialize for ElementBorrowed<'a, S> {
+    fn g_serialize<T>(&self, serializer: T) -> Result<T::Ok, T::Error> where T: serde::Serializer {
+        let mut state = serializer.serialize_struct("Element", 15)?;
+        self.serialize_common_fields(&mut state)?;
+        state.serialize_field("spec", &Wrap(&*self.spec))?;
+        state.end()
+    }
+}
+
+impl<'a, S: ElementSpec + GSerialize> Display for ElementBorrowed<'a, S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.g_format(f)
+    }
+}
+
+impl GSerialize for Element {
+    fn g_serialize<T: serde::Serializer>(&self, serializer: T) -> Result<T::Ok, T::Error> {
+        self.borrow().g_serialize(serializer)
+    }
+}
+
+impl<S: ElementSpec + GSerialize> GSerialize for Element<S> {
+    fn g_serialize<T: serde::Serializer>(&self, serializer: T) -> Result<T::Ok, T::Error> {
+        self.borrow().g_serialize(serializer)
     }
 }
 
@@ -572,7 +726,7 @@ pub struct Network {
 
     /// Master list of elements.
     #[serde(serialize_with="serialize_with_wrap")]
-    elements: IndexMap<String, Shared<Element>>,
+    elements: IndexMap<String, Element>,
 }
 
 impl Network {
@@ -620,46 +774,22 @@ impl Network {
     }
 
     /// Returns the elements in the network as an iterator.
-    pub fn elements(&self) -> impl Iterator<Item = &Shared<Element>> {
+    pub fn elements(&self) -> impl Iterator<Item = &Element> {
         self.elements.values()
     }
 
-    /// Returns the elements of type `T` in the network as an iterator.
-    pub fn elements_of_type<T: ElementSpec + 'static>(&self) -> impl Iterator<Item = &Shared<Element>> + '_ {
-        self.elements().filter(|elem| elem.borrow().as_type::<T>().is_some())
-    }
-
-    /// Executes `f` for each element in the network.
-    pub fn foreach_element<F>(&self, mut f: F) where F: FnMut(&Element) {
-        for e in self.elements.values() {f(&e.borrow());}
-    }
-
-    /// Executes `f` for each element in the network, where `f` may mutate the elements.
-    pub fn foreach_element_mut<F>(&self, mut f: F) where F: FnMut(&mut Element) {
-        for e in self.elements.values() {f(&mut e.borrow_mut());}
-    }
-
-    /// Executes `f` for each element of type `T` in the network.
-    pub fn foreach_element_of_type<F, T>(&self, mut f: F) where F: FnMut(&Element), T: ElementSpec {
-        for e in self.elements.values().filter(|e| e.borrow().as_type::<T>().is_some()) {
-            f(&e.borrow());
-        }
-    }
-
-    /// Executes `f` for each element of type `T` in the network, where `f` may mutate the elements.
-    pub fn foreach_element_of_type_mut<F, T>(&self, mut f: F) where F: FnMut(&mut Element), T: ElementSpec {
-        for e in self.elements.values().filter(|e| e.borrow().as_type::<T>().is_some()) {
-            f(&mut e.borrow_mut());
-        }
+    /// Returns the elements whose spec is of type `S`, as typed handles.
+    pub fn elements_of_type<S: ElementSpec>(&self) -> impl Iterator<Item = Element<S>> + '_ {
+        self.elements().filter_map(|e| e.downcast::<S>())
     }
 
     /// Retrns the element with the given uid.
-    pub fn element(&self, elem_uid: &str) -> Option<&Shared<Element>> {
+    pub fn element(&self, elem_uid: &str) -> Option<&Element> {
         self.elements.get(&elem_uid.to_string())
     }
 
     /// Returns the element with the given index.
-    pub fn element_i(&self, elem_idx: usize) -> Option<&Shared<Element>> {
+    pub fn element_i(&self, elem_idx: usize) -> Option<&Element> {
         self.elements.get_index(elem_idx).map(|x| x.1)
     }
 
@@ -678,14 +808,14 @@ impl Network {
     }
 
     /// Adds an element to the network.
-    pub fn add_element(&mut self, element: Element) -> Result<Shared<Element>, String> {
-        let existing = self.elements.entry(element.uid.to_string());
+    pub fn add_element<S: ElementSpec>(&mut self, element: Element<S>) -> Result<Element<S>, String> {
+        let existing = self.elements.entry(element.borrow().uid().to_string());
         match existing {
             Entry::Occupied(_entry) => {
-                Err(format!("Element {} already exists", element.uid))
+                Err(format!("Element {} already exists", element.borrow().uid()))
             },
             Entry::Vacant(entry) => {
-                let element = entry.insert(element.into_shared());
+                entry.insert(element.erase());
                 Ok(element.clone())
             }
         }
@@ -703,5 +833,44 @@ impl_disp_from_fmt!(Network);
 
 #[cfg(test)]
 mod tests {
-    // TODO
+    use super::*;
+
+    impl<T: ElementSpecParam> TypeStrOf for Foo<T> {
+        fn type_str_of() -> String where Self: Sized {
+            std::any::type_name::<T>().to_string()
+        }
+    }
+
+    impl<T: ElementSpecParam> ElementSpec for Foo<T> {
+        fn n_terms(&self) -> usize {
+            2
+        }
+
+        fn n_branches(&self) -> usize {
+            1
+        }
+
+        fn branch_wiring(&self) -> Vec<(usize, usize)> {
+            vec![(0, 1)]
+        }
+    }
+
+    impl<T: ElementSpecParam> Foo<T> {
+        pub fn into_element(self, uid: &str, bus_node_ids: Vec<BusNodeId>) -> Element<Self> {
+            Element::<Self>::new(uid.to_string(), bus_node_ids, self)
+        }
+    }
+
+    #[test]
+    fn downcast_roundtrip() {
+        let e = Foo::<i32> { t: 7 }.into_element(
+            "foo",
+            vec![bn!("bus_1", Phase::A), bn!("bus_1", Phase::B)],
+        );
+        assert!(e.borrow().spec.t == 7);
+        let e: Element = e.erase();
+        assert!(e.is::<Foo<i32>>());
+        assert!(e.downcast::<Foo<i32>>().is_some());
+        assert!(e.downcast::<Foo<f64>>().is_none());
+    }
 }

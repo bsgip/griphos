@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use ::griphos as gr;
-use gr::{CooMat, c64, Shared, IntoShared};
+use gr::{CooMat, c64};
 use crate::plumbing::element_subclass;
 use crate::network::{BusNodeId, bus_node_ids_to_gr};
 
@@ -56,8 +56,8 @@ impl GenericElement {
             grounding.unwrap_or_default(),
         );
         let gr_bts = bus_node_ids_to_gr(bus_node_ids);
-        let elem = gr_generic_element.element(uid, gr_bts).into_shared();
-        GenericElement::from_elem(elem)
+        let elem = gr_generic_element.into_element(uid, gr_bts);
+        GenericElement::from_typed(elem)
     }
 }
 
@@ -126,14 +126,16 @@ mod tests {
         ];
 
         let generic_element = GenericElement::new_raw(
-            "new_generic_element", bts, branches, Some(y_const), Some(i_const), Some(s_const),
-            Some(vmag_const), None, None, None
+            "new_generic_element", bts, branches, Some(y_const.clone()), Some(i_const.clone()), Some(s_const.clone()),
+            Some(vmag_const.clone()), None, None, None
         );
-        assert!(generic_element.uid() == "new_generic_element");
-        generic_element.with_spec(|x| assert!(x.y_const == generic_element.elem.borrow().y_const()));
-        generic_element.with_spec(|x| assert!(x.i_const == generic_element.elem.borrow().i_const()));
-        generic_element.with_spec(|x| assert!(x.s_const == generic_element.elem.borrow().s_const()));
-        generic_element.with_spec(|x| assert!(x.vmag_const == generic_element.elem.borrow().vmag_const()));
-        generic_element.with_spec(|x| assert!(x.vang_const == generic_element.elem.borrow().vang_const()));
+        let ge_ref = generic_element.elem.borrow();
+        assert!(ge_ref.uid() == "new_generic_element");
+        assert!(ge_ref.y_const() == y_const);
+        assert!(ge_ref.i_const() == i_const);
+        assert!(ge_ref.s_const() == s_const);
+        assert!(ge_ref.vmag_const() == vmag_const);
+        assert!(ge_ref.grounding().is_empty());
+        assert!(ge_ref.copper_plate().is_empty());
     }
 }

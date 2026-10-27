@@ -19,11 +19,11 @@ mod tests {
         let bp2c = bn!("bus_2", Phase::C);
         let bp3a = bn!("bus_3", Phase::A);
 
-        netw.add_element(Grounding::new(1).element("gr", vec![bpg.clone()])).unwrap();
+        netw.add_element(Grounding::new(1).into_element("gr", vec![bpg.clone()])).unwrap();
 
         netw.add_element(
             Line::new_from_sym_seq(c!(1.2, 1.3), c!(1.21, 1.32), 3).unwrap()
-                .element(
+                .into_element(
                     "ln_1abc_2abc",
                     vec![bp1a.clone(), bp1b.clone(), bp1c.clone()],
                     vec![bp2a.clone(), bp2b.clone(), bp2c.clone()]
@@ -31,7 +31,7 @@ mod tests {
 
         netw.add_element(
             Line::new_from_sym_seq(c!(1.2, 1.3), c!(1.21, 1.32), 1).unwrap()
-                .element(
+                .into_element(
                     "ln_2b_3a",
                     vec![bp2b.clone()],
                     vec![bp3a.clone()]
@@ -39,7 +39,7 @@ mod tests {
 
         netw.add_element(
             Source::new_wye_slack(1.0, 3, false)
-                .element("src_1abc", vec![bpg.clone(), bp1a.clone(), bp1b.clone(), bp1c.clone()], true)
+                .into_element("src_1abc", vec![bpg.clone(), bp1a.clone(), bp1b.clone(), bp1c.clone()], true)
         ).unwrap();
 
         println!("\nNetwork:\n{}", &Wrap(&netw));

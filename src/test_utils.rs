@@ -46,6 +46,15 @@ pub fn bus_uid(netw: &Network) -> String {
 
 // Creates the UID of the next element to be added.
 pub fn elem_uid<T: ElementSpec>(netw: &Network) -> String {
+    println!("\nT = {}", T::type_str_of());
+    println!("typed");
+    for e in netw.elements_of_type::<T>() {
+        println!("    {}", e.borrow().uid());
+    }
+    println!("untyped");
+    for e in netw.elements() {
+        println!("    {}", e.borrow().uid());
+    }
     format!("{}_{}", T::type_str_of(), netw.elements_of_type::<T>().count())
 }
 
@@ -58,7 +67,7 @@ pub fn add_bus(netw: &mut Network, phases: Vec<Phase>) -> Shared<Bus> {
 // Adds a constant Y generic element.
 pub fn add_y_const(
     netw: &mut Network, bus_node_0: BusNodeId, bus_node_1: BusNodeId, y_const: c64
-) -> Shared<Element> {
+) -> Element<GenericElement> {
     let uid = elem_uid::<GenericElement>(netw);
     let bts = vec![bus_node_0, bus_node_1];
     netw.add_element(
@@ -67,14 +76,14 @@ pub fn add_y_const(
             branch_wiring: vec![(0usize, 1usize)],
             y_const: vec![((0, 0), y_const)],
             ..Default::default()
-        }.element(&uid, bts)
+        }.into_element(&uid, bts)
     ).unwrap()
 }
 
 // Adds a constant I generic element.
 pub fn add_i_const(
     netw: &mut Network, bus_node_0: BusNodeId, bus_node_1: BusNodeId, i_const: c64
-) -> Shared<Element> {
+) -> Element<GenericElement> {
     let uid = elem_uid::<GenericElement>(netw);
     let bts = vec![bus_node_0, bus_node_1];
     netw.add_element(
@@ -83,14 +92,14 @@ pub fn add_i_const(
             branch_wiring: vec![(0usize, 1usize)],
             i_const: vec![(0, i_const)],
             ..Default::default()
-        }.element(&uid, bts)
+        }.into_element(&uid, bts)
     ).unwrap()
 }
 
 // Adds a constant S generic element.
 pub fn add_s_const(
     netw: &mut Network, bus_node_0: BusNodeId, bus_node_1: BusNodeId, s_const: c64
-) -> Shared<Element> {
+) -> Element<GenericElement> {
     let uid = elem_uid::<GenericElement>(netw);
     let bts = vec![bus_node_0, bus_node_1];
     netw.add_element(
@@ -99,14 +108,14 @@ pub fn add_s_const(
             branch_wiring: vec![(0usize, 1usize)],
             s_const: vec![(0, s_const)],
             ..Default::default()
-        }.element(&uid, bts)
+        }.into_element(&uid, bts)
     ).unwrap()
 }
 
 // Adds a constant V (slack) generic element.
 pub fn add_v_const(
     netw: &mut Network, bus_node_0: BusNodeId, bus_node_1: BusNodeId, v_const: f64
-) -> Shared<Element> {
+) -> Element<GenericElement> {
     let uid = elem_uid::<GenericElement>(netw);
     let bts = vec![bus_node_0, bus_node_1];
     netw.add_element(
@@ -116,32 +125,32 @@ pub fn add_v_const(
             vmag_const: vec![(0, v_const)],
             vang_const: vec![(0, 0.0)],
             ..Default::default()
-        }.element(&uid, bts)
+        }.into_element(&uid, bts)
     ).unwrap()
 }
 
 // Adds a grounding.
 pub fn add_ground(
     netw: &mut Network, bus_node: BusNodeId
-) -> Shared<Element> {
+) -> Element<Grounding> {
     let uid = &elem_uid::<Grounding>(netw);
     netw.add_element(
-        Grounding::new(1).element(uid, vec![bus_node])
+        Grounding::new(1).into_element(uid, vec![bus_node])
     ).unwrap()
 }
 
 // Adds a wye-connected source involving all phases of a given bus.
-pub fn add_source(netw: &mut Network, bus_uid: &str) -> Shared<Element> {
+pub fn add_source(netw: &mut Network, bus_uid: &str) -> Element<Source> {
     let uid = elem_uid::<Source>(netw);
     let (bus, phs) = bus_and_phases(netw, bus_uid);
     assert!(matches!(phs.last(), Some(Phase::N)));
     let bts: Vec<BusNodeId> = phs.iter().map(|p| bn!(bus_uid, *p)).collect();
     let n_phases = phs.len() - 1;
-    netw.add_element(Source::new_wye_slack(bus.borrow().v_base, n_phases, true).element(&uid, bts, true)).unwrap()
+    netw.add_element(Source::new_wye_slack(bus.borrow().v_base, n_phases, true).into_element(&uid, bts, true)).unwrap()
 }
 
 // Adds a line between two buses involving all phases and with the given z+, z0.
-pub fn add_line(netw: &mut Network, bus_uid_0: &str, bus_uid_1: &str, z: c64) -> Shared<Element> {
+pub fn add_line(netw: &mut Network, bus_uid_0: &str, bus_uid_1: &str, z: c64) -> Element<Line> {
     let uid = elem_uid::<Line>(netw);
     let (_, phs0) = bus_and_phases(netw, bus_uid_0);
     let (_, phs1) = bus_and_phases(netw, bus_uid_1);
@@ -149,7 +158,7 @@ pub fn add_line(netw: &mut Network, bus_uid_0: &str, bus_uid_1: &str, z: c64) ->
     netw.add_element(
         Line::new_from_sym_seq(z, z, n_phases)
             .unwrap()
-            .element(
+            .into_element(
                 &uid,
                 phs0.iter().map(|p| bn!(bus_uid_0, *p)).collect(),
                 phs1.iter().map(|p| bn!(bus_uid_1, *p)).collect(),
@@ -157,7 +166,7 @@ pub fn add_line(netw: &mut Network, bus_uid_0: &str, bus_uid_1: &str, z: c64) ->
 }
 
 // Adds a transformer between two buses and grounded to an additional ground bus.
-pub fn add_tx(netw: &mut Network, bus_uid_g: &str, bus_uid_p: &str, bus_uid_s: &str) -> Shared<Element> {
+pub fn add_tx(netw: &mut Network, bus_uid_g: &str, bus_uid_p: &str, bus_uid_s: &str) -> Element<Transformer> {
     let uid = elem_uid::<Transformer>(netw);
 
     let (_, phs0) = bus_and_phases(netw, bus_uid_g);
@@ -185,12 +194,12 @@ pub fn add_tx(netw: &mut Network, bus_uid_g: &str, bus_uid_p: &str, bus_uid_s: &
             None,
             vec![C_ZERO, zs],
             "ynyn0"
-        ).unwrap().element(&uid, bts)
+        ).unwrap().into_element(&uid, bts)
     ).unwrap()
 }
 
 // Adds a wye-connected load to all phases of the given bus with constant S.
-pub fn add_load(netw: &mut Network, bus_uid: &str, s_tot: c64) -> Shared<Element> {
+pub fn add_load(netw: &mut Network, bus_uid: &str, s_tot: c64) -> Element<Load> {
     let uid = elem_uid::<Load>(netw);
     let (_, phs) = bus_and_phases(netw, bus_uid);
     let bts: Vec<BusNodeId> = phs.iter().map(|p| bn!(bus_uid, *p)).collect();
@@ -203,6 +212,6 @@ pub fn add_load(netw: &mut Network, bus_uid: &str, s_tot: c64) -> Shared<Element
             None,
             Some(s),
             true
-        ).element(&uid, bts)
+        ).into_element(&uid, bts)
     ).unwrap()
 }

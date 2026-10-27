@@ -161,7 +161,7 @@ fn convert_to_network(schema: Root, ejson_phase_map: &HashMap<String, Phase>) ->
     let _ = netw.add_bus(Bus::new("G", vec![Phase::N], 1.0));
 
     // Make sure it's explicitly grounded.
-    let _ = netw.add_element(Grounding::new(1).element("G", vec![bn!("G", Phase::N)])).unwrap();
+    let _ = netw.add_element(Grounding::new(1).into_element("G", vec![bn!("G", Phase::N)])).unwrap();
 
     let vt = schema.voltage_type; // TODO
     let comps = &schema.components;
@@ -283,10 +283,9 @@ fn handle_infeeder(
     let mut bts: Vec<BusNodeId> = Vec::with_capacity(phs.len() + 1);
     phs.iter().filter(|p| !matches!(p, Phase::N)).for_each(|p| bts.push(bn!(bus_id, *p)));
     bts.push(bn!("G".to_string(), Phase::N));
-    let in_service = convert_in_service(in_service);
     let vmag = v_setpoint.0 * V_FACTOR;
-    let elem = netw.add_element(Source::new_wye_slack(vmag, bts.len() - 1, true).element(id, bts, true)).unwrap();
-    elem.borrow_mut().is_in_service = in_service;
+    let elem = netw.add_element(Source::new_wye_slack(vmag, bts.len() - 1, true).into_element(id, bts, true)).unwrap();
+    elem.borrow_mut().set_is_in_service(convert_in_service(in_service));
     Ok(())
 }
 
@@ -299,14 +298,15 @@ fn handle_line_variant_0(
     let bts = get_bts(&cons.0, ejson_phase_map);
     let [bts0, bts1] = bts.as_slice() else {panic!("Expected 2 elements")};
     let n_phases = bts0.len();
-    let in_service = convert_in_service(in_service);
     let z = length * convert_complex(z, Z_FACTOR);
     let z0= length * convert_complex(z0, Z_FACTOR);
     if !b_chg.is_none() {
         warn!("Unimplemented b_chg for e-JSON line. Ignoring.");
     }
-    let elem = netw.add_element(Line::new_from_sym_seq(z, z0, n_phases).unwrap().element(id, bts0.clone(), bts1.clone())).unwrap();
-    elem.borrow_mut().is_in_service = in_service;
+    let elem = netw.add_element(
+        Line::new_from_sym_seq(z, z0, n_phases).unwrap().into_element(id, bts0.clone(), bts1.clone())
+    ).unwrap();
+    elem.borrow_mut().set_is_in_service(convert_in_service(in_service));
     Ok(())
 }
 
@@ -380,7 +380,7 @@ fn handle_transformer(
             tx_taps,
             vec![C_ZERO, z_s],
             vector_group
-        )?.element(id, bts)
+        )?.into_element(id, bts)
     ).unwrap();
 
     Ok(())
@@ -400,8 +400,8 @@ fn handle_connector(
             ejt::ConnectorSwitchState::Open => SwitchState::Open,
         }
     } else {SwitchState::NoSwitch};
-    let elem = netw.add_element(Connector::new(bts.len(), switch_state).element(id, bts_flat)).unwrap();
-    elem.borrow_mut().is_in_service = convert_in_service(in_service);
+    let elem = netw.add_element(Connector::new(bts.len(), switch_state).into_element(id, bts_flat)).unwrap();
+    elem.borrow_mut().set_is_in_service(convert_in_service(in_service));
     Ok(())
 }
 
@@ -420,8 +420,8 @@ fn handle_load(
             Load::new_wye(n_terms, None, None, s, true)
         },
     };
-    let elem = netw.add_element(spec.element(id, bts)).unwrap();
-    elem.borrow_mut().is_in_service = convert_in_service(in_service);
+    let elem = netw.add_element(spec.into_element(id, bts)).unwrap();
+    elem.borrow_mut().set_is_in_service(convert_in_service(in_service));
     Ok(())
 }
 

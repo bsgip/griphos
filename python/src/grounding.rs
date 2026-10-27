@@ -2,7 +2,6 @@ use pyo3::prelude::*;
 use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use ::griphos as gr;
-use gr::{Shared, IntoShared};
 use crate::plumbing::{element_subclass};
 use crate::network::{BusNodeId, bus_node_ids_to_gr};
 
@@ -26,8 +25,8 @@ impl Grounding {
     ) -> Self {
         let gr_grounding = gr::Grounding::new(bus_node_ids.len());
         let bts = bus_node_ids_to_gr(bus_node_ids);
-        let elem = gr_grounding.element(uid, bts).into_shared();
-        Grounding::from_elem(elem)
+        let elem = gr_grounding.into_element(uid, bts);
+        Grounding::from_typed(elem)
     }
 }
 
@@ -56,7 +55,8 @@ mod tests {
             BusNodeId {b: "bus_1".to_string(), p: Phase::C},
         ];
         let grounding = Grounding::new_raw("new_grounding", bts);
-        assert!(grounding.uid() == "new_grounding");
-        assert!(grounding.elem.borrow().grounding() == vec![0, 1, 2]);
+        let grounding_ref = grounding.elem.borrow();
+        assert!(grounding_ref.uid() == "new_grounding");
+        assert!(grounding_ref.grounding() == vec![0, 1, 2]);
     }
 }

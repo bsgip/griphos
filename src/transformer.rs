@@ -207,8 +207,8 @@ impl Transformer {
     /// The [`BusNodeId`]s are in the order of the terminal indexes used in the terminal_mapping. So for example,
     /// a dyn11 transformer has the terminal mapping [[(0,1), (1, 2), (2, 0)], [(3, 6), (4, 6), (5, 6)]], and the
     /// `BusNodeIds` are given as a seven element list whose indices correspond to the numbers in the terminal mapping.
-    pub fn element(self, id: &str, bus_node_ids: Vec<BusNodeId>) -> Element {
-        self.wrap_in_element(id, bus_node_ids)
+    pub fn into_element(self, uid: &str, bus_node_ids: Vec<BusNodeId>) -> Element<Self> {
+        Element::<Self>::new(uid.to_string(), bus_node_ids, self)
     }
 
     /// The number of windings, just `n_sides` x `n_phases`.
@@ -700,11 +700,11 @@ mod tests {
 
         let source_uid = elem_uid::<Source>(&netw);
         netw.add_element(Source::new_wye_slack(bus_0.borrow().v_base, 3, true)
-            .element(&source_uid, bts_abcn_0, true)).unwrap();
+            .into_element(&source_uid, bts_abcn_0, true)).unwrap();
 
         let load_uid = elem_uid::<Load>(&netw);
         let y = vec![c!(1e-6, 0.0); 3];
-        netw.add_element(Load::new_wye(3, Some(y), None, None, true).element(&load_uid, bts_abcn_1)).unwrap();
+        netw.add_element(Load::new_wye(3, Some(y), None, None, true).into_element(&load_uid, bts_abcn_1)).unwrap();
 
         netw
     }
@@ -723,7 +723,7 @@ mod tests {
         let bus1_uid = bus1.borrow().uid();
         let bts = PHASES_ABCN.iter().map(|p| bn!(bus0_uid, *p))
             .chain(PHASES_ABCN.iter().map(|p| bn!(bus1_uid, *p))).collect();
-        netw.add_element(tx.element("transformer", bts)).unwrap();
+        netw.add_element(tx.into_element("transformer", bts)).unwrap();
 
         let solve_result = solve_network(&mut netw, "nodal_rect", None);
         assert!(solve_result.is_ok());

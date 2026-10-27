@@ -106,13 +106,14 @@ impl Source {
     ///
     /// If set_angle_refs_from_phases is true and control is slack, set the phase reference angles using the standard
     /// positive sequence angles for phases A, B, C.
-    pub fn element(mut self, id: &str, bus_node_ids: Vec<BusNodeId>, set_angle_refs_from_phases: bool) -> Element {
+    pub fn into_element(mut self, uid: &str, bus_node_ids: Vec<BusNodeId>, set_angle_refs_from_phases: bool)
+    -> Element<Self> {
         if set_angle_refs_from_phases && let SourceControl::SL {vmag: _, vang } = &mut self.control {
             *vang = self.branch_wiring.iter().map(
                 |(i0, i1)| (bus_node_ids[*i0].p.v_nom_pu() - bus_node_ids[*i1].p.v_nom_pu()).arg()
             ).collect();
         }
-        self.wrap_in_element(id, bus_node_ids)
+        Element::<Self>::new(uid.to_string(), bus_node_ids, self)
     }
 }
 

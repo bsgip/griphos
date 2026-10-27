@@ -3,9 +3,9 @@ use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 
 use ::griphos as gr;
-use gr::{c64, Shared, IntoShared};
+use gr::c64;
 
-use crate::plumbing::{element_subclass, py_wrapper};
+use crate::plumbing::{element_subclass, py_handle_wrapper};
 use crate::network::{BusNodeId, bus_node_ids_to_gr};
 
 /// Describes various types transformer errors.
@@ -46,20 +46,20 @@ impl TransformerTapsData {
     }
 }
 
-py_wrapper!(
+py_handle_wrapper!(
     /// A tapped transformer's tap settins.
     #[derive(Debug)]
     TransformerTaps,
-    gr::Element
+    gr::Element<gr::Transformer>
 );
 
 impl TransformerTaps {
     fn with_taps<R>(&self, f: impl FnOnce(&gr::TransformerTaps) -> R) -> R {
-        f(self.inner.borrow().as_type::<gr::Transformer>().unwrap().taps.as_ref().unwrap())
+        f(self.inner.borrow().taps.as_ref().unwrap())
     }
 
     fn with_taps_mut<R>(&self, f: impl FnOnce(&mut gr::TransformerTaps) -> R) -> R {
-        f(self.inner.borrow_mut().as_type_mut::<gr::Transformer>().unwrap().taps.as_mut().unwrap())
+        f(self.inner.borrow_mut().taps.as_mut().unwrap())
     }
 }
 
@@ -196,8 +196,8 @@ impl Transformer {
             z_series,
             terminal_mapping,
         )?;
-        let elem = gr_tx.element(uid, gr_bts).into_shared();
-        Ok(Transformer::from_elem(elem))
+        let elem = gr_tx.into_element(uid, gr_bts);
+        Ok(Transformer::from_typed(elem))
     }
 
     /// Creates a new two-winding [`Transformer`] with the given vector group, number of phases and other data.
@@ -229,8 +229,8 @@ impl Transformer {
             z_series,
             vector_group_str,
         )?;
-        let elem = gr_tx.element(uid, gr_bts).into_shared();
-        Ok(Transformer::from_elem(elem))
+        let elem = gr_tx.into_element(uid, gr_bts);
+        Ok(Transformer::from_typed(elem))
     }
 }
 
@@ -286,20 +286,20 @@ impl Transformer {
     /// have a three-phase, two-winding transformer. We reserve the term "winding" to mean a *single* winding of wire,
     /// i.e. a particular phase of a side.
     #[getter]
-    pub fn n_sides(self_: PyRef<'_, Self>) -> usize {
-        Self::with_spec(&self_, |s| s.n_sides)
+    pub fn n_sides(&self) -> usize {
+        self.elem.borrow().n_sides
     }
 
     /// Number of phases (single phase, three phase, etc.).
     #[getter]
-    pub fn n_phases(self_: PyRef<'_, Self>) -> usize {
-        Self::with_spec(&self_, |s| s.n_phases)
+    pub fn n_phases(&self) -> usize {
+        self.elem.borrow().n_phases
     }
 
     /// The number of windings, just `n_sides` x `n_phases`.
     #[getter]
-    pub fn n_windings(self_: PyRef<'_, Self>) -> usize {
-        Self::with_spec(&self_, |s| s.n_windings())
+    pub fn n_windings(&self) -> usize {
+        self.elem.borrow().n_windings()
     }
 
     /// The nominal number of turns per side, scaled by an arbitrary factor.
@@ -307,19 +307,19 @@ impl Transformer {
     /// Only the ratios between the sides matter. So for a two winding transformer, we can use [np/ns, 1.0] or
     /// equivalently [1.0, ns/np]. For a three winding transformer, it is easiest to use [1.0, ns/np, nt/np].
     #[getter]
-    pub fn nom_turns(self_: PyRef<'_, Self>) -> Vec<c64> {
-        Self::with_spec(&self_, |s| s.nom_turns.clone())
+    pub fn nom_turns(&self) -> Vec<c64> {
+        self.elem.borrow().nom_turns.clone()
     }
 
     /// Optional TransformerTaps (if the transformer is tapped).
     #[getter]
     pub fn taps(&self) -> Option<TransformerTaps> {
-        self.elem.borrow().as_type::<gr::Transformer>().unwrap().taps.is_some().then(|| self.elem.clone().into())
+        self.elem.borrow().taps.is_some().then(|| TransformerTaps::from(self.elem.clone()))
     }
 
     /// The scaled number of turns for side `i_side` and phase index `i_phase`.
     pub fn turns(&self, i_side: usize, i_phase: usize) -> c64 {
-        Self::with_spec(self, |s| s.turns(i_side, i_phase))
+        self.elem.borrow().turns(i_side, i_phase)
     }
 
     /// The turns ratio, `turns(i_side_0, i_phase) / turns(i_side_1, i_phase)`
@@ -331,7 +331,7 @@ impl Transformer {
     /// Returns:
     ///     The turns ratio.
     pub fn turns_ratio(&self, i_side_0: usize, i_side_1: usize, i_phase: usize) -> c64 {
-        Self::with_spec(self, |s| s.turns_ratio(i_side_0, i_side_1, i_phase))
+        self.elem.borrow().turns_ratio(i_side_0, i_side_1, i_phase)
     }
 
     /// The primative branch impedance matrix for a single pair of windings with given phase and sides.
@@ -343,7 +343,7 @@ impl Transformer {
     /// Returns:
     ///     The primative branch impedance matrix.
     pub fn y_primitive(&self, i_side_0: usize, i_side_1: usize, i_phase: usize) -> Vec<Vec<c64>> {
-        let m = Self::with_spec(self, |s| s.y_primitive(i_side_0, i_side_1, i_phase));
+        let m = self.elem.borrow().y_primitive(i_side_0, i_side_1, i_phase);
         m.row_iter().map(|r| r.iter().copied().collect()).collect()
     }
 }

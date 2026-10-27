@@ -46,9 +46,11 @@ impl Line {
     }
 
     /// Wraps an existing [`Line`] in an [`Element`].
-    pub fn element(self, uid: &str, bus_node_ids_0: Vec<BusNodeId>, bus_node_ids_1: Vec<BusNodeId>) -> Element {
+    /// Wraps grounding in an [`Element`] with the given terminal mapping.
+    pub fn into_element(self, uid: &str, bus_node_ids_0: Vec<BusNodeId>, bus_node_ids_1: Vec<BusNodeId>) -> Element<Self> {
         assert!(bus_node_ids_0.len() == bus_node_ids_1.len(), "Lines must have the same number of phases at each end");
-        self.wrap_in_element(uid, bus_node_ids_0.into_iter().chain(bus_node_ids_1).collect())
+        let bus_node_ids = bus_node_ids_0.into_iter().chain(bus_node_ids_1).collect();
+        Element::<Self>::new(uid.to_string(), bus_node_ids, self)
     }
 }
 

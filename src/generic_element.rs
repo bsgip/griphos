@@ -47,8 +47,8 @@ impl GenericElement {
     }
 
     /// Wraps a GenericElement in an Element, with given bus nodes connections.
-    pub fn element(self, id: &str, bus_node_ids: Vec<BusNodeId>) -> Element {
-        self.wrap_in_element(id, bus_node_ids)
+    pub fn into_element(self, uid: &str, bus_node_ids: Vec<BusNodeId>) -> Element<Self> {
+        Element::<GenericElement>::new(uid.to_string(), bus_node_ids, self)
     }
 }
 

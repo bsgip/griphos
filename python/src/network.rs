@@ -2,9 +2,9 @@ use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pymethods};
 
 use ::griphos as gr;
-use gr::{CooMat, c64, HasUid, Shared, IntoShared};
+use gr::{CooMat, c64, IntoShared, Shared};
 
-use crate::plumbing::{py_enum, py_value, py_wrapper};
+use crate::plumbing::{py_enum, py_handle_wrapper, py_value, py_wrapper};
 
 py_enum!(
     /// Encodes the state of a switch if present, or the lack of any switch.
@@ -107,7 +107,7 @@ impl Bus {
     }
 }
 
-py_wrapper!(
+py_handle_wrapper!(
     /// An element is a set of current carrying connections netween terminals. It can include several different types of
     /// connection, such as constant y or constant s.
     Element,

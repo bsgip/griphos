@@ -2,7 +2,6 @@ use pyo3::prelude::*;
 use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use ::griphos as gr;
-use gr::{Shared, IntoShared};
 use crate::plumbing::{element_subclass, py_enum};
 use crate::network::{BusNodeId, bus_node_ids_to_gr};
 
@@ -37,8 +36,8 @@ impl Connector {
     ) -> Self {
         let gr_connector = gr::Connector::new(bus_node_ids.len(), switch_state.into());
         let bts = bus_node_ids_to_gr(bus_node_ids);
-        let elem = gr_connector.element(uid, bts).into_shared();
-        Connector::from_elem(elem)
+        let elem = gr_connector.into_element(uid, bts);
+        Connector::from_typed(elem)
     }
 }
 
@@ -68,7 +67,7 @@ mod tests {
             BusNodeId {b: "bus_1".to_string(), p: Phase::C},
         ];
         let connector = Connector::new_raw("new_connector", bts, SwitchState::Closed);
-        assert!(connector.uid() == "new_connector");
+        assert!(connector.elem.borrow().uid() == "new_connector");
         assert!(connector.elem.borrow().copper_plate() == vec![vec![0, 1, 2]]);
     }
 }
