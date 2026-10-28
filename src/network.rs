@@ -6,8 +6,8 @@
 //! the bus nodes, or [`BusNode`]s. [`BusNode`]s contain a [`Phase`] label and a voltage. Each [`BusNode`] is
 //! uniquely labelled by a [`BusNodeId`], recording the bus's UID and the phase.
 //!
-//! Buses are connected together by elements, which provide conductive pathways (termed *branches* in griphos
-//! terminology) between pairs of bus nodes. Each [`Element`] has a given number of element *terminals* (connection
+//! [`Bus`]es are connected together by [`Element`]s of various types, which provide conductive pathways (termed
+//! *branches* in griphos) between pairs of bus nodes. Each [`Element`] has a given number of *terminals* (connection
 //! points), and is connected to the [`Network`] by assigning to each terminal a particular [`BusNodeId`]. Each of the
 //! element's branches then provides a conductive pathway between a start terminal and an end terminal.
 //!
@@ -17,16 +17,19 @@
 //! will connect terminal 1 to terminal 4, and the third will connect terminal 2 to terminal 5. Thus the [`Element`]'s
 //! branches can be specified as `[(0, 3), (1, 4), (2, 5)]`
 //!
-//! The impedance of an [`Element`]'s branches can depend in various ways on the voltages at the terminals. For example,
-//! branches can have a constant admittance (*y_const*) component, or a constant complex power (*s_const*) component. In
-//! addition, they can apply voltage control across some or all of their branches, or ground some or all of their
-//! terminals. The configuration and behaviour of the element with respect to its terminals and branches depends on the
-//! *element type*. This is technically handled by [`Element`] having a private dynamic `spec` member, implementing a
-//! special [`ElementSpec`] trait. There are several structs, such as [`Line`](crate::Line) and
-//! [`Transformer`](crate::Transformer) that implement [`ElementSpec`], and each [`Element`] derives its polymorphic
-//! behaviour from its own particular [`ElementSpec`], be it a line, transformer, or whatever. Thus, we can talk about
-//! e.g. transformer elements, or line elements, meaning that the `spec` is either a [`Transformer`](crate::Transformer)
-//! or [`Line`](crate::Line) respectively.
+//! The impedance of an [`Element`]'s branches can depend in various ways on their voltage drops. For example, there can
+//! be a constant admittance (*y_const*) relationship, or a constant complex power (*s_const*) component. In addition,
+//! they can apply voltage control across some or all of their branches, or ground some or all of their terminals.
+//!
+//! The configuration and behaviour of the element with respect to its terminals and branches is governed by the
+//! *element type*. This is technically handled by [`Element`] being a handle to an object that contains a private
+//! dynamic `spec` member, implementing a special [`ElementSpec`] trait. There are several such structs that implemet
+//! [`ElementSpec`], such as [`Line`](crate::Line) and [`Transformer`](crate::Transformer) and each [`Element`] derives
+//! its polymorphic behaviour from its own particular [`ElementSpec`], be it a line, transformer, or whatever.
+//!
+//! To access the specialised behaviour of an element (for example, the taps of a transformer element), we can, for
+//! example downcast a bare [`Element`] to an [`Element`]`<`[`Transformer`](crate::Transformer)`>`. They are both
+//! handles to the same underlying object, but the latter gives access to all the transformer specific internals.
 //!
 //! # Examples
 //!
@@ -257,8 +260,8 @@ impl Bus {
     }
 
     /// Reterns the unique ID of the Bus.
-    pub fn uid(&self) -> String {
-        self.uid.clone()
+    pub fn uid(&self) -> &str {
+        &self.uid
     }
 
     /// Searches for the terminal of a bus that has phase `p`.
@@ -302,12 +305,20 @@ pub struct ElemBranch {
 impl_g_serialize!(ElemBranch);
 impl_disp_from_fmt!(ElemBranch);
 
+/// Common data of all elements.
 #[derive(Debug)]
 pub struct ElementCommon {
+    /// The unique ID of the element.
     pub uid: String,                    // Unique ID
-    pub is_in_service: bool,            // Is the element in service / operational.
-    pub bus_node_ids: Vec<BusNodeId>,   // Key of which bus/phases the terminals are connected to.
-    pub branches: Vec<ElemBranch>,      // The branch info, a vector of [`ElemBranch`] of the element.
+
+    /// Is the element in service / operational.
+    pub is_in_service: bool,
+
+    /// Key of which bus/phases the terminals are connected to.
+    pub bus_node_ids: Vec<BusNodeId>,
+
+    /// The branch info, a vector of [`ElemBranch`] of the element.
+    pub branches: Vec<ElemBranch>,
 }
 
 /// Trait for types that have an associated type_str string. Each ElementSpec must implement this by hand.
@@ -327,14 +338,7 @@ impl<T: TypeStrOf> TypeStr for T {
     }
 }
 
-/// Parameter bundle that is convenient for the constraints of generic [`ElementSpec`]s.
-///
-/// The machinery here simply means any generic `ElementSpec`, say `Foo<T: ElementSpecParam>`, will work, so long as T
-/// obeys the constraints.
-pub trait ElementSpecParam: std::fmt::Debug + Send + Sync + 'static {}
-impl<T: std::fmt::Debug + Send + Sync + 'static> ElementSpecParam for T {}
-
-/// An element_spec collects together electrical connections of various types such as constant y or constant s.
+/// An [`ElementSpec`] collects together electrical connections of various types such as constant y or constant s.
 pub trait ElementSpec: Any + std::fmt::Debug + Send + Sync + TypeStrOf + TypeStr {
     /// Returns the number of terminals (connection points).
     fn n_terms(&self) -> usize;
@@ -369,8 +373,8 @@ pub trait ElementSpec: Any + std::fmt::Debug + Send + Sync + TypeStrOf + TypeStr
     /// Terminal grounding as a list of indices of grounded terminals.
     fn grounding(&self) -> Vec<usize> {vec![]}
 
-    /// Generic element validation code.
     // TODO: actually use this!
+    /// Generic element validation code.
     fn validate(&self) -> Result<(), String> {
         let n_terms = self.n_terms();
         let branch_wiring = self.branch_wiring();
@@ -423,27 +427,33 @@ pub trait ElementSpec: Any + std::fmt::Debug + Send + Sync + TypeStrOf + TypeStr
 }
 
 impl dyn ElementSpec {
+    /// Returns true if the `dyn `[`ElementSpec`] has type `S` or false otherwise.
     pub fn is<S: ElementSpec>(&self) -> bool {
         let any: &dyn Any = self;
         any.is::<S>()
     }
 
+    /// Downcasts a `dyn `[`ElementSpec`] to `Option<&S>`, returning `None` if the downcast fails.
     pub fn downcast_ref<S: ElementSpec>(&self) -> Option<&S> {
         let any: &dyn Any = self;
         any.downcast_ref()
     }
 
+    /// Downcasts a `dyn `[`ElementSpec`] to `Option<&mut S>`, returning `None` if the downcast fails.
     pub fn downcast_mut<S: ElementSpec>(&mut self) -> Option<&mut S> {
         let any: &mut dyn Any = self;
         any.downcast_mut()
     }
 }
 
-#[derive(Debug)]
-pub struct Foo<T> {
-    pub t: T,
-}
+/// Convenience parameter bundle that includes constraints needed to define parametrised [`ElementSpec`]s.
+///
+/// The machinery here simply means any parametrised `ElementSpec`, say `Foo<T: ElementSpecParam>`, will work, so long
+/// as T obeys the necessary constraints, `Debug + Send + Sync + 'static`.
+pub trait ElementSpecParam: std::fmt::Debug + Send + Sync + 'static {}
+impl<T: std::fmt::Debug + Send + Sync + 'static> ElementSpecParam for T {}
 
+// Private inner storage layour  for an Element handle.
 #[derive(Debug)]
 struct ElementInner {
     // The common data.
@@ -462,19 +472,27 @@ pub struct Element<S: ElementSpec + ?Sized = dyn ElementSpec> {
 }
 
 impl Element {
+    /// Returns true if the [`Element`]'s type ([`ElementSpec`]) is `S` or false otherwise.
     pub fn is<S: ElementSpec>(&self) -> bool {
         self.borrow().spec.is::<S>()
     }
 
+    /// Downcast a bare (`dyn`) [`Element`] to [`Element`]`<S>`.
     pub fn downcast<S: ElementSpec>(&self) -> Option<Element<S>> {
         self.is::<S>().then(|| Element::from_inner(self.inner.clone()))
     }
 
+    /// Returns a borrow guard.
+    ///
+    /// Like `Rc<RefCell<T>>`, we call `.borrow()` to access the members and member functions of an element.
     pub fn borrow(&self) -> ElementBorrowed<'_> {
         let (common, spec) = Borrowed::map_split(self.inner.borrow(), |i| {(&i.common, i.spec.as_ref())});
         ElementBorrowed { common, spec }
     }
 
+    /// Returns a mutable borrow guard.
+    ///
+    /// Like `Rc<RefCell<T>>`, we call `.borrow_mut()` to mutably access the members and member functions of an element.
     pub fn borrow_mut(&self) -> ElementBorrowedMut<'_> {
         let (common, spec) = BorrowedMut::map_split(self.inner.borrow_mut(), |i| {(&mut i.common, i.spec.as_mut())});
         ElementBorrowedMut { common, spec }
@@ -482,17 +500,19 @@ impl Element {
 }
 
 impl<S: ElementSpec + ?Sized> Element<S> {
+    // Wrap an ElementInner in an Element.
     fn from_inner(inner: Shared<ElementInner>) -> Element<S> {
         Element { inner, _m: PhantomData }
     }
 
-    /// Upcasts to a generic Element.
+    /// Upcasts an [`Element`]`<S>` to a generic Element.
     pub fn erase(&self) -> Element {
         Element::from_inner(self.inner.clone())
     }
 }
 
 impl<S: ElementSpec> Element<S> {
+    /// Creates a new [`Element`], given the unique ID, the bus/phase connectivity, and the [`ElementSpec`] of type `S`.
     pub fn new(
         uid: String, bus_node_ids: Vec<BusNodeId>, spec: S,
     ) -> Self {
@@ -504,6 +524,9 @@ impl<S: ElementSpec> Element<S> {
         Self::from_inner(ElementInner { common, spec: Box::new(spec) }.into_shared())
     }
 
+    /// Returns a borrow guard.
+    ///
+    /// Like `Rc<RefCell<T>>`, we call `.borrow()` to access the members and member functions of an element.
     pub fn borrow(&self) -> ElementBorrowed<'_, S> {
         let (common, spec) = Borrowed::map_split(self.inner.borrow(), |i| {
             (&i.common, i.spec.as_ref().downcast_ref::<S>().expect("spec type invariant"))
@@ -511,6 +534,9 @@ impl<S: ElementSpec> Element<S> {
         ElementBorrowed { common, spec }
     }
 
+    /// Returns a mutable borrow guard.
+    ///
+    /// Like `Rc<RefCell<T>>`, we call `.borrow_mut()` to mutably access the members and member functions of an element.
     pub fn borrow_mut(&self) -> ElementBorrowedMut<'_, S> {
         let (common, spec) = BorrowedMut::map_split(self.inner.borrow_mut(), |i| {
             (&mut i.common, i.spec.as_mut().downcast_mut::<S>().expect("spec type invariant"))
@@ -520,28 +546,42 @@ impl<S: ElementSpec> Element<S> {
 }
 
 impl<S: ElementSpec + ?Sized> Clone for Element<S> {
+    // We need a special clone due to the phantom data.
     fn clone(&self) -> Self {
         Element { inner: self.inner.clone(), _m: PhantomData }
     }
 }
 
-pub struct ElementGuard<C, P> {
+/// Generic borrow guard for [`Element`]s, the result of calling `.borrow()` (see [`ElementBorrowed`]) or
+/// `.borrow_mut()` (see [`ElementBorrowedMut`]) on an element.
+///
+/// The non-mutable alias is [`ElementBorrowed`], and the mutable alias is [`ElementBorrowedMut`]. Prefer these in your
+/// own code. The read-only API is available for both, whereas the write-API is available only for
+/// [`ElementBorrowedMut`].
+pub struct ElementBorrowedGeneric<C, P> {
     common: C, // Borrowed<ElementCommon> or BorrowedMut<ElementCommon>
     spec: P,   // Borrowed<S> or BorrowedMut<S>
 }
 
-pub type ElementBorrowed<'a, S = dyn ElementSpec> = ElementGuard<Borrowed<'a, ElementCommon>, Borrowed<'a, S>>;
-pub type ElementBorrowedMut<'a, S = dyn ElementSpec> = ElementGuard<BorrowedMut<'a, ElementCommon>, BorrowedMut<'a, S>>;
+/// Alias for a non-mutable [`ElementBorrowedGeneric`], the result of calling `.borrow()` on an element to access it.
+///
+/// See [`ElementBorrowedGeneric`] for documentation
+pub type ElementBorrowed<'a, S = dyn ElementSpec> = ElementBorrowedGeneric<Borrowed<'a, ElementCommon>, Borrowed<'a, S>>;
 
-impl<C, P> ElementGuard<C, P>
+/// Alias for a mutable [`ElementBorrowedGeneric`], the result of calling `.borrow()` on an element to access it.
+///
+/// See [`ElementBorrowedGeneric`] for additional documentation of the read-only API.
+pub type ElementBorrowedMut<'a, S = dyn ElementSpec> = ElementBorrowedGeneric<BorrowedMut<'a, ElementCommon>, BorrowedMut<'a, S>>;
+
+impl<C, P> ElementBorrowedGeneric<C, P>
 where
     C: Deref<Target = ElementCommon>,
     P: Deref,
     P::Target: ElementSpec,
 {
     /// Returns the unique ID of the element.
-    pub fn uid(&self) -> String {
-        self.common.uid.clone()
+    pub fn uid(&self) -> &str {
+        &self.common.uid
     }
 
     /// Returns the in_service status of the element.
@@ -549,7 +589,7 @@ where
         self.common.is_in_service
     }
 
-    /// Returns a reference to the [`BusNodId`]s of the element.
+    /// Returns a reference to the [`BusNodeId`]s of the element.
     pub fn bus_node_ids(&self) -> &[BusNodeId] {
         &self.common.bus_node_ids
     }
@@ -647,18 +687,18 @@ where
 }
 
 impl<'a, S: ElementSpec + ?Sized> ElementBorrowedMut<'a, S> {
-    /// Returns the in_service status of the element.
+    /// Sets the in_service status of the element.
     pub fn set_is_in_service(&mut self, is_in_service: bool) {
         self.common.is_in_service = is_in_service
     }
 
-    /// Returns a reference to the [`ElemBranch`]es of the element.
+    /// Returns a mutable slice of the [`ElemBranch`]es of the element.
     pub fn branches_mut(&mut self) -> &mut [ElemBranch] {
         &mut self.common.branches
     }
 }
 
-impl<C, P> Deref for ElementGuard<C, P>
+impl<C, P> Deref for ElementBorrowedGeneric<C, P>
 where
     P: Deref,
 {
@@ -666,7 +706,7 @@ where
     fn deref(&self) -> &P::Target { &self.spec }
 }
 
-impl<C, P> DerefMut for ElementGuard<C, P>
+impl<C, P> DerefMut for ElementBorrowedGeneric<C, P>
 where
     P: DerefMut,
 {
@@ -834,6 +874,11 @@ impl_disp_from_fmt!(Network);
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[derive(Debug)]
+    pub struct Foo<T> {
+        pub t: T,
+    }
 
     impl<T: ElementSpecParam> TypeStrOf for Foo<T> {
         fn type_str_of() -> String where Self: Sized {

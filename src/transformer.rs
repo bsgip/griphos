@@ -718,9 +718,9 @@ mod tests {
 
         let mut netw = base_netw();
         let bus0 = netw.bus_i(0).unwrap();
-        let bus0_uid = bus0.borrow().uid();
+        let bus0_uid = bus0.borrow().uid().to_string();
         let bus1 = netw.bus_i(1).unwrap();
-        let bus1_uid = bus1.borrow().uid();
+        let bus1_uid = bus1.borrow().uid().to_string();
         let bts = PHASES_ABCN.iter().map(|p| bn!(bus0_uid, *p))
             .chain(PHASES_ABCN.iter().map(|p| bn!(bus1_uid, *p))).collect();
         netw.add_element(tx.into_element("transformer", bts)).unwrap();

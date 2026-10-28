@@ -75,6 +75,7 @@ fn main() {
                 "source",
                 // and connect to phases ABCN of src_bus, N being neutral.
                 ABCN.iter().map(|ph| bn!("src_bus", *ph)).collect(),
+                // Ground the neutral bus.
                 true
             )
     ).expect("problem adding source");

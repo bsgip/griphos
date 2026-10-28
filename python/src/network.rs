@@ -73,7 +73,7 @@ impl Bus {
     /// Unique ID
     #[getter]
     fn uid(&self) -> String {
-        self.inner.borrow().uid()
+        self.inner.borrow().uid().to_string()
     }
 
     /// Base voltage in chosen units.
@@ -120,7 +120,7 @@ impl Element {
     /// The element's ID.
     #[getter]
     fn uid(&self) -> String {
-        self.inner.borrow().uid()
+        self.inner.borrow().uid().to_string()
     }
 
     /// The element's type string.
