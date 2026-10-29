@@ -295,14 +295,28 @@ class Load:
         uid: The ID of the element.
         bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
         branches: Start and end terminals of each branch (current path) in the element.
-        y_const: The optional constant Y branch impedance matrix, as `((i, j), value)` tuples.
-        i_const: The optional constant I branch impedance vector, as `(i, value)` tuples.
-        s_const: The optional constant S branch impedance vector, as `(i, value)` tuples.
-        grounding: The optional grounded terminal indices.
+        ld_y_const: The optional constant Y branch impedance matrix, as `((i, j), value)` tuples.
+        ld_i_const: The optional constant I branch impedance vector, as `(i, value)` tuples.
+        ld_s_const: The optional constant S branch impedance vector, as `(i, value)` tuples.
+        ld_grounding: The optional grounded terminal indices.
     Returns:
         A new `Load` object.
     """
-    def __new__(cls, uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], branches: typing.Sequence[tuple[builtins.int, builtins.int]], y_const: typing.Optional[typing.Sequence[tuple[tuple[builtins.int, builtins.int], builtins.complex]]], i_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.complex]]], s_const: typing.Optional[typing.Sequence[tuple[builtins.int, builtins.complex]]], grounding: typing.Optional[typing.Sequence[builtins.int]]) -> Load: ...
+    @property
+    def ld_y_const(self) -> typing.Optional[builtins.list[builtins.complex]]: ...
+    @ld_y_const.setter
+    def ld_y_const(self, value: typing.Sequence[builtins.complex]) -> None: ...
+    @property
+    def ld_i_const(self) -> typing.Optional[builtins.list[builtins.complex]]: ...
+    @ld_i_const.setter
+    def ld_i_const(self, value: typing.Sequence[builtins.complex]) -> None: ...
+    @property
+    def ld_s_const(self) -> typing.Optional[builtins.list[builtins.complex]]: ...
+    @ld_s_const.setter
+    def ld_s_const(self, value: typing.Sequence[builtins.complex]) -> None: ...
+    @property
+    def ld_grounding(self) -> builtins.list[builtins.int]: ...
+    def __new__(cls, uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], branches: typing.Sequence[tuple[builtins.int, builtins.int]], ld_y_const: typing.Optional[typing.Sequence[builtins.complex]], ld_i_const: typing.Optional[typing.Sequence[builtins.complex]], ld_s_const: typing.Optional[typing.Sequence[builtins.complex]], ld_grounding: typing.Optional[typing.Sequence[builtins.int]]) -> Load: ...
     @staticmethod
     def new_wye(uid: builtins.str, bus_node_ids: typing.Sequence[BusNodeId], y_const: typing.Optional[typing.Sequence[builtins.complex]], i_const: typing.Optional[typing.Sequence[builtins.complex]], s_const: typing.Optional[typing.Sequence[builtins.complex]], is_grounded: builtins.bool) -> Load:
         r"""

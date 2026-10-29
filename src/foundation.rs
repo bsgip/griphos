@@ -627,6 +627,10 @@ where
     CsVec::new(n, indices, data)
 }
 
+pub fn dense_to_coo_vec<T: Clone>(v: &[T]) -> CooVec<T> {
+    v.iter().cloned().enumerate().collect()
+}
+
 pub type CooMat<T> = Vec<((usize, usize), T)>;
 
 pub fn coo_mat_to_dense<T>(m: &CooMat<T>, nr: usize, nc: usize) -> Mat<T>
@@ -649,6 +653,10 @@ where
         tri.add_triplet(i, j, x);
     }
     tri.to_csr()
+}
+
+pub fn dense_diag_to_coo_mat<T: Clone>(v: &[T]) -> CooMat<T> {
+    v.iter().cloned().enumerate().map(|(i, x)| ((i, i), x)).collect()
 }
 
 // -----------------------------------------------------------------------------

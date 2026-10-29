@@ -12,7 +12,7 @@
 // connected and grounded.
 
 use griphos::{
-    Bus, BusNodeId, C_ZERO, Line, Load, Network, Phase, SQRT_3, Source,
+    Bus, BusNodeId, C_ZERO, Element, Line, Load, Network, Phase, SQRT_3, Source,
     Transformer, bn, c, c64, typical_tx_z_series
 };
 
@@ -40,21 +40,20 @@ fn main() {
             ABC.to_vec(),   // Three phases ABC.
             V_MV            // Base voltage line to ground = 11 / sqrt(3) kV.
         )
-    ).unwrap();
+    ).expect("adding src_bus failed"); // Unwrap or panic with error message.
 
     // We grabbed a handle to the new bus, and we do various things with it.
     // We need to borrow() it to access its contents, and we can also
     // borrow_mut() to mutate it,
     println!("Souce bus:\n{}", src_bus.borrow());
+    println!("Souce bus base voltage:\n{}", src_bus.borrow().v_base);
 
     // Add a three phase bus with no neutral.
-    netw.add_bus(Bus::new("tx_mv_bus", ABC.to_vec(), V_MV))
-        .unwrap();
+    netw.add_bus(Bus::new("tx_mv_bus", ABC.to_vec(), V_MV)).unwrap();
 
     // Add another bus, this time three-phase plus neutral and with a base
     // voltage of 230 V (line to ground).
-    netw.add_bus(Bus::new("tx_lv_bus", ABCN.to_vec(), V_LV))
-        .unwrap();
+    netw.add_bus(Bus::new("tx_lv_bus", ABCN.to_vec(), V_LV)).unwrap();
 
     // Add a wye-connected source on src_bus.
     //
@@ -65,7 +64,7 @@ fn main() {
     // on the details of the element type.
     //
     // Add an element to the network...
-    let source = netw.add_element(
+    let source: Element<Source> = netw.add_element(
         // A source element, with 3 live phases (plus grounded neutral since
         // it's a wye connection - the `true` grounds the neutral).
         Source::new_wye_slack(V_MV, 3, true)
@@ -80,9 +79,24 @@ fn main() {
             )
     ).expect("problem adding source");
 
-    // We grabbed a handle to the new element, and like buses we can access it
-    // using borrow()
+    // Similar to buses, we can access the element using borrow() and
+    // borrow_mut(). uid() is common to all elements.
     println!("Source element:\n{}", source.borrow());
+    println!("source uid is {}", source.borrow().uid());
+
+    // Because this is a typed element handle, Element<Source>, we can also
+    // access the Source API.
+    println!("source control is {:?}", source.borrow().control);
+
+    // However, if we access the element via the network, we obtain a non-typed
+    // element handle, Element instead of Element<Source>.
+    let src_generic: Element = netw.element("source")
+        .expect("problem getting source");
+    // We can still access the common Element API:
+    println!("source (generic) uid is {}", src_generic.borrow().uid());
+    // But src_generic doesn't know that it's a Source Element.
+    // Thus, the following would fail:
+    // println!("source control: {:?}", src_generic.borrow().control());
 
     // Add a three-wire line between the src_bus and tx_mv_bus. The element(...)
     // member for Lines takes a UID and two lists of BusNodeIds: one for the
@@ -118,7 +132,7 @@ fn main() {
     ).expect("problem adding transformer");
 
     // Add a wye-connected load at tx_bus_lv.
-    netw.add_element(
+    let load = netw.add_element(
         Load::new_wye(
             // 3 phases.
             3,
@@ -140,4 +154,13 @@ fn main() {
                 ]
             )
     ).expect("problem adding load");
+
+    // Set the load's constant power component.
+    if let Some(sc) = load.borrow_mut().ld_s_const_mut() {
+        sc.copy_from_slice(&[c!(1e3, 0.5e3), c!(2e3, 0.4e3), c!(1.5e3, 0.1e3)]);
+    }
+
+    // Take the load out of service.
+    load.borrow_mut().set_is_in_service(false);
+    assert!(!load.borrow().is_in_service())
 }

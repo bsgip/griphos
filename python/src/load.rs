@@ -1,8 +1,9 @@
 use pyo3::prelude::*;
+use pyo3::exceptions::PyValueError;
 use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use ::griphos as gr;
-use gr::{CooMat, c64};
+use gr::c64;
 use crate::plumbing::element_subclass;
 use crate::network::{BusNodeId, bus_node_ids_to_gr};
 
@@ -13,10 +14,10 @@ element_subclass!(
     ///     uid: The ID of the element.
     ///     bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
     ///     branches: Start and end terminals of each branch (current path) in the element.
-    ///     y_const: The optional constant Y branch impedance matrix, as `((i, j), value)` tuples.
-    ///     i_const: The optional constant I branch impedance vector, as `(i, value)` tuples.
-    ///     s_const: The optional constant S branch impedance vector, as `(i, value)` tuples.
-    ///     grounding: The optional grounded terminal indices.
+    ///     ld_y_const: The optional constant Y branch impedance matrix, as `((i, j), value)` tuples.
+    ///     ld_i_const: The optional constant I branch impedance vector, as `(i, value)` tuples.
+    ///     ld_s_const: The optional constant S branch impedance vector, as `(i, value)` tuples.
+    ///     ld_grounding: The optional grounded terminal indices.
     /// Returns:
     ///     A new `Load` object.
     Load,
@@ -29,13 +30,13 @@ impl Load {
         uid: &str,
         bus_node_ids: Vec<BusNodeId>,
         branches: Vec<(usize, usize)>,
-        y_const: Option<CooMat<c64>>,
-        i_const: Option<Vec<(usize, c64)>>,
-        s_const: Option<Vec<(usize, c64)>>,
-        grounding: Option<Vec<usize>>,
+        ld_y_const: Option<Vec<c64>>,
+        ld_i_const: Option<Vec<c64>>,
+        ld_s_const: Option<Vec<c64>>,
+        ld_grounding: Option<Vec<usize>>,
     ) -> Self {
         let n_terms = bus_node_ids.len();
-        let gr_load = gr::Load::new(n_terms, branches, y_const, i_const, s_const, grounding);
+        let gr_load = gr::Load::new(n_terms, branches, ld_y_const, ld_i_const, ld_s_const, ld_grounding);
         let gr_bts = bus_node_ids_to_gr(bus_node_ids);
         let elem = gr_load.into_element(uid, gr_bts);
         Load::from_typed(elem)
@@ -81,12 +82,12 @@ impl Load {
         uid: &str,
         bus_node_ids: Vec<BusNodeId>,
         branches: Vec<(usize, usize)>,
-        y_const: Option<CooMat<c64>>,
-        i_const: Option<Vec<(usize, c64)>>,
-        s_const: Option<Vec<(usize, c64)>>,
-        grounding: Option<Vec<usize>>,
+        ld_y_const: Option<Vec<c64>>,
+        ld_i_const: Option<Vec<c64>>,
+        ld_s_const: Option<Vec<c64>>,
+        ld_grounding: Option<Vec<usize>>,
     ) -> PyClassInitializer<Self> {
-        Self::new_raw(uid, bus_node_ids, branches, y_const, i_const, s_const, grounding).into_initializer()
+        Self::new_raw(uid, bus_node_ids, branches, ld_y_const, ld_i_const, ld_s_const, ld_grounding).into_initializer()
     }
 
     /// Creates a new wye connected load.
@@ -130,12 +131,65 @@ impl Load {
     ) -> PyResult<Bound<'py, Self>> {
         Bound::new(py, Self::new_raw_delta(uid, bus_node_ids, y_const, i_const, s_const).into_initializer())
     }
+
+    #[getter]
+    fn ld_y_const(&self) -> Option<Vec<c64>> {
+        self.elem.borrow().ld_y_const().map(<[c64]>::to_vec)
+    }
+
+    #[setter]
+    fn set_ld_y_const(&self, values: Vec<c64>) -> PyResult<()> {
+        let mut b = self.elem.borrow_mut();
+        let dst = b.ld_y_const_mut().ok_or_else(|| PyValueError::new_err("load has no y_const"))?;
+        if dst.len() != values.len() {
+            return Err(PyValueError::new_err(format!("expected {} values, got {}", dst.len(), values.len())));
+        }
+        dst.copy_from_slice(&values);
+        Ok(())
+    }
+
+    #[getter]
+    fn ld_i_const(&self) -> Option<Vec<c64>> {
+        self.elem.borrow().ld_i_const().map(<[c64]>::to_vec)
+    }
+
+    #[setter]
+    fn set_ld_i_const(&self, values: Vec<c64>) -> PyResult<()> {
+        let mut b = self.elem.borrow_mut();
+        let dst = b.ld_i_const_mut().ok_or_else(|| PyValueError::new_err("load has no i_const"))?;
+        if dst.len() != values.len() {
+            return Err(PyValueError::new_err(format!("expected {} values, got {}", dst.len(), values.len())));
+        }
+        dst.copy_from_slice(&values);
+        Ok(())
+    }
+
+    #[getter]
+    fn ld_s_const(&self) -> Option<Vec<c64>> {
+        self.elem.borrow().ld_s_const().map(<[c64]>::to_vec)
+    }
+
+    #[setter]
+    fn set_ld_s_const(&self, values: Vec<c64>) -> PyResult<()> {
+        let mut b = self.elem.borrow_mut();
+        let dst = b.ld_s_const_mut().ok_or_else(|| PyValueError::new_err("load has no s_const"))?;
+        if dst.len() != values.len() {
+            return Err(PyValueError::new_err(format!("expected {} values, got {}", dst.len(), values.len())));
+        }
+        dst.copy_from_slice(&values);
+        Ok(())
+    }
+
+    #[getter]
+    fn ld_grounding(&self) -> Vec<usize> {
+        self.elem.borrow().ld_grounding().to_vec()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::network::Phase;
-    use gr::c;
+    use gr::{c, CooMat};
     use super::*;
 
     #[test]
@@ -156,5 +210,8 @@ mod tests {
         assert!(load_ref.y_const() == y_const.iter().enumerate().map(|(i, x)| ((i, i), *x)).collect::<CooMat<c64>>());
         assert!(load_ref.i_const().is_empty());
         assert!(load_ref.s_const().is_empty());
+        assert_eq!(load_ref.ld_y_const(), Some(y_const.as_slice()));
+        assert!(load_ref.ld_i_const().is_none());
+        assert!(load_ref.ld_s_const().is_none());
     }
 }
