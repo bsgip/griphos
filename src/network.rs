@@ -784,8 +784,8 @@ impl Network {
     }
 
     /// Returns the [`Bus`]es as an iterator.
-    pub fn buses(&self) -> impl Iterator<Item = &Shared<Bus>> {
-        self.buses.values()
+    pub fn buses(&self) -> impl Iterator<Item = Shared<Bus>> {
+        self.buses.values().cloned()
     }
 
     /// Executes `f` for each bus in the network.
@@ -799,13 +799,13 @@ impl Network {
     }
 
     /// Returns the bus with the given uid.
-    pub fn bus(&self, bus_uid: &str) -> Option<&Shared<Bus>> {
-        self.buses.get(&bus_uid.to_string())
+    pub fn bus(&self, bus_uid: &str) -> Option<Shared<Bus>> {
+        self.buses.get(&bus_uid.to_string()).cloned()
     }
 
     /// Returns the bus at the given index.
-    pub fn bus_i(&self, bus_idx: usize) -> Option<&Shared<Bus>> {
-        self.buses.get_index(bus_idx).map(|x| x.1)
+    pub fn bus_i(&self, bus_idx: usize) -> Option<Shared<Bus>> {
+        self.buses.get_index(bus_idx).map(|x| x.1).cloned()
     }
 
     /// Returns the number of elements in the network.
@@ -814,8 +814,8 @@ impl Network {
     }
 
     /// Returns the elements in the network as an iterator.
-    pub fn elements(&self) -> impl Iterator<Item = &Element> {
-        self.elements.values()
+    pub fn elements(&self) -> impl Iterator<Item = Element> {
+        self.elements.values().cloned()
     }
 
     /// Returns the elements whose spec is of type `S`, as typed handles.
@@ -824,13 +824,13 @@ impl Network {
     }
 
     /// Retrns the element with the given uid.
-    pub fn element(&self, elem_uid: &str) -> Option<&Element> {
-        self.elements.get(&elem_uid.to_string())
+    pub fn element(&self, elem_uid: &str) -> Option<Element> {
+        self.elements.get(&elem_uid.to_string()).cloned()
     }
 
     /// Returns the element with the given index.
-    pub fn element_i(&self, elem_idx: usize) -> Option<&Element> {
-        self.elements.get_index(elem_idx).map(|x| x.1)
+    pub fn element_i(&self, elem_idx: usize) -> Option<Element> {
+        self.elements.get_index(elem_idx).map(|x| x.1).cloned()
     }
 
     /// Adds a bus to the network.
