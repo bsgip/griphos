@@ -734,12 +734,6 @@ class SourceControl(enum.Enum):
 
 @typing.final
 class SwitchState(enum.Enum):
-    NoSwitch = ...
-    Closed = ...
-    Open = ...
-
-@typing.final
-class SwitchState(enum.Enum):
     r"""
     Encodes the state of a switch if present, or the lack of any switch.
     """

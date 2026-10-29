@@ -2,13 +2,8 @@ use pyo3::prelude::*;
 use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use ::griphos as gr;
-use crate::plumbing::{element_subclass, py_enum};
-use crate::network::{BusNodeId, bus_node_ids_to_gr};
-
-py_enum!(
-    SwitchState,
-    gr::SwitchState {NoSwitch, Closed, Open}
-);
+use crate::plumbing::{element_subclass};
+use crate::network::{BusNodeId, bus_node_ids_to_gr, SwitchState};
 
 element_subclass!(
     /// A simple connector element for joining (copperplating) multiple bus nodes.
