@@ -198,6 +198,7 @@ mod tests {
             BusNodeId {b: "bus_1".to_string(), p: Phase::A},
             BusNodeId {b: "bus_1".to_string(), p: Phase::B},
             BusNodeId {b: "bus_1".to_string(), p: Phase::C},
+            BusNodeId {b: "bus_1".to_string(), p: Phase::N},
         ];
         let y_const = vec![
             c!(1.0, 0.0),

@@ -379,6 +379,7 @@ pub trait ElementSpec: Any + std::fmt::Debug + Send + Sync + TypeStrOf + TypeStr
         let n_terms = self.n_terms();
         let branch_wiring = self.branch_wiring();
         let n_branches = branch_wiring.len();
+
         for (i, j) in &branch_wiring {
             if i == j {
                 return Err("A branch (i, j) must not have i == j".to_string());
@@ -387,40 +388,33 @@ pub trait ElementSpec: Any + std::fmt::Debug + Send + Sync + TypeStrOf + TypeStr
                 return Err("A branch (i, j) must i < n_terms and j < n_terms".to_string());
             }
         }
+
         let s: HashSet<(usize, usize)> = branch_wiring.iter().cloned().collect();
         if s.len() != n_branches {
             return Err("Duplicate branches are not allowed".to_string());
         }
 
-        for ((i, j), _) in self.y_const() {
-            if i >= n_branches || j >= n_branches {
-                return Err("y_const entries must contain valid branch indices".to_string());
+        fn check_indices<I: Iterator<Item = usize>, C: std::fmt::Debug>(
+            iter: I, container: &C, idx_max: usize, name: &str, idx_name: &str
+        ) -> Result<(), String> {
+            for i in iter {
+                if i >= idx_max {
+                    return Err(format!(
+                        "{name} entries must contain {idx_name} indices in the range [0, {}]: {container:?}",
+                        idx_max - 1
+                    ));
+                }
             }
+            Ok(())
         }
-
-        for (i, _) in self.i_const() {
-            if i >= n_branches {
-                return Err("i_const entries must contain valid branch indices".to_string());
-            }
-        }
-
-        for (i, _) in self.s_const() {
-            if i >= n_branches {
-                return Err("s_const entries must contain valid branch indices".to_string());
-            }
-        }
-
-        for (i, _) in self.vmag_const() {
-            if i >= n_branches {
-                return Err("vmag_const entries must contain valid branch indices".to_string());
-            }
-        }
-
-        for (i, _) in self.vang_const() {
-            if i >= n_branches {
-                return Err("vang_const entries must contain valid branch indices".to_string());
-            }
-        }
+        check_indices(self.y_const().iter().flat_map(|&((i, j), _)| [i, j]), &self.y_const(), n_branches, "y_const", "branch")?;
+        check_indices(self.i_const().iter().map(|&(i, _)| i), &self.i_const(), n_branches, "i_const", "branch")?;
+        check_indices(self.s_const().iter().map(|&(i, _)| i), &self.s_const(), n_branches, "s_const", "branch")?;
+        check_indices(self.vmag_const().iter().map(|&(i, _)| i), &self.vmag_const(), n_branches, "vmag_const", "branch")?;
+        check_indices(self.vang_const().iter().map(|&(i, _)| i), &self.vang_const(), n_branches, "vang_const", "branch")?;
+        check_indices(self.grounding().iter().copied(), &self.grounding(), n_terms, "grounding", "terminal")?;
+        check_indices(self.copper_plate().iter().flatten().copied(), &self.copper_plate(), n_terms,
+            "copper_plate", "terminal")?;
 
         Ok(())
     }
@@ -516,6 +510,7 @@ impl<S: ElementSpec> Element<S> {
     pub fn new(
         uid: String, bus_node_ids: Vec<BusNodeId>, spec: S,
     ) -> Self {
+        spec.validate().expect("tried to create an element with a bad ElementSpec");
         let n_terms = spec.n_terms();
         assert!(bus_node_ids.len() == n_terms, "Element expects {} bus_node_ids", n_terms);
         let n_branches = spec.n_branches();
