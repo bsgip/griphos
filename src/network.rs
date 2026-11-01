@@ -465,6 +465,7 @@ pub struct Element<S: ElementSpec + ?Sized = dyn ElementSpec> {
     _m: PhantomData<fn(&S)>,
 }
 
+// Implementation on a generic (dyn) element.
 impl Element {
     /// Returns true if the [`Element`]'s type ([`ElementSpec`]) is `S` or false otherwise.
     pub fn is<S: ElementSpec>(&self) -> bool {
@@ -493,6 +494,7 @@ impl Element {
     }
 }
 
+// Implementation on all elements, generic or specific.
 impl<S: ElementSpec + ?Sized> Element<S> {
     // Wrap an ElementInner in an Element.
     fn from_inner(inner: Shared<ElementInner>) -> Element<S> {
@@ -505,6 +507,7 @@ impl<S: ElementSpec + ?Sized> Element<S> {
     }
 }
 
+// Implementation on specific elements.
 impl<S: ElementSpec> Element<S> {
     /// Creates a new [`Element`], given the unique ID, the bus/phase connectivity, and the [`ElementSpec`] of type `S`.
     pub fn new(
