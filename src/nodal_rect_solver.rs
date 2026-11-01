@@ -24,20 +24,20 @@ fn name_vi(idx: Option<usize>) -> String {
     format!("vi_{}", name_maybe_idx(idx))
 }
 
-fn name_pg_nd(idx: Option<usize>) -> String {
-    format!("pgn_{}", name_maybe_idx(idx))
+fn name_ps_nd(idx: Option<usize>) -> String {
+    format!("psn_{}", name_maybe_idx(idx))
 }
 
-fn name_qg_nd(idx: Option<usize>) -> String {
-    format!("qgn_{}", name_maybe_idx(idx))
+fn name_qs_nd(idx: Option<usize>) -> String {
+    format!("qsn_{}", name_maybe_idx(idx))
 }
 
-fn name_pg_br(idx: Option<usize>) -> String {
-    format!("pgb_{}", name_maybe_idx(idx))
+fn name_ps_br(idx: Option<usize>) -> String {
+    format!("psb_{}", name_maybe_idx(idx))
 }
 
-fn name_qg_br(idx: Option<usize>) -> String {
-    format!("qgb_{}", name_maybe_idx(idx))
+fn name_qs_br(idx: Option<usize>) -> String {
+    format!("qsb_{}", name_maybe_idx(idx))
 }
 
 fn name_eqn_kcl_re(idx: Option<usize>) -> String {
@@ -107,9 +107,9 @@ pub struct NodeInfo {
 
 /// Additional info for PV or SL sources at branches.
 #[derive(Clone, Debug, Default)]
-pub struct BranchGenInfo {
-    pub pg: Vc,
-    pub qg: Vc,
+pub struct BranchSrcInfo {
+    pub ps: Vc,
+    pub qs: Vc,
     pub ieqn_vr_c: Option<usize>,
     pub ieqn_vi_c: Option<usize>,
     pub ieqn_vm_c: Option<usize>,
@@ -117,8 +117,8 @@ pub struct BranchGenInfo {
 
 /// Additional info for PV sources at nodes.
 #[derive(Clone, Debug, Default)]
-pub struct NodeGenInfo {
-    pub qg: Vc,
+pub struct NodeSrcInfo {
+    pub qs: Vc,
     pub ieqn_vm_c: Option<usize>,
 }
 
@@ -129,13 +129,13 @@ pub enum VarKind {
     // An imaginary voltage variable.
     Vi {nd_idx: usize},
     // A real voltage-controlled source power on a node.
-    PgNd {nd_idx: usize},
+    PsNd {nd_idx: usize},
     // A reactive voltage-controlled source power on a node.
-    QgNd {nd_idx: usize},
+    QsNd {nd_idx: usize},
     // A real voltage-controlled source power on a branch.
-    PgBr {br_idx: usize},
+    PsBr {br_idx: usize},
     // A reactive voltage-controlled source power on a branch.
-    QgBr {br_idx: usize},
+    QsBr {br_idx: usize},
 }
 
 /// Variable information.
@@ -152,10 +152,10 @@ impl VarInfo {
         match &self.kind {
             VarKind::Vr {nd_idx} => {name_vr(Some(*nd_idx))},
             VarKind::Vi {nd_idx} => {name_vi(Some(*nd_idx))},
-            VarKind::PgNd {nd_idx} => {name_pg_nd(Some(*nd_idx))},
-            VarKind::QgNd {nd_idx} => {name_qg_nd(Some(*nd_idx))},
-            VarKind::PgBr {br_idx} => {name_pg_br(Some(*br_idx))},
-            VarKind::QgBr {br_idx} => {name_qg_br(Some(*br_idx))},
+            VarKind::PsNd {nd_idx} => {name_ps_nd(Some(*nd_idx))},
+            VarKind::QsNd {nd_idx} => {name_qs_nd(Some(*nd_idx))},
+            VarKind::PsBr {br_idx} => {name_ps_br(Some(*br_idx))},
+            VarKind::QsBr {br_idx} => {name_qs_br(Some(*br_idx))},
         }
     }
 }
@@ -221,10 +221,10 @@ pub struct NodalRectSolver {
     /// The [`NodeInfo`]s.
     pub node_infos: Vec<NodeInfo>,
 
-    /// The [`NodeGenInfo`]s.
-    pub node_src_infos: HashMap<usize, NodeGenInfo>,
-    /// The [`BranchGenInfo`]s.
-    pub branch_src_infos: HashMap<usize, BranchGenInfo>,
+    /// The [`NodeSrcInfo`]s.
+    pub node_src_infos: HashMap<usize, NodeSrcInfo>,
+    /// The [`BranchSrcInfo`]s.
+    pub branch_src_infos: HashMap<usize, BranchSrcInfo>,
 
     /// The variable infos.
     pub var_infos: Vec<VarInfo>,
@@ -361,13 +361,13 @@ impl NodalRectSolver {
 
                         self.node_src_infos.insert(
                             i_nd,
-                            NodeGenInfo {qg: Vc::Var {i: idim + 2}, ieqn_vm_c: Some(idim + 2)}
+                            NodeSrcInfo {qs: Vc::Var {i: idim + 2}, ieqn_vm_c: Some(idim + 2)}
                         );
                         // TODO
 
                         self.var_infos.push(VarInfo {kind:VarKind::Vr {nd_idx: i_nd}, x0: x0.re});
                         self.var_infos.push(VarInfo {kind: VarKind::Vi {nd_idx: i_nd}, x0: x0.im});
-                        self.var_infos.push(VarInfo {kind: VarKind::QgNd {nd_idx: i_nd}, x0: 0.0});
+                        self.var_infos.push(VarInfo {kind: VarKind::QsNd {nd_idx: i_nd}, x0: 0.0});
 
                         self.eqn_kinds.push(EqnKind::KclRe {nd_idx: i_nd});
                         self.eqn_kinds.push(EqnKind::KclIm {nd_idx: i_nd});
@@ -406,17 +406,17 @@ impl NodalRectSolver {
                     let c64 {re: vr, im: vi} = p!(*vmc, *vac);
                     self.branch_src_infos.insert(
                         m_br,
-                        BranchGenInfo {
-                            pg: Vc::Var {i: idim},
-                            qg: Vc::Var {i: idim + 1},
+                        BranchSrcInfo {
+                            ps: Vc::Var {i: idim},
+                            qs: Vc::Var {i: idim + 1},
                             ieqn_vr_c: Some(idim),
                             ieqn_vi_c: Some(idim + 1),
                             ..Default::default()
                         }
                     );
 
-                    self.var_infos.push(VarInfo {kind: VarKind::PgBr {br_idx: m_br}, x0: 0.0});
-                    self.var_infos.push(VarInfo {kind: VarKind::QgBr {br_idx: m_br}, x0: 0.0});
+                    self.var_infos.push(VarInfo {kind: VarKind::PsBr {br_idx: m_br}, x0: 0.0});
+                    self.var_infos.push(VarInfo {kind: VarKind::QsBr {br_idx: m_br}, x0: 0.0});
 
                     self.eqn_kinds.push(EqnKind::VrConstBr {br_idx: m_br, vr});
                     self.eqn_kinds.push(EqnKind::ViConstBr {br_idx: m_br, vi});
@@ -427,14 +427,14 @@ impl NodalRectSolver {
                     // PV branch
                     self.branch_src_infos.insert(
                         m_br,
-                        BranchGenInfo {
-                            qg: Vc::Var{i: idim},
+                        BranchSrcInfo {
+                            qs: Vc::Var{i: idim},
                             ieqn_vm_c: Some(idim),
                             ..Default::default()
                         }
                     );
 
-                    self.var_infos.push(VarInfo {kind: VarKind::QgBr {br_idx: m_br}, x0: 0.0});
+                    self.var_infos.push(VarInfo {kind: VarKind::QsBr {br_idx: m_br}, x0: 0.0});
 
                     self.eqn_kinds.push(EqnKind::VmConstBr {br_idx: m_br, vm: *vmc});
 
@@ -686,7 +686,7 @@ impl NodalRectSolver {
             }
         }
 
-        // Terms involving node pg and qg in KCL; constant voltage magnitude for nodes.
+        // Terms involving node ps and qs in KCL; constant voltage magnitude for nodes.
         for (&i, ngi_i) in self.node_src_infos.iter() {
             let nd_info_i = &self.node_infos[i];
             let vr_i = nd_info_i.vr.val(&self.vars);
@@ -697,38 +697,38 @@ impl NodalRectSolver {
             let v2_i_diff = vr_i_2 - vi_i_2;
             let vm_i_n4 = vm_i_2.powi(-2);
 
-            let qg = ngi_i.qg.val(&self.vars);
+            let qs = ngi_i.qs.val(&self.vars);
 
             if let Some(ieqn) = nd_info_i.ieqn_kcl_re {
-                self.rhs[ieqn] += -qg * vi_i / vm_i_2;
+                self.rhs[ieqn] += -qs * vi_i / vm_i_2;
 
-                if let Vc::Var{i: ivar} = ngi_i.qg {
+                if let Vc::Var{i: ivar} = ngi_i.qs {
                     jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -vi_i / vm_i_2);
                 }
 
                 if let Vc::Var {i: ivar} = nd_info_i.vr {
-                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, 2.0 * qg * vi_i * vr_i * vm_i_n4);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, 2.0 * qs * vi_i * vr_i * vm_i_n4);
                 }
 
                 if let Vc::Var {i: ivar} = nd_info_i.vi {
-                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -qg * v2_i_diff * vm_i_n4);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -qs * v2_i_diff * vm_i_n4);
                 }
 
             }
 
             if let Some(ieqn) = nd_info_i.ieqn_kcl_im {
-                self.rhs[ieqn] += qg * vr_i / vm_i_2;
+                self.rhs[ieqn] += qs * vr_i / vm_i_2;
 
-                if let Vc::Var{i: ivar} = ngi_i.qg {
+                if let Vc::Var{i: ivar} = ngi_i.qs {
                     jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, vr_i / vm_i_2);
                 }
 
                 if let Vc::Var {i: ivar} = nd_info_i.vr {
-                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -qg * v2_i_diff * vm_i_n4);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -qs * v2_i_diff * vm_i_n4);
                 }
 
                 if let Vc::Var {i: ivar} = nd_info_i.vi {
-                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -2.0 * qg * vi_i * vr_i * vm_i_n4);
+                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -2.0 * qs * vi_i * vr_i * vm_i_n4);
                 }
             }
 
@@ -745,7 +745,7 @@ impl NodalRectSolver {
             }
         }
 
-        // Terms involving branch pg and qg in KCL
+        // Terms involving branch ps and qs in KCL
         for (&m, bgi_m) in self.branch_src_infos.iter() {
             let br_m = &self.nmod.branches[m];
             let nd_info_im0 = &self.node_infos[br_m.nd_0_idx];
@@ -758,62 +758,62 @@ impl NodalRectSolver {
             let vm_m_n4 = vm_m_2.powi(-2);
             let v2_m_diff = vr_m_2 - vi_m_2;
 
-            let pg_m = bgi_m.pg.val(&self.vars);
-            let qg_m = bgi_m.qg.val(&self.vars);
+            let ps_m = bgi_m.ps.val(&self.vars);
+            let qs_m = bgi_m.qs.val(&self.vars);
 
             for (nd_info_ima, sgn_ima) in [(&nd_info_im0, 1.0), (&nd_info_im1, -1.0)] {
                 if let Some(ieqn) = nd_info_ima.ieqn_kcl_re {
-                    self.rhs[ieqn] += sgn_ima * (-pg_m * vr_m - qg_m * vi_m) / vm_m_2;
+                    self.rhs[ieqn] += sgn_ima * (-ps_m * vr_m - qs_m * vi_m) / vm_m_2;
 
                     for (nd_info_imb, sgn_imb) in [(&nd_info_im0, 1.0), (&nd_info_im1, -1.0)] {
                         let sgn = sgn_ima * sgn_imb;
-                        if let Vc::Var{i: ivar} = bgi_m.pg {
+                        if let Vc::Var{i: ivar} = bgi_m.ps {
                             jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -sgn * vr_m / vm_m_2);
                         }
 
-                        if let Vc::Var{i: ivar} = bgi_m.qg {
+                        if let Vc::Var{i: ivar} = bgi_m.qs {
                             jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -sgn * vi_m / vm_m_2);
                         }
 
                         if let Vc::Var {i: ivar} = nd_info_imb.vr {
                             jac_target.add(
                                 &mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar,
-                                (pg_m * v2_m_diff + 2.0 * qg_m * vi_m * vr_m) * vm_m_n4
+                                (ps_m * v2_m_diff + 2.0 * qs_m * vi_m * vr_m) * vm_m_n4
                             );
                         }
 
                         if let Vc::Var {i: ivar} = nd_info_imb.vi {
                             jac_target.add(
                                 &mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar,
-                                (-qg_m * v2_m_diff + 2.0 * pg_m * vi_m * vr_m) * vm_m_n4
+                                (-qs_m * v2_m_diff + 2.0 * ps_m * vi_m * vr_m) * vm_m_n4
                             );
                         }
                     }
                 }
                 if let Some(ieqn) = nd_info_ima.ieqn_kcl_im {
-                    self.rhs[ieqn] += sgn_ima * (qg_m * vr_m - pg_m * vi_m) / vm_m_2;
+                    self.rhs[ieqn] += sgn_ima * (qs_m * vr_m - ps_m * vi_m) / vm_m_2;
 
                     for (nd_info_imb, sgn_imb) in [(&nd_info_im0, 1.0), (&nd_info_im1, -1.0)] {
                         let sgn = sgn_ima * sgn_imb;
-                        if let Vc::Var{i: ivar} = bgi_m.pg {
+                        if let Vc::Var{i: ivar} = bgi_m.ps {
                             jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -sgn * vi_m / vm_m_2);
                         }
 
-                        if let Vc::Var{i: ivar} = bgi_m.qg {
+                        if let Vc::Var{i: ivar} = bgi_m.qs {
                             jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, sgn * vr_m / vm_m_2);
                         }
 
                         if let Vc::Var {i: ivar} = nd_info_imb.vr {
                             jac_target.add(
                                 &mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar,
-                                (-qg_m * v2_m_diff + 2.0 * pg_m * vi_m * vr_m) * vm_m_n4
+                                (-qs_m * v2_m_diff + 2.0 * ps_m * vi_m * vr_m) * vm_m_n4
                             );
                         }
 
                         if let Vc::Var {i: ivar} = nd_info_imb.vi {
                             jac_target.add(
                                 &mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar,
-                                (-pg_m * v2_m_diff - 2.0 * qg_m * vi_m * vr_m) * vm_m_n4
+                                (-ps_m * v2_m_diff - 2.0 * qs_m * vi_m * vr_m) * vm_m_n4
                             );
                         }
                     }
@@ -916,10 +916,10 @@ impl NodalRectSolver {
     }
 
     fn log_node_src_infos(&self, log: impl Fn(std::fmt::Arguments)) {
-        log(format_args!("Node Gens:"));
+        log(format_args!("Node Srcs:"));
         for (i_ng, (i_nd, ng_info)) in self.node_src_infos.iter().enumerate() {
             log(format_args!(
-                "    {: <4}: nd = {: <4} qg = {: <24}", i_ng, i_nd, format!("{:?}", ng_info.qg)
+                "    {: <4}: nd = {: <4} qs = {: <24}", i_ng, i_nd, format!("{:?}", ng_info.qs)
             ));
         }
     }
@@ -939,11 +939,11 @@ impl NodalRectSolver {
     }
 
     fn log_branch_src_infos(&self, log: impl Fn(std::fmt::Arguments)) {
-        log(format_args!("Branch Gens:"));
+        log(format_args!("Branch Srcs:"));
         for (i_bg, (i_nd, bg_info)) in self.branch_src_infos.iter().enumerate() {
             log(format_args!(
-                "    {: <4}: br = {: <4} pg = {: <24} qg = {: <24}",
-                i_bg, i_nd, format!("{:?}", bg_info.pg), format!("{:?}", bg_info.qg)
+                "    {: <4}: br = {: <4} ps = {: <24} qs = {: <24}",
+                i_bg, i_nd, format!("{:?}", bg_info.ps), format!("{:?}", bg_info.qs)
             ));
         }
     }
