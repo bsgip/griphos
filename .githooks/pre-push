@@ -1,6 +1,15 @@
 #!/bin/sh
 set -e
 
+# Only run for pushes that update main.
+pushing_main=false
+while read -r local_ref local_sha remote_ref remote_sha; do
+    if [ "$remote_ref" = "refs/heads/main" ]; then
+        pushing_main=true
+    fi
+done
+$pushing_main || exit 0
+
 repo_root="$(git rev-parse --show-toplevel)"
 stub="python/python/griphos/__init__.pyi"
 
