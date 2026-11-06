@@ -37,7 +37,7 @@ fn main() {
     } else if args.netw_name == "test_netw_large_b" {
         test_netw_large_b()
     } else {
-        panic!("Bad network name");
+        panic!("Bad network name {}", args.netw_name);
     };
     common::run_network(netw, &args.solver)
 }

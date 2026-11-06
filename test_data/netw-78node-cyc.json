@@ -43,7 +43,7 @@
         {
             "id": "node_3",
             "type": "Node",
-            "phs": ["A"],
+            "phs": ["A", "N"],
             "v_base": 11000,
             "user_data": {}
         },
@@ -52,10 +52,10 @@
             "type": "Transformer",
             "cons": [{
                 "node": "node_3",
-                "phs": ["A"]
+                "phs": ["A", "N"]
             }, {
                 "node": "node_4",
-                "phs": ["A"]
+                "phs": ["A", "N"]
             }],
             "vector_group": "yy0",
             "v_winding_base": [11000, 718.801],
@@ -75,7 +75,7 @@
         {
             "id": "node_4",
             "type": "Node",
-            "phs": ["A"],
+            "phs": ["A", "N"],
             "v_base": 398.4,
             "user_data": {}
         },
