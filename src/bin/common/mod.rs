@@ -6,8 +6,8 @@ pub fn run_network(mut netw: Network, solver_name: &str) {
     println!("Voltages:");
     for b in netw.buses() {
         let b = b.borrow();
-        let vmags = b.vs().map(|x| x.norm()).collect::<Vec<f64>>();
-        println!("v {} = {:.4?}", b.uid, vmags);
+        let vmags = b.vs().map(|x| x.norm().to_string()).collect::<Vec<_>>().join(", ");
+        println!("v {:<12} = [{:>10.4}]", b.uid, vmags);
     }
 
     println!("\nCurrents:");
@@ -17,8 +17,8 @@ pub fn run_network(mut netw: Network, solver_name: &str) {
         let br_strs = br_data
             .iter()
             .map(|bdi| format!("{}->{}:{:.4}", bdi.bus_node_ids.0, bdi.bus_node_ids.1, bdi.state.i))
-            .collect::<Vec<_>>();
-        println!("i {}: {:?}", e.uid(), br_strs);
+            .collect::<Vec<_>>().join(", ");
+        println!("i {:<12}: [{:>30}]", e.uid(), br_strs);
     }
 
     println!("\nPowers:");
@@ -33,7 +33,7 @@ pub fn run_network(mut netw: Network, solver_name: &str) {
                     bdi.bus_node_ids.0, bdi.bus_node_ids.1, bdi.state.i.conj() * bdi.state.v
                 )
             )
-            .collect::<Vec<_>>();
-        println!("i {}: {:?}", e.uid(), br_strs);
+            .collect::<Vec<_>>().join(", ");
+        println!("i {:<12}: [{:>30}]", e.uid(), br_strs);
     }
 }
