@@ -508,6 +508,7 @@ impl<S: ElementSpec + ?Sized> Element<S> {
 }
 
 /// Convenience struct that gathers all the information about the branches of an [`Element`].
+#[derive(Debug)]
 pub struct ConnectedBranchItem<'a> {
     pub term_idxs: (usize, usize),
     pub bus_node_ids: (&'a BusNodeId, &'a BusNodeId),
