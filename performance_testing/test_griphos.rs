@@ -32,8 +32,8 @@ fn main() {
     if all_ok {
         for b in netw.buses() {
             let b = b.borrow();
-            for t in b.terms.iter() {
-                writeln!(outfile, "{}:{}, {}", b.uid, t.phase, t.v.norm()/b.v_base).unwrap();
+            for nd in b.nodes.iter() {
+                writeln!(outfile, "{}:{}, {}", b.uid, nd.phase(), nd.v().norm()/b.v_base).unwrap();
             }
         }
     }

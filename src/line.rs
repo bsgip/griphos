@@ -47,10 +47,10 @@ impl Line {
 
     /// Wraps an existing [`Line`] in an [`Element`].
     /// Wraps grounding in an [`Element`] with the given terminal mapping.
-    pub fn into_element(self, uid: &str, bus_node_ids_0: Vec<BusNodeId>, bus_node_ids_1: Vec<BusNodeId>) -> Element<Self> {
-        assert!(bus_node_ids_0.len() == bus_node_ids_1.len(), "Lines must have the same number of phases at each end");
-        let bus_node_ids = bus_node_ids_0.into_iter().chain(bus_node_ids_1).collect();
-        Element::<Self>::new(uid.to_string(), bus_node_ids, self)
+    pub fn into_element(self, uid: &str, node_ids_0: Vec<NodeId>, node_ids_1: Vec<NodeId>) -> Element<Self> {
+        assert!(node_ids_0.len() == node_ids_1.len(), "Lines must have the same number of phases at each end");
+        let node_ids = node_ids_0.into_iter().chain(node_ids_1).collect();
+        Element::<Self>::new(uid.to_string(), node_ids, self)
     }
 }
 

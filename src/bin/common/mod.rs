@@ -17,12 +17,12 @@ pub fn run_network(mut netw: Network, solver_name: &str) {
     println!("\nBranch Voltages:");
     for e in netw.elements() {
         let e = e.borrow();
-        let br_data = e.branches_connected().collect::<Vec<_>>();
+        let br_data = e.branches().collect::<Vec<_>>();
         let br_strs = br_data
             .iter()
             .map(
                 |bdi| format!(
-                    "{:40}", format!("{}->{}:{}", bdi.bus_node_ids.0, bdi.bus_node_ids.1, fmt_polar(bdi.state.v))
+                    "{:40}", format!("{}->{}:{}", bdi.node_ids().0, bdi.node_ids().1, fmt_polar(bdi.v()))
                 )
             )
             .collect::<Vec<_>>().join(", ");
@@ -32,12 +32,12 @@ pub fn run_network(mut netw: Network, solver_name: &str) {
     println!("\nCurrents:");
     for e in netw.elements() {
         let e = e.borrow();
-        let br_data = e.branches_connected().collect::<Vec<_>>();
+        let br_data = e.branches().collect::<Vec<_>>();
         let br_strs = br_data
             .iter()
             .map(
                 |bdi| format!(
-                    "{:40}", format!("{}->{}:{:.4}", bdi.bus_node_ids.0, bdi.bus_node_ids.1, bdi.state.i)
+                    "{:40}", format!("{}->{}:{:.4}", bdi.node_ids().0, bdi.node_ids().1, bdi.i())
                 )
             )
             .collect::<Vec<_>>().join(", ");
@@ -47,14 +47,14 @@ pub fn run_network(mut netw: Network, solver_name: &str) {
     println!("\nPowers:");
     for e in netw.elements() {
         let e = e.borrow();
-        let br_data = e.branches_connected().collect::<Vec<_>>();
+        let br_data = e.branches().collect::<Vec<_>>();
         let br_strs = br_data
             .iter()
             .map(
                 |bdi| format!(
                     "{:40}", format!(
                         "{}->{}:{:.4}",
-                        bdi.bus_node_ids.0, bdi.bus_node_ids.1, bdi.state.i.conj() * bdi.state.v
+                        bdi.node_ids().0, bdi.node_ids().1, bdi.i().conj() * bdi.v()
                     )
                 )
             )

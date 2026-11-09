@@ -1,5 +1,5 @@
 import griphos as gr
-from griphos import bn
+from griphos import nd_id
 
 from pathlib import Path
 
@@ -24,7 +24,7 @@ def test_bus():
     assert b.phases == [gr.Phase.A, gr.Phase.B, gr.Phase.C]
     assert b.v_base == 11000.0
     assert len(b.vs) == 3
-    assert abs((b.vs[0] - complex(11000.0, 0.0))) < 1e-6
+    assert abs(b.vs[0] - complex(11000.0, 0.0)) < 1e-6
 
 
 def test_generic_element():
@@ -36,9 +36,9 @@ def test_generic_element():
     e: gr.GenericElement = gr.GenericElement(
         "my_ge",
         [
-            bn("bus_1", gr.Phase.A),
-            bn("bus_1", gr.Phase.B),
-            bn("bus_1", gr.Phase.C),
+            nd_id("bus_1", gr.Phase.A),
+            nd_id("bus_1", gr.Phase.B),
+            nd_id("bus_1", gr.Phase.C),
         ],
         [(0, 1), (1, 2), (2, 0)],
         y_const=yc
@@ -57,13 +57,13 @@ def test_transformer():
     tx: gr.Transformer = gr.Transformer.new_with_vector_group(
         "tx",
         [
-            bn("bus_p", gr.Phase.A),
-            bn("bus_p", gr.Phase.B),
-            bn("bus_p", gr.Phase.C),
-            bn("bus_s", gr.Phase.A),
-            bn("bus_s", gr.Phase.B),
-            bn("bus_s", gr.Phase.C),
-            bn("bus_s", gr.Phase.N),
+            nd_id("bus_p", gr.Phase.A),
+            nd_id("bus_p", gr.Phase.B),
+            nd_id("bus_p", gr.Phase.C),
+            nd_id("bus_s", gr.Phase.A),
+            nd_id("bus_s", gr.Phase.B),
+            nd_id("bus_s", gr.Phase.C),
+            nd_id("bus_s", gr.Phase.N),
         ],
         3,
         [11000+0j, 230+0j],

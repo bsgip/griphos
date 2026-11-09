@@ -41,7 +41,7 @@ mod griphos {
         Load,
     };
     #[pymodule_export] use super::network::{
-        bn, Bus, Element, Network, Phase, SwitchState,
+        nd_id, Bus, Element, Network, Phase, SwitchState,
     };
     #[pymodule_export] use super::network_solvers::{
         SolveNetworkResult, NetworkSolver, solve_network,

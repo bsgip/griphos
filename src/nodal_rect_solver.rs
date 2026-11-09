@@ -279,18 +279,18 @@ impl NodalRectSolver {
 
     /// Initialize the solver to a starting state.
     pub fn init(&mut self) {
-        if self.nmod.nodes.is_empty() {return;}
+        if self.nmod.nm_nodes.is_empty() {return;}
 
         let mut nd_src_info: Vec<(Option<usize>, [Option<f64>; 2])> = vec![
-            (None, [None, None]); self.nmod.nodes.len()
+            (None, [None, None]); self.nmod.nm_nodes.len()
         ];
-        let mut br_src_info: Vec<[Option<f64>; 2]> = vec![[None, None]; self.nmod.branches.len()];
+        let mut br_src_info: Vec<[Option<f64>; 2]> = vec![[None, None]; self.nmod.nm_branches.len()];
 
         let mut f = |v: &CsVec<f64>, i: usize| {
             for (m_br, &x) in v.iter() {
-                let br = &self.nmod.branches[m_br];
-                let nd0 = &self.nmod.nodes[br.nd_0_idx];
-                let nd1 = &self.nmod.nodes[br.nd_1_idx];
+                let br = &self.nmod.nm_branches[m_br];
+                let nd0 = &self.nmod.nm_nodes[br.nd_0_idx];
+                let nd1 = &self.nmod.nm_nodes[br.nd_1_idx];
                 match (nd0.is_grounded, nd1.is_grounded) {
                     (false, false) => {
                         br_src_info[m_br][i] = Some(x);
@@ -314,12 +314,12 @@ impl NodalRectSolver {
         f(&self.nmod.vmag_const, 0);
         f(&self.nmod.vang_const, 1);
 
-        let n_ground = self.nmod.nodes.iter().filter(|nd| nd.is_grounded).count();
+        let n_ground = self.nmod.nm_nodes.iter().filter(|nd| nd.is_grounded).count();
         let n_nd_sl = nd_src_info.iter().filter(|(_, [vmc, vac])| vmc.is_some() && vac.is_some()).count();
         let n_nd_pv = nd_src_info.iter().filter(|(_, [vmc, vac])| vmc.is_some() && vac.is_none()).count();
         let n_br_sl = br_src_info.iter().filter(|[vmc, vac]| vmc.is_some() && vac.is_some()).count();
         let n_br_pv = br_src_info.iter().filter(|[vmc, vac]| vmc.is_some() && vac.is_none()).count();
-        let n_not_const = self.nmod.nodes.len() - n_ground - n_nd_sl;
+        let n_not_const = self.nmod.nm_nodes.len() - n_ground - n_nd_sl;
         let ndim = 2 * n_not_const + n_nd_pv + 2 * n_br_sl + n_br_pv;
 
         debug!("Nodal Solver");
@@ -331,7 +331,7 @@ impl NodalRectSolver {
         debug!("n_not_const = {n_not_const}");
         debug!("ndim = {ndim}");
 
-        self.node_infos.clear(); self.node_infos.reserve(self.nmod.nodes.len());
+        self.node_infos.clear(); self.node_infos.reserve(self.nmod.nm_nodes.len());
 
         self.sl_node_src_infos.clear();
         self.pv_node_src_infos.clear();
@@ -342,7 +342,7 @@ impl NodalRectSolver {
 
         let mut idim: usize = 0;
 
-        for (i_nd, (nd, nsi)) in self.nmod.nodes.iter().zip(nd_src_info.iter()).enumerate() {
+        for (i_nd, (nd, nsi)) in self.nmod.nm_nodes.iter().zip(nd_src_info.iter()).enumerate() {
             if nd.is_grounded {
                 // Ground node
                 self.node_infos.push(
@@ -476,7 +476,7 @@ impl NodalRectSolver {
         self.jac_csc_idxs.clear();
 
         assert!(idim == ndim);
-        assert!(self.node_infos.len() == self.nmod.nodes.len());
+        assert!(self.node_infos.len() == self.nmod.nm_nodes.len());
         assert!(self.sl_node_src_infos.len() == n_nd_sl);
         assert!(self.pv_node_src_infos.len() == n_nd_pv);
         assert!(self.branch_src_infos.len() == n_br_sl + n_br_pv);
@@ -563,11 +563,11 @@ impl NodalRectSolver {
 
         // Terms involving y_const in KCL
         for (&c64 {re: gmn, im: bmn}, (m, n)) in self.nmod.y_const.iter() {
-            let br_m = &self.nmod.branches[m];
+            let br_m = &self.nmod.nm_branches[m];
             let nd_info_im0 = &self.node_infos[br_m.nd_0_idx];
             let nd_info_im1 = &self.node_infos[br_m.nd_1_idx];
 
-            let br_n = &self.nmod.branches[n];
+            let br_n = &self.nmod.nm_branches[n];
             let nd_info_in0 = &self.node_infos[br_n.nd_0_idx];
             let nd_info_in1 = &self.node_infos[br_n.nd_1_idx];
 
@@ -607,7 +607,7 @@ impl NodalRectSolver {
 
         // Terms involving i_const in KCL
         for (m, c64 {re: cm, im: dm}) in self.nmod.i_const.iter() {
-            let br_m = &self.nmod.branches[m];
+            let br_m = &self.nmod.nm_branches[m];
             let nd_info_im0 = &self.node_infos[br_m.nd_0_idx];
             let nd_info_im1 = &self.node_infos[br_m.nd_1_idx];
 
@@ -661,7 +661,7 @@ impl NodalRectSolver {
 
         // Terms involving s_const in KCL
         for (m, c64 {re: pm, im: qm}) in self.nmod.s_const.iter() {
-            let br_m = &self.nmod.branches[m];
+            let br_m = &self.nmod.nm_branches[m];
             let nd_info_im0 = &self.node_infos[br_m.nd_0_idx];
             let nd_info_im1 = &self.node_infos[br_m.nd_1_idx];
 
@@ -772,7 +772,7 @@ impl NodalRectSolver {
 
         // Terms involving branch ps and qs in KCL
         for (&m, bgi_m) in self.branch_src_infos.iter() {
-            let br_m = &self.nmod.branches[m];
+            let br_m = &self.nmod.nm_branches[m];
             let nd_info_im0 = &self.node_infos[br_m.nd_0_idx];
             let nd_info_im1 = &self.node_infos[br_m.nd_0_idx];
             let vr_m = nd_info_im0.vr.val(&self.vars) - nd_info_im1.vr.val(&self.vars);
@@ -903,7 +903,7 @@ impl NodalRectSolver {
     }
 
     fn v_br(&self, m_br: usize) -> c64 {
-        let br_m = &self.nmod.branches[m_br];
+        let br_m = &self.nmod.nm_branches[m_br];
         let nd_info_im0 = &self.node_infos[br_m.nd_0_idx];
         let nd_info_im1 = &self.node_infos[br_m.nd_1_idx];
         c![
@@ -913,12 +913,12 @@ impl NodalRectSolver {
     }
 
     fn propagate_to_model(&mut self) {
-        for (nd, nd_info) in self.nmod.nodes.iter_mut().zip(self.node_infos.iter()) {
+        for (nd, nd_info) in self.nmod.nm_nodes.iter_mut().zip(self.node_infos.iter()) {
             nd.v = Some(c!(nd_info.vr.val(&self.vars), nd_info.vi.val(&self.vars)))
         }
 
-        for br in self.nmod.branches.iter_mut() {
-            if let Some(v0) = self.nmod.nodes[br.nd_0_idx].v && let Some(v1) = self.nmod.nodes[br.nd_1_idx].v {
+        for br in self.nmod.nm_branches.iter_mut() {
+            if let Some(v0) = self.nmod.nm_nodes[br.nd_0_idx].v && let Some(v1) = self.nmod.nm_nodes[br.nd_1_idx].v {
                 br.v_01 = Some(v0 - v1);
             }
             br.i_01 = Some(C_ZERO);
@@ -927,7 +927,7 @@ impl NodalRectSolver {
         // Terms involving y_const
         for (&y_mn, (m, n)) in self.nmod.y_const.iter() {
             let v_n = self.v_br(n);
-            let br_m = &mut self.nmod.branches[m];
+            let br_m = &mut self.nmod.nm_branches[m];
             let br_m_i = br_m.i_01.as_mut().expect("invariant violated for branch current");
             *br_m_i += y_mn * v_n;
         }
@@ -935,14 +935,14 @@ impl NodalRectSolver {
         // Terms involving i_const
         for (m, &i_m) in self.nmod.i_const.iter() {
             let v_m = self.v_br(m);
-            let br_m_i = self.nmod.branches[m].i_01.as_mut().expect("invariant violated for branch current");
+            let br_m_i = self.nmod.nm_branches[m].i_01.as_mut().expect("invariant violated for branch current");
             *br_m_i += i_m.conj() * v_m / v_m.conj();
         }
 
         // Terms involving s_const
         for (m, &s_m) in self.nmod.s_const.iter() {
             let v_m = self.v_br(m);
-            let br_m_i = self.nmod.branches[m].i_01.as_mut().expect("invariant violated for branch current");
+            let br_m_i = self.nmod.nm_branches[m].i_01.as_mut().expect("invariant violated for branch current");
             *br_m_i += s_m.conj() / v_m.conj();
         }
 
@@ -950,20 +950,20 @@ impl NodalRectSolver {
         for (&m, bsi) in self.branch_src_infos.iter() {
             if let Vc::Var { i: ivar_ps } = bsi.ps {
                 let v_m = self.v_br(m);
-                let br_m_i = self.nmod.branches[m].i_01.as_mut().expect("invariant violated for branch current");
+                let br_m_i = self.nmod.nm_branches[m].i_01.as_mut().expect("invariant violated for branch current");
                 *br_m_i -= self.vars[ivar_ps] / v_m.conj();
             }
 
             if let Vc::Var { i: ivar_qs } = bsi.qs {
                 let v_m = self.v_br(m);
-                let br_m_i = self.nmod.branches[m].i_01.as_mut().expect("invariant violated for branch current");
+                let br_m_i = self.nmod.nm_branches[m].i_01.as_mut().expect("invariant violated for branch current");
                 *br_m_i += c!(0.0, self.vars[ivar_qs]) / v_m.conj();
             }
         }
 
         // Current from PV nodes.
         for nsi in self.pv_node_src_infos.values() {
-            let br = &mut self.nmod.branches[nsi.m_br];
+            let br = &mut self.nmod.nm_branches[nsi.m_br];
             let br_v_conj = br.i_01.as_ref().expect("invariant violated for branch voltage").conj();
             let br_i = br.i_01.as_mut().expect("invariant violated for branch current");
             let qs = self.vars[nsi.ivar_qs];
@@ -978,12 +978,12 @@ impl NodalRectSolver {
             let mut tot_i_in = C_ZERO;
             for edge in self.nmod.structure_graph.edges(NodeIndex::new(i_nd)) {
                 let m = edge.id().index();
-                let br_m = &self.nmod.branches[m];
+                let br_m = &self.nmod.nm_branches[m];
                 assert!(i_nd == br_m.nd_0_idx || i_nd == br_m.nd_1_idx);
                 let sgn = if i_nd == br_m.nd_0_idx {-1.0} else {1.0}; // Sign for injection into i_nd.
                 tot_i_in += sgn * br_m.i_01.expect("invariant violated for branch current");
             }
-            let br_m = &mut self.nmod.branches[nsi.m_br];
+            let br_m = &mut self.nmod.nm_branches[nsi.m_br];
             assert!(i_nd == br_m.nd_0_idx || i_nd == br_m.nd_1_idx);
             let sgn = if i_nd == br_m.nd_0_idx {1.0} else {-1.0}; // Sign for draw out of i_nd.
             let br_i = br_m.i_01.as_mut().expect("invariant violated for branch current");

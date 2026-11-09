@@ -4,7 +4,7 @@ use pyo3_stub_gen::derive::{gen_stub_pyclass_enum, gen_stub_pymethods};
 use ::griphos as gr;
 use gr::c64;
 use crate::plumbing::{element_subclass};
-use crate::network::{BusNodeId, bus_node_ids_to_gr};
+use crate::network::{NodeId, node_ids_to_gr};
 
 /// Tagged enum for power/voltage control in sources.
 #[pyclass(eq, from_py_object)]
@@ -61,7 +61,7 @@ element_subclass!(
     ///
     /// Args:
     ///     uid: The ID of the element.
-    ///     bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
+    ///     node_ids: list of NodeId containing (bus_id, phase) for terminals.
     ///     branches: Start and end terminals of each branch (current path) in the element.
     ///     control: `SourceControl` that specifies the type and parameters of voltage control, if any.
     ///     grounding: Optional list of terminal indices that are grounded.
@@ -73,67 +73,67 @@ impl Source {
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
     pub fn new_raw(
         uid: &str,
-        bus_node_ids: Vec<BusNodeId>,
+        node_ids: Vec<NodeId>,
         branches: Vec<(usize, usize)>,
         control: SourceControl,
         grounding: Option<Vec<usize>>,
     ) -> Self {
-        let gr_source = gr::Source::new(bus_node_ids.len(), branches, control.into(), grounding);
-        let bts = bus_node_ids_to_gr(bus_node_ids);
+        let gr_source = gr::Source::new(node_ids.len(), branches, control.into(), grounding);
+        let bts = node_ids_to_gr(node_ids);
         let elem = gr_source.into_element(uid, bts, false);
         Source::from_typed(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
-    pub fn new_wye_slack_raw(uid: &str, bus_node_ids: Vec<BusNodeId>, vmag: f64, is_grounded: bool) -> Self {
-        let n_phases = bus_node_ids.len() - 1;
+    pub fn new_wye_slack_raw(uid: &str, node_ids: Vec<NodeId>, vmag: f64, is_grounded: bool) -> Self {
+        let n_phases = node_ids.len() - 1;
         let gr_source = gr::Source::new_wye_slack(vmag, n_phases, is_grounded);
-        let bts = bus_node_ids_to_gr(bus_node_ids);
+        let bts = node_ids_to_gr(node_ids);
         let elem = gr_source.into_element(uid, bts, true);
         Source::from_typed(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
-    pub fn new_delta_slack_raw(uid: &str, bus_node_ids: Vec<BusNodeId>, vmag: f64) -> Self {
-        let n_phases = bus_node_ids.len();
+    pub fn new_delta_slack_raw(uid: &str, node_ids: Vec<NodeId>, vmag: f64) -> Self {
+        let n_phases = node_ids.len();
         let gr_source = gr::Source::new_delta_slack(vmag, n_phases);
-        let bts = bus_node_ids_to_gr(bus_node_ids);
+        let bts = node_ids_to_gr(node_ids);
         let elem = gr_source.into_element(uid, bts, true);
         Source::from_typed(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
-    pub fn new_wye_pv_raw(uid: &str, bus_node_ids: Vec<BusNodeId>, p_tot: f64, vmag: f64, is_grounded: bool) -> Self {
-        let n_phases = bus_node_ids.len() - 1;
+    pub fn new_wye_pv_raw(uid: &str, node_ids: Vec<NodeId>, p_tot: f64, vmag: f64, is_grounded: bool) -> Self {
+        let n_phases = node_ids.len() - 1;
         let gr_source = gr::Source::new_wye_pv(p_tot, vmag, n_phases, is_grounded);
-        let bts = bus_node_ids_to_gr(bus_node_ids);
+        let bts = node_ids_to_gr(node_ids);
         let elem = gr_source.into_element(uid, bts, true);
         Source::from_typed(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
-    pub fn new_delta_pv_raw(uid: &str, bus_node_ids: Vec<BusNodeId>, p_tot: f64, vmag: f64) -> Self {
-        let n_phases = bus_node_ids.len();
+    pub fn new_delta_pv_raw(uid: &str, node_ids: Vec<NodeId>, p_tot: f64, vmag: f64) -> Self {
+        let n_phases = node_ids.len();
         let gr_source = gr::Source::new_delta_pv(p_tot, vmag, n_phases);
-        let bts = bus_node_ids_to_gr(bus_node_ids);
+        let bts = node_ids_to_gr(node_ids);
         let elem = gr_source.into_element(uid, bts, true);
         Source::from_typed(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
-    pub fn new_wye_pq_raw(uid: &str, bus_node_ids: Vec<BusNodeId>, s_tot: c64, is_grounded: bool) -> Self {
-        let n_phases = bus_node_ids.len() - 1;
+    pub fn new_wye_pq_raw(uid: &str, node_ids: Vec<NodeId>, s_tot: c64, is_grounded: bool) -> Self {
+        let n_phases = node_ids.len() - 1;
         let gr_source = gr::Source::new_wye_pq(s_tot, n_phases, is_grounded);
-        let bts = bus_node_ids_to_gr(bus_node_ids);
+        let bts = node_ids_to_gr(node_ids);
         let elem = gr_source.into_element(uid, bts, true);
         Source::from_typed(elem)
     }
 
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
-    pub fn new_delta_pq_raw(uid: &str, bus_node_ids: Vec<BusNodeId>, s_tot: c64) -> Self {
-        let n_phases = bus_node_ids.len();
+    pub fn new_delta_pq_raw(uid: &str, node_ids: Vec<NodeId>, s_tot: c64) -> Self {
+        let n_phases = node_ids.len();
         let gr_source = gr::Source::new_delta_pq(s_tot, n_phases);
-        let bts = bus_node_ids_to_gr(bus_node_ids);
+        let bts = node_ids_to_gr(node_ids);
         let elem = gr_source.into_element(uid, bts, true);
         Source::from_typed(elem)
     }
@@ -146,52 +146,52 @@ impl Source {
     #[new]
     pub fn new(
         uid: &str,
-        bus_node_ids: Vec<BusNodeId>,
+        node_ids: Vec<NodeId>,
         branches: Vec<(usize, usize)>,
         control: SourceControl,
         grounding: Option<Vec<usize>>,
     ) -> PyClassInitializer<Self> {
-        Self::new_raw(uid, bus_node_ids, branches, control, grounding).into_initializer()
+        Self::new_raw(uid, node_ids, branches, control, grounding).into_initializer()
     }
 
     /// A new wye-connected slack source with default positive sequence reference angles.
     ///
     /// Args:
     ///     uid: The ID of the element.
-    ///     bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
+    ///     node_ids: list of NodeId containing (bus_id, phase) for terminals.
     ///     vmag: the controlled voltage magnitude, single value for all branches.
     ///     is_grounded: Is the neutral terminal grounded?
     ///
     /// Returns:
     ///     A new `Source` object.
     #[staticmethod]
-    pub fn new_wye_slack<'py>(py: Python<'py>, uid: &str, bus_node_ids: Vec<BusNodeId>, vmag: f64, is_grounded: bool)
+    pub fn new_wye_slack<'py>(py: Python<'py>, uid: &str, node_ids: Vec<NodeId>, vmag: f64, is_grounded: bool)
     -> PyResult<Bound<'py, Self>>
     {
-        Bound::new(py, Self::new_wye_slack_raw(uid, bus_node_ids, vmag, is_grounded).into_initializer())
+        Bound::new(py, Self::new_wye_slack_raw(uid, node_ids, vmag, is_grounded).into_initializer())
     }
 
     /// A new delta-connected slack source with default positive sequence reference angles.
     ///
     /// Args:
     ///     uid: The ID of the element.
-    ///     bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
+    ///     node_ids: list of NodeId containing (bus_id, phase) for terminals.
     ///     vmag: the controlled voltage magnitude, single value for all branches.
     ///
     /// Returns:
     ///     A new `Source` object.
     #[staticmethod]
-    pub fn new_delta_slack<'py>(py: Python<'py>, uid: &str, bus_node_ids: Vec<BusNodeId>, vmag: f64)
+    pub fn new_delta_slack<'py>(py: Python<'py>, uid: &str, node_ids: Vec<NodeId>, vmag: f64)
     -> PyResult<Bound<'py, Self>>
     {
-        Bound::new(py, Self::new_delta_slack_raw(uid, bus_node_ids, vmag).into_initializer())
+        Bound::new(py, Self::new_delta_slack_raw(uid, node_ids, vmag).into_initializer())
     }
 
     /// A new wye-connected PV source with default positive sequence reference angles.
     ///
     /// Args:
     ///     uid: The ID of the element.
-    ///     bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
+    ///     node_ids: list of NodeId containing (bus_id, phase) for terminals.
     ///     vmag: the controlled voltage magnitude, single value for all branches.
     ///     is_grounded: Is the neutral terminal grounded?
     ///
@@ -199,16 +199,16 @@ impl Source {
     ///     A new `Source` object.
     #[staticmethod]
     pub fn new_wye_pv<'py>(
-        py: Python<'py>, uid: &str, bus_node_ids: Vec<BusNodeId>, p_tot: f64, vmag: f64, is_grounded: bool
+        py: Python<'py>, uid: &str, node_ids: Vec<NodeId>, p_tot: f64, vmag: f64, is_grounded: bool
     ) -> PyResult<Bound<'py, Self>> {
-        Bound::new(py, Self::new_wye_pv_raw(uid, bus_node_ids, p_tot, vmag, is_grounded).into_initializer())
+        Bound::new(py, Self::new_wye_pv_raw(uid, node_ids, p_tot, vmag, is_grounded).into_initializer())
     }
 
     /// A new delta-connected PV source with default positive sequence reference angles.
     ///
     /// Args:
     ///     uid: The ID of the element.
-    ///     bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
+    ///     node_ids: list of NodeId containing (bus_id, phase) for terminals.
     ///     p_tot: the total real power, to be equally distributed among the branches.
     ///     vmag: the controlled voltage magnitude, single value for all branches.
     ///
@@ -216,40 +216,40 @@ impl Source {
     ///     A new `Source` object.
     #[staticmethod]
     pub fn new_delta_pv<'py>(
-        py: Python<'py>, uid: &str, bus_node_ids: Vec<BusNodeId>, p_tot: f64, vmag: f64
+        py: Python<'py>, uid: &str, node_ids: Vec<NodeId>, p_tot: f64, vmag: f64
     ) -> PyResult<Bound<'py, Self>> {
-        Bound::new(py, Self::new_delta_pv_raw(uid, bus_node_ids, p_tot, vmag).into_initializer())
+        Bound::new(py, Self::new_delta_pv_raw(uid, node_ids, p_tot, vmag).into_initializer())
     }
 
     /// A new wye-connected PQ (no voltage control) source with default positive sequence reference angles.
     ///
     /// Args:
     ///     uid: The ID of the element.
-    ///     bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
+    ///     node_ids: list of NodeId containing (bus_id, phase) for terminals.
     ///     s_tot: the total complex power, to be equally distributed among the branches.
     ///     is_grounded: Is the neutral terminal grounded?
     ///
     /// Returns:
     ///     A new `Source` object.
     #[staticmethod]
-    pub fn new_wye_pq<'py>(py: Python<'py>, uid: &str, bus_node_ids: Vec<BusNodeId>, s_tot: c64, is_grounded: bool)
+    pub fn new_wye_pq<'py>(py: Python<'py>, uid: &str, node_ids: Vec<NodeId>, s_tot: c64, is_grounded: bool)
     -> PyResult<Bound<'py, Self>> {
-        Bound::new(py, Self::new_wye_pq_raw(uid, bus_node_ids, s_tot, is_grounded).into_initializer())
+        Bound::new(py, Self::new_wye_pq_raw(uid, node_ids, s_tot, is_grounded).into_initializer())
     }
 
     /// A new delta-connected PQ (no voltage control) source with default positive sequence reference angles.
     ///
     /// Args:
     ///     uid: The ID of the element.
-    ///     bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
+    ///     node_ids: list of NodeId containing (bus_id, phase) for terminals.
     ///     s_tot: the total complex power, to be equally distributed among the branches.
     ///
     /// Returns:
     ///     A new `Source` object.
     #[staticmethod]
-    pub fn new_delta_pq<'py>(py: Python<'py>, uid: &str, bus_node_ids: Vec<BusNodeId>, s_tot: c64)
+    pub fn new_delta_pq<'py>(py: Python<'py>, uid: &str, node_ids: Vec<NodeId>, s_tot: c64)
     -> PyResult<Bound<'py, Self>> {
-        Bound::new(py, Self::new_delta_pq_raw(uid, bus_node_ids, s_tot).into_initializer())
+        Bound::new(py, Self::new_delta_pq_raw(uid, node_ids, s_tot).into_initializer())
     }
 }
 
@@ -262,9 +262,9 @@ mod tests {
     #[test]
     fn test_new_source() {
         let bts = vec![
-            BusNodeId {b: "bus_1".to_string(), p: Phase::A},
-            BusNodeId {b: "bus_1".to_string(), p: Phase::B},
-            BusNodeId {b: "bus_1".to_string(), p: Phase::C},
+            NodeId {b: "bus_1".to_string(), p: Phase::A},
+            NodeId {b: "bus_1".to_string(), p: Phase::B},
+            NodeId {b: "bus_1".to_string(), p: Phase::C},
         ];
         let branches = vec![(0, 1), (1, 2), (2, 0)];
         let source = Source::new_raw(

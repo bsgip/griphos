@@ -23,18 +23,18 @@ impl Connector {
 
     /// Wraps this connector as an [`Element`], bound to the given bus node IDs.
     ///
-    /// `bus_node_ids` must have length [`Connector::n_terms`].
+    /// `node_ids` must have length [`Connector::n_terms`].
     ///
     /// # Examples
     ///
     /// ```
-    /// # use griphos::{bn, BusNodeId, Connector, Phase, SwitchState};
+    /// # use griphos::{nd_id, NodeId, Connector, Phase, SwitchState};
     /// let connector = Connector::new(2, SwitchState::Closed);
-    /// let element = connector.into_element("c1", vec![bn!("bus_1", Phase::A), bn!("bus_2", Phase::A)]);
+    /// let element = connector.into_element("c1", vec![nd_id!("bus_1", Phase::A), nd_id!("bus_2", Phase::A)]);
     /// ```
-    pub fn into_element(self, uid: &str, bus_node_ids: Vec<BusNodeId>) -> Element<Self> {
-        assert!(bus_node_ids.len() == self.n_terms, "connector {} expects {} bus nodes", uid, self.n_terms);
-        Element::<Self>::new(uid.to_string(), bus_node_ids, self)
+    pub fn into_element(self, uid: &str, node_ids: Vec<NodeId>) -> Element<Self> {
+        assert!(node_ids.len() == self.n_terms, "connector {} expects {} bus nodes", uid, self.n_terms);
+        Element::<Self>::new(uid.to_string(), node_ids, self)
     }
 }
 

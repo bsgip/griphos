@@ -1,7 +1,7 @@
 //! A generic element that can have various functions.
 
 use crate::foundation::{CooMat, c64};
-use crate::network::{BusNodeId, Element, ElementSpec};
+use crate::network::{NodeId, Element, ElementSpec};
 use crate::TypeStrOf;
 
 /// A generic, non-specialized element.
@@ -47,8 +47,8 @@ impl GenericElement {
     }
 
     /// Wraps a GenericElement in an Element, with given bus nodes connections.
-    pub fn into_element(self, uid: &str, bus_node_ids: Vec<BusNodeId>) -> Element<Self> {
-        Element::<GenericElement>::new(uid.to_string(), bus_node_ids, self)
+    pub fn into_element(self, uid: &str, node_ids: Vec<NodeId>) -> Element<Self> {
+        Element::<GenericElement>::new(uid.to_string(), node_ids, self)
     }
 }
 

@@ -3,13 +3,13 @@ use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use ::griphos as gr;
 use crate::plumbing::{element_subclass};
-use crate::network::{BusNodeId, bus_node_ids_to_gr};
+use crate::network::{NodeId, node_ids_to_gr};
 
 element_subclass!(
     /// An element that grounds its terminals.
     ///
     /// Args:
-    ///     bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
+    ///     node_ids: list of NodeId containing (bus_id, phase) for terminals.
     ///
     /// Returns:
     ///     A new `Grounding` object.
@@ -21,10 +21,10 @@ impl Grounding {
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
     pub fn new_raw(
         uid: &str,
-        bus_node_ids: Vec<BusNodeId>,
+        node_ids: Vec<NodeId>,
     ) -> Self {
-        let gr_grounding = gr::Grounding::new(bus_node_ids.len());
-        let bts = bus_node_ids_to_gr(bus_node_ids);
+        let gr_grounding = gr::Grounding::new(node_ids.len());
+        let bts = node_ids_to_gr(node_ids);
         let elem = gr_grounding.into_element(uid, bts);
         Grounding::from_typed(elem)
     }
@@ -36,9 +36,9 @@ impl Grounding {
     #[new]
     pub fn new(
         uid: &str,
-        bus_node_ids: Vec<BusNodeId>,
+        node_ids: Vec<NodeId>,
     ) -> PyClassInitializer<Self> {
-        Self::new_raw(uid, bus_node_ids).into_initializer()
+        Self::new_raw(uid, node_ids).into_initializer()
     }
 }
 
@@ -50,9 +50,9 @@ mod tests {
     #[test]
     fn test_new_grounding() {
         let bts = vec![
-            BusNodeId {b: "bus_1".to_string(), p: Phase::A},
-            BusNodeId {b: "bus_1".to_string(), p: Phase::B},
-            BusNodeId {b: "bus_1".to_string(), p: Phase::C},
+            NodeId {b: "bus_1".to_string(), p: Phase::A},
+            NodeId {b: "bus_1".to_string(), p: Phase::B},
+            NodeId {b: "bus_1".to_string(), p: Phase::C},
         ];
         let grounding = Grounding::new_raw("new_grounding", bts);
         let grounding_ref = grounding.elem.borrow();

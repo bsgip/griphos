@@ -5,14 +5,14 @@ use pyo3_stub_gen::derive::gen_stub_pymethods;
 use ::griphos as gr;
 use gr::c64;
 use crate::plumbing::element_subclass;
-use crate::network::{BusNodeId, bus_node_ids_to_gr};
+use crate::network::{NodeId, node_ids_to_gr};
 
 element_subclass!(
     /// A load element, using a ZIP load model.
     ///
     /// Args:
     ///     uid: The ID of the element.
-    ///     bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
+    ///     node_ids: list of NodeId containing (bus_id, phase) for terminals.
     ///     branches: Start and end terminals of each branch (current path) in the element.
     ///     ld_y_const: The optional constant Y branch impedance matrix, as `((i, j), value)` tuples.
     ///     ld_i_const: The optional constant I branch impedance vector, as `(i, value)` tuples.
@@ -28,16 +28,16 @@ impl Load {
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
     pub fn new_raw(
         uid: &str,
-        bus_node_ids: Vec<BusNodeId>,
+        node_ids: Vec<NodeId>,
         branches: Vec<(usize, usize)>,
         ld_y_const: Option<Vec<c64>>,
         ld_i_const: Option<Vec<c64>>,
         ld_s_const: Option<Vec<c64>>,
         ld_grounding: Option<Vec<usize>>,
     ) -> Self {
-        let n_terms = bus_node_ids.len();
+        let n_terms = node_ids.len();
         let gr_load = gr::Load::new(n_terms, branches, ld_y_const, ld_i_const, ld_s_const, ld_grounding);
-        let gr_bts = bus_node_ids_to_gr(bus_node_ids);
+        let gr_bts = node_ids_to_gr(node_ids);
         let elem = gr_load.into_element(uid, gr_bts);
         Load::from_typed(elem)
     }
@@ -45,15 +45,15 @@ impl Load {
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
     pub fn new_raw_wye(
         uid: &str,
-        bus_node_ids: Vec<BusNodeId>,
+        node_ids: Vec<NodeId>,
         y_const: Option<Vec<c64>>,
         i_const: Option<Vec<c64>>,
         s_const: Option<Vec<c64>>,
         is_grounded: bool,
     ) -> Self {
-        let n_phases = bus_node_ids.len() - 1;
+        let n_phases = node_ids.len() - 1;
         let gr_load = gr::Load::new_wye(n_phases, y_const, i_const, s_const, is_grounded);
-        let gr_bts = bus_node_ids_to_gr(bus_node_ids);
+        let gr_bts = node_ids_to_gr(node_ids);
         let elem = gr_load.into_element(uid, gr_bts);
         Load::from_typed(elem)
     }
@@ -61,14 +61,14 @@ impl Load {
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
     pub fn new_raw_delta(
         uid: &str,
-        bus_node_ids: Vec<BusNodeId>,
+        node_ids: Vec<NodeId>,
         y_const: Option<Vec<c64>>,
         i_const: Option<Vec<c64>>,
         s_const: Option<Vec<c64>>,
     ) -> Self {
-        let n_phases = bus_node_ids.len();
+        let n_phases = node_ids.len();
         let gr_load = gr::Load::new_delta(n_phases, y_const, i_const, s_const);
-        let gr_bts = bus_node_ids_to_gr(bus_node_ids);
+        let gr_bts = node_ids_to_gr(node_ids);
         let elem = gr_load.into_element(uid, gr_bts);
         Load::from_typed(elem)
     }
@@ -80,21 +80,21 @@ impl Load {
     #[new]
     pub fn new(
         uid: &str,
-        bus_node_ids: Vec<BusNodeId>,
+        node_ids: Vec<NodeId>,
         branches: Vec<(usize, usize)>,
         ld_y_const: Option<Vec<c64>>,
         ld_i_const: Option<Vec<c64>>,
         ld_s_const: Option<Vec<c64>>,
         ld_grounding: Option<Vec<usize>>,
     ) -> PyClassInitializer<Self> {
-        Self::new_raw(uid, bus_node_ids, branches, ld_y_const, ld_i_const, ld_s_const, ld_grounding).into_initializer()
+        Self::new_raw(uid, node_ids, branches, ld_y_const, ld_i_const, ld_s_const, ld_grounding).into_initializer()
     }
 
     /// Creates a new wye connected load.
     ///
     /// Args:
     ///     uid: The ID of the element.
-    ///     bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals, with the final one being neutral.
+    ///     node_ids: list of NodeId containing (bus_id, phase) for terminals, with the final one being neutral.
     ///     y_const: Constant impedance component for each phase (branch) of the load.
     ///     i_const: Constant current component for each phase (branch) of the load.
     ///     s_const: Constant complex power component for each phase (branch) of the load.
@@ -103,20 +103,20 @@ impl Load {
     pub fn new_wye<'py>(
         py: Python<'py>,
         uid: &str,
-        bus_node_ids: Vec<BusNodeId>,
+        node_ids: Vec<NodeId>,
         y_const: Option<Vec<c64>>,
         i_const: Option<Vec<c64>>,
         s_const: Option<Vec<c64>>,
         is_grounded: bool,
     ) -> PyResult<Bound<'py, Self>> {
-        Bound::new(py, Self::new_raw_wye(uid, bus_node_ids, y_const, i_const, s_const, is_grounded).into_initializer())
+        Bound::new(py, Self::new_raw_wye(uid, node_ids, y_const, i_const, s_const, is_grounded).into_initializer())
     }
 
     /// Creates a new delta connected load.
     ///
     /// Args:
     ///     uid: The ID of the element.
-    ///     bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals.
+    ///     node_ids: list of NodeId containing (bus_id, phase) for terminals.
     ///     y_const: Constant impedance component for each phase (branch) of the load.
     ///     i_const: Constant current component for each phase (branch) of the load.
     ///     s_const: Constant complex power component for each phase (branch) of the load.
@@ -124,12 +124,12 @@ impl Load {
     pub fn new_delta<'py>(
         py: Python<'py>,
         uid: &str,
-        bus_node_ids: Vec<BusNodeId>,
+        node_ids: Vec<NodeId>,
         y_const: Option<Vec<c64>>,
         i_const: Option<Vec<c64>>,
         s_const: Option<Vec<c64>>,
     ) -> PyResult<Bound<'py, Self>> {
-        Bound::new(py, Self::new_raw_delta(uid, bus_node_ids, y_const, i_const, s_const).into_initializer())
+        Bound::new(py, Self::new_raw_delta(uid, node_ids, y_const, i_const, s_const).into_initializer())
     }
 
     #[getter]
@@ -195,10 +195,10 @@ mod tests {
     #[test]
     fn test_new_load() {
         let bts = vec![
-            BusNodeId {b: "bus_1".to_string(), p: Phase::A},
-            BusNodeId {b: "bus_1".to_string(), p: Phase::B},
-            BusNodeId {b: "bus_1".to_string(), p: Phase::C},
-            BusNodeId {b: "bus_1".to_string(), p: Phase::N},
+            NodeId {b: "bus_1".to_string(), p: Phase::A},
+            NodeId {b: "bus_1".to_string(), p: Phase::B},
+            NodeId {b: "bus_1".to_string(), p: Phase::C},
+            NodeId {b: "bus_1".to_string(), p: Phase::N},
         ];
         let y_const = vec![
             c!(1.0, 0.0),

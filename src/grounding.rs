@@ -19,8 +19,8 @@ impl Grounding {
     }
 
     /// Wraps grounding in an [`Element`] with the given terminal mapping.
-    pub fn into_element(self, uid: &str, bus_node_ids: Vec<BusNodeId>) -> Element<Self> {
-        Element::<Self>::new(uid.to_string(), bus_node_ids, self)
+    pub fn into_element(self, uid: &str, node_ids: Vec<NodeId>) -> Element<Self> {
+        Element::<Self>::new(uid.to_string(), node_ids, self)
     }
 }
 

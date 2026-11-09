@@ -3,12 +3,12 @@
 //! [`Network`]s comprise a list of [`Bus`]es and a list of [`Element`]s.
 //!
 //! Buses are nodes of the network, and consist of one or more blobs or bars of conductor with negligible resistance,
-//! the bus nodes, or [`BusNode`]s. [`BusNode`]s contain a [`Phase`] label and a voltage. Each [`BusNode`] is
-//! uniquely labelled by a [`BusNodeId`], recording the bus's UID and the phase.
+//! the bus nodes, or [`Node`]s. [`Node`]s contain a [`Phase`] label and a voltage. Each [`Node`] is
+//! uniquely labelled by a [`NodeId`], recording the bus's UID and the phase.
 //!
 //! [`Bus`]es are connected together by [`Element`]s of various types, which provide conductive pathways (termed
 //! *branches* in griphos) between pairs of bus nodes. Each [`Element`] has a given number of *terminals* (connection
-//! points), and is connected to the [`Network`] by assigning to each terminal a particular [`BusNodeId`]. Each of the
+//! points), and is connected to the [`Network`] by assigning to each terminal a particular [`NodeId`]. Each of the
 //! element's branches then provides a conductive pathway between a start terminal and an end terminal.
 //!
 //! For example, a three phase line with no neutral wire will have six terminals: three at the start of the line, and
@@ -146,66 +146,66 @@ pub fn delta_connection(n_phases: usize) -> Result<Vec<(usize, usize)>, String> 
 
 /// A bus UID / phase pair, that together serve to identify a single bus node.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct BusNodeId {
+pub struct NodeId {
     /// Bus uid.
     pub b: String,
     /// Phase.
     pub p: Phase
 }
 
-impl_g_serialize!(BusNodeId);
-impl fmt::Display for BusNodeId {
+impl_g_serialize!(NodeId);
+impl fmt::Display for NodeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Remove quotation marks
         write!(f, "{}:{}", self.b, self.p)
     }
 }
 
-/// Macro to create a [`BusNodeId`]
+/// Macro to create a [`NodeId`]
 ///
 /// # Examples
 ///
 /// ```
-/// # use griphos::{bn, BusNodeId, Phase};
-/// let bus_node = bn!("bus_1", Phase::A);
+/// # use griphos::{nd_id, NodeId, Phase};
+/// let node = nd_id!("bus_1", Phase::A);
 /// ```
 #[macro_export]
-macro_rules! bn {
+macro_rules! nd_id {
     ($b:expr, $p:expr) => {
-        BusNodeId {b: $b.to_string(), p: $p}
+        NodeId {b: $b.to_string(), p: $p}
     }
 }
 
 /// An element UID / branch index pair, that together serve to identify a particular branch of a particular element.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct ElemBranchId {
+pub struct BranchId {
     /// Element uid.
     pub e: String,
     /// Branch index.
     pub b: usize
 }
 
-impl_g_serialize!(ElemBranchId);
+impl_g_serialize!(BranchId);
 
-impl fmt::Display for ElemBranchId {
+impl fmt::Display for BranchId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Remove quotation marks
         write!(f, "{}:{}", self.e, self.b)
     }
 }
 
-/// Macro to create an [`ElemBranchId`]
+/// Macro to create an [`BranchId`]
 ///
 /// # Examples
 ///
 /// ```
-/// # use griphos::{eb, ElemBranchId};
-/// let elem_branch = eb!("element_1", 3);
+/// # use griphos::{br_id, BranchId};
+/// let br_id = br_id!("element_1", 3);
 /// ```
 #[macro_export]
-macro_rules! eb {
+macro_rules! br_id {
     ($e:expr, $b:expr) => {
-        ElemBranchId {e: $e.to_string(), b: $b}
+        BranchId {e: $e.to_string(), b: $b}
     }
 }
 
@@ -228,15 +228,30 @@ impl fmt::Display for Wiring {
 
 /// Per-phase data of a bus.
 #[derive(Clone, Debug, Serialize)]
-pub struct BusNode {
+pub struct Node {
     /// The phase
-    pub phase: Phase,
+    phase: Phase,
+
     /// Voltage
-    pub v: c64,
+    v: c64,
 }
 
-impl_g_serialize!(BusNode);
-impl_disp_from_fmt!(BusNode);
+impl Node {
+    pub fn phase(&self) -> Phase {
+        self.phase
+    }
+
+    pub fn v(&self) -> c64 {
+        self.v
+    }
+
+    pub fn set_v(&mut self, v: c64) {
+        self.v = v
+    }
+}
+
+impl_g_serialize!(Node);
+impl_disp_from_fmt!(Node);
 
 /// A bus is a collection of one or more nodes, each distinguished by a different phase.
 #[derive(Clone, Debug, Serialize)]
@@ -247,16 +262,15 @@ pub struct Bus {
     /// Base voltage in chosen units.
     pub v_base: f64,
 
-    /// Terminals
-    pub terms: Vec<BusNode>,
+    /// Nodes
+    pub nodes: Vec<Node>,
 }
 
 impl Bus {
     /// Creates a new [`Bus`].
     pub fn new(uid: &str, phases: Vec<Phase>, v_base: f64) -> Bus {
-        let terms: Vec<BusNode> = phases.iter()
-            .map(|phase| BusNode {phase: *phase, v: v_base * phase.v_nom_pu()}).collect();
-        Bus {uid: uid.to_string(), v_base, terms}
+        let nodes: Vec<Node> = phases.iter().map(|phase| Node {phase: *phase, v: v_base * phase.v_nom_pu()}).collect();
+        Bus {uid: uid.to_string(), v_base, nodes}
     }
 
     /// Reterns the unique ID of the Bus.
@@ -265,28 +279,28 @@ impl Bus {
     }
 
     /// Searches for the terminal of a bus that has phase `p`.
-    pub fn bus_node(&self, p: Phase) -> Option<&BusNode> {
-        self.terms.iter().find(|x| x.phase == p)
+    pub fn node(&self, p: Phase) -> Option<&Node> {
+        self.nodes.iter().find(|x| x.phase == p)
     }
 
-    /// Searches for the terminal of a bus that has phase `p`, mutable version.
-    pub fn bus_node_mut(&mut self, p: Phase) -> Option<&mut BusNode> {
-        self.terms.iter_mut().find(|x| x.phase == p)
+    /// Searches for the node of a bus that has phase `p`, mutable version.
+    pub fn node_mut(&mut self, p: Phase) -> Option<&mut Node> {
+        self.nodes.iter_mut().find(|x| x.phase == p)
     }
 
     /// Searches for the terminal index of a bus that has phase `p`.
-    pub fn i_bus_node(&self, p: Phase) -> Option<usize> {
-        self.terms.iter().position(|x| x.phase == p)
+    pub fn i_node(&self, p: Phase) -> Option<usize> {
+        self.nodes.iter().position(|x| x.phase == p)
     }
 
     /// Returns the terminal voltages as an [`Iterator`].
     pub fn vs(&self) -> impl Iterator<Item = c64> {
-        self.terms.iter().map(|t| t.v)
+        self.nodes.iter().map(|nd| nd.v)
     }
 
     /// Sets the terminal voltages using an [`Iterator`].
     pub fn set_vs(&mut self, vs: impl Iterator<Item=c64>) {
-        self.terms.iter_mut().zip(vs).for_each(|(t, v)| t.v = v);
+        self.nodes.iter_mut().zip(vs).for_each(|(nd, v)| nd.v = v);
     }
 }
 
@@ -295,15 +309,15 @@ impl_disp_from_fmt!(Bus);
 
 /// Per-branch data of an element
 #[derive(Clone, Debug, Default, Serialize)]
-pub struct ElemBranch {
+pub struct BranchState {
     /// Branch voltage. For branch (i, j), v is defined v_i - v_j.
     pub v: c64,
     /// Branch current. For branch (i, j), i has directionality i -> j.
     pub i: c64,
 }
 
-impl_g_serialize!(ElemBranch);
-impl_disp_from_fmt!(ElemBranch);
+impl_g_serialize!(BranchState);
+impl_disp_from_fmt!(BranchState);
 
 /// Common data of all elements.
 #[derive(Debug)]
@@ -315,10 +329,10 @@ pub struct ElementCommon {
     pub is_in_service: bool,
 
     /// Key of which bus/phases the terminals are connected to.
-    pub bus_node_ids: Vec<BusNodeId>,
+    pub node_ids: Vec<NodeId>,
 
-    /// The branch info, a vector of [`ElemBranch`] of the element.
-    pub branches: Vec<ElemBranch>,
+    /// The branch info, a vector of [`BranchState`] of the element.
+    pub branch_states: Vec<BranchState>,
 }
 
 /// Trait for types that have an associated type_str string. Each ElementSpec must implement this by hand.
@@ -508,25 +522,63 @@ impl<S: ElementSpec + ?Sized> Element<S> {
 }
 
 /// Convenience struct that gathers all the information about the branches of an [`Element`].
-#[derive(Debug)]
-pub struct ConnectedBranchItem<'a> {
-    pub term_idxs: (usize, usize),
-    pub bus_node_ids: (&'a BusNodeId, &'a BusNodeId),
-    pub state: &'a ElemBranch,
+#[derive(Debug, Clone, Copy)]
+pub struct BranchView<'a, S> {
+    term_idxs: (usize, usize),
+    node_ids: (&'a NodeId, &'a NodeId),
+    state: S,
 }
+
+impl<'a, S: Deref<Target = BranchState>> BranchView<'a, S> {
+    pub fn term_idxs(&self) -> &(usize, usize) {
+        &self.term_idxs
+    }
+
+    pub fn node_ids(&self) -> &(&'a NodeId, &'a NodeId) {
+        &self.node_ids
+    }
+
+    pub fn v(&self) -> c64 {
+        self.state.v
+    }
+
+    pub fn i(&self) -> c64 {
+        self.state.i
+    }
+}
+
+impl<'a, S: DerefMut<Target = BranchState>> BranchView<'a, S> {
+    pub fn set_v(&mut self, v: c64) {
+        self.state.v = v;
+    }
+
+    pub fn set_i(&mut self, i: c64) {
+        self.state.i = i;
+    }
+}
+
+/// Convenience struct that gathers all the information about the branches of an [`Element`].
+///
+/// Read-only view of a branch.
+pub type Branch<'a> = BranchView<'a, &'a BranchState>;
+
+/// Convenience struct that gathers all the information about the branches of an [`Element`].
+///
+/// View of a branch with mutable access to `state` only.
+pub type BranchMut<'a> = BranchView<'a, &'a mut BranchState>;
 
 // Implementation on specific elements.
 impl<S: ElementSpec> Element<S> {
     /// Creates a new [`Element`], given the unique ID, the bus/phase connectivity, and the [`ElementSpec`] of type `S`.
     pub fn new(
-        uid: String, bus_node_ids: Vec<BusNodeId>, spec: S,
+        uid: String, node_ids: Vec<NodeId>, spec: S,
     ) -> Self {
         spec.validate().expect("tried to create an element with a bad ElementSpec");
         let n_terms = spec.n_terms();
-        assert!(bus_node_ids.len() == n_terms, "Element expects {} bus_node_ids", n_terms);
+        assert!(node_ids.len() == n_terms, "Element expects {} node_ids", n_terms);
         let n_branches = spec.n_branches();
-        let branches = vec![ElemBranch::default(); n_branches];
-        let common = ElementCommon { uid, is_in_service: true, bus_node_ids, branches };
+        let branch_states = vec![BranchState::default(); n_branches];
+        let common = ElementCommon { uid, is_in_service: true, node_ids, branch_states };
         Self::from_inner(ElementInner { common, spec: Box::new(spec) }.into_shared())
     }
 
@@ -595,32 +647,31 @@ where
         self.common.is_in_service
     }
 
-    /// Returns a reference to the [`BusNodeId`]s of the element.
-    pub fn bus_node_ids(&self) -> &[BusNodeId] {
-        &self.common.bus_node_ids
+    /// Returns a reference to the [`NodeId`]s of the element.
+    pub fn node_ids(&self) -> &[NodeId] {
+        &self.common.node_ids
     }
 
-    /// Returns a reference to the [`ElemBranch`]es of the element.
-    pub fn branches(&self) -> &[ElemBranch] {
-        &self.common.branches
+    /// Convenience function that returns a mutable state view into branch `i`.
+    pub fn branch(&self, i: usize) -> Option<Branch<'_>> {
+        let &term_idxs = self.branch_wiring().get(i)?;
+        let common = &*self.common;
+        let bnis = &common.node_ids;
+        let state = common.branch_states.get(i)?;
+        Some(Branch {term_idxs, node_ids: (&bnis[term_idxs.0], &bnis[term_idxs.1]), state })
     }
 
     /// Convenience function that returns a view into the branches that encodes all relevant data.
-    ///
-    /// Returns a `((`[`BusNodeId`]`, (`[`BusNodeId`]`), `[`ElemBranch`]`)` tuple.
-    pub fn branches_connected(&self) -> impl Iterator<Item = ConnectedBranchItem<'_>> {
-        let bnis = self.bus_node_ids();
-        self.branch_wiring()
-            .into_iter()
-            .zip(self.branches().iter())
-            .map(
-                move |((i, j), br)|
-                ConnectedBranchItem {
-                    term_idxs: (i, j),
-                    bus_node_ids: (&bnis[i], &bnis[j]),
-                    state: br
-                }
-            )
+    pub fn branches(&self) -> impl Iterator<Item = Branch<'_>> {
+        let bnis = self.node_ids();
+        self.branch_wiring().into_iter().zip(self.common.branch_states.iter()).map(
+            move |((i, j), state)|
+            Branch {
+                term_idxs: (i, j),
+                node_ids: (&bnis[i], &bnis[j]),
+                state
+            }
+        )
     }
 
     /// Type string of an element, corresponding to the dynamic type of its `spec`.
@@ -695,9 +746,9 @@ where
         state.serialize_field("uid", &self.common.uid)?;
         state.serialize_field("element_type", &self.element_type())?;
         state.serialize_field("is_in_service", &self.is_in_service())?;
-        state.serialize_field("bus_node_ids", &self.bus_node_ids())?;
+        state.serialize_field("node_ids", &self.node_ids())?;
         state.serialize_field("n_terms", &self.n_terms())?;
-        state.serialize_field("branches", &self.branches())?;
+        state.serialize_field("branch_states", &self.common.branch_states)?;
         state.serialize_field("branch_wiring", &self.branch_wiring())?;
         state.serialize_field("y_const", &self.y_const())?;
         state.serialize_field("i_const", &self.i_const())?;
@@ -716,9 +767,28 @@ impl<'a, S: ElementSpec + ?Sized> ElementBorrowedMut<'a, S> {
         self.common.is_in_service = is_in_service
     }
 
-    /// Returns a mutable slice of the [`ElemBranch`]es of the element.
-    pub fn branches_mut(&mut self) -> &mut [ElemBranch] {
-        &mut self.common.branches
+    /// Convenience function that returns a mutable state view into branch `i`.
+    pub fn branch_mut(&mut self, i: usize) -> Option<BranchMut<'_>> {
+        let &term_idxs = self.branch_wiring().get(i)?;
+        let common = &mut *self.common;
+        let bnis = &common.node_ids;
+        let state = common.branch_states.get_mut(i)?;
+        Some(BranchMut { term_idxs, node_ids: (&bnis[term_idxs.0], &bnis[term_idxs.1]), state })
+    }
+
+    /// Convenience function that returns a mutable state view into the branches that encodes all relevant data.
+    pub fn branches_mut(&mut self) -> impl Iterator<Item = BranchMut<'_>> {
+        let wiring = self.branch_wiring();
+        let common = &mut *self.common;
+        let bnis = &common.node_ids;
+        let states = &mut common.branch_states;
+        wiring.into_iter().zip(states.iter_mut()).map(
+            move |((i, j), state)| BranchView {
+                term_idxs: (i, j),
+                node_ids: (&bnis[i], &bnis[j]),
+                state,
+            }
+        )
     }
 }
 
@@ -915,8 +985,8 @@ mod tests {
     }
 
     impl<T: ElementSpecParam> Foo<T> {
-        pub fn into_element(self, uid: &str, bus_node_ids: Vec<BusNodeId>) -> Element<Self> {
-            Element::<Self>::new(uid.to_string(), bus_node_ids, self)
+        pub fn into_element(self, uid: &str, node_ids: Vec<NodeId>) -> Element<Self> {
+            Element::<Self>::new(uid.to_string(), node_ids, self)
         }
     }
 
@@ -924,7 +994,7 @@ mod tests {
     fn downcast_roundtrip() {
         let e = Foo::<i32> { t: 7 }.into_element(
             "foo",
-            vec![bn!("bus_1", Phase::A), bn!("bus_1", Phase::B)],
+            vec![nd_id!("bus_1", Phase::A), nd_id!("bus_1", Phase::B)],
         );
         assert!(e.borrow().spec.t == 7);
         let e: Element = e.erase();

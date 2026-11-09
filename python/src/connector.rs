@@ -3,7 +3,7 @@ use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use ::griphos as gr;
 use crate::plumbing::{element_subclass};
-use crate::network::{BusNodeId, bus_node_ids_to_gr, SwitchState};
+use crate::network::{NodeId, node_ids_to_gr, SwitchState};
 
 element_subclass!(
     /// A simple connector element for joining (copperplating) multiple bus nodes.
@@ -13,7 +13,7 @@ element_subclass!(
     ///
     /// Args:
     ///     uid: the element ID
-    ///     bus_node_ids: list of BusNodeId containing (bus_id, phase) for terminals
+    ///     node_ids: list of NodeId containing (bus_id, phase) for terminals
     ///     switch_state: SwitchState that can be NoSwitch, Open or Closed
     ///
     /// Returns:
@@ -26,11 +26,11 @@ impl Connector {
     // Plain-Rust constructor: no PyO3 involved, enables testing within rust.
     pub fn new_raw(
         uid: &str,
-        bus_node_ids: Vec<BusNodeId>,
+        node_ids: Vec<NodeId>,
         switch_state: SwitchState,
     ) -> Self {
-        let gr_connector = gr::Connector::new(bus_node_ids.len(), switch_state.into());
-        let bts = bus_node_ids_to_gr(bus_node_ids);
+        let gr_connector = gr::Connector::new(node_ids.len(), switch_state.into());
+        let bts = node_ids_to_gr(node_ids);
         let elem = gr_connector.into_element(uid, bts);
         Connector::from_typed(elem)
     }
@@ -42,10 +42,10 @@ impl Connector {
     #[new]
     pub fn new(
         uid: &str,
-        bus_node_ids: Vec<BusNodeId>,
+        node_ids: Vec<NodeId>,
         switch_state: SwitchState,
     ) -> PyClassInitializer<Self> {
-        Self::new_raw(uid, bus_node_ids, switch_state).into_initializer()
+        Self::new_raw(uid, node_ids, switch_state).into_initializer()
     }
 }
 
@@ -57,9 +57,9 @@ mod tests {
     #[test]
     fn test_new_connector() {
         let bts = vec![
-            BusNodeId {b: "bus_1".to_string(), p: Phase::A},
-            BusNodeId {b: "bus_1".to_string(), p: Phase::B},
-            BusNodeId {b: "bus_1".to_string(), p: Phase::C},
+            NodeId {b: "bus_1".to_string(), p: Phase::A},
+            NodeId {b: "bus_1".to_string(), p: Phase::B},
+            NodeId {b: "bus_1".to_string(), p: Phase::C},
         ];
         let connector = Connector::new_raw("new_connector", bts, SwitchState::Closed);
         assert!(connector.elem.borrow().uid() == "new_connector");

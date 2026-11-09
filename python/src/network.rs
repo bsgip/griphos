@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use pyo3::exceptions::PyIndexError;
 use pyo3_stub_gen::derive::{gen_stub_pymethods};
 
 use ::griphos as gr;
@@ -22,37 +23,85 @@ py_enum!(
 
 py_value!(
     /// A bus UID / phase pair, that together serve to identify a single bus node.
-    BusNodeId,
-    gr::BusNodeId { pub b: String, pub p: Phase }
+    NodeId,
+    gr::NodeId { pub b: String, pub p: Phase }
 );
 
 /// Create a bus node id from a bus uid and a phase.
 #[pyfunction]
-pub fn bn(b: String, p: Phase) -> BusNodeId {
-    BusNodeId { b, p }
+pub fn nd_id(b: String, p: Phase) -> NodeId {
+    NodeId { b, p }
 }
 
-/// Utility function to map a Vec of BusNodeIds to griphos equivalent.
-pub(crate) fn bus_node_ids_to_gr(bus_node_ids: Vec<BusNodeId>) -> Vec<gr::BusNodeId> {
-    bus_node_ids.into_iter().map(|x| x.into()).collect()
+/// Utility function to map a Vec of NodeIds to griphos equivalent.
+pub(crate) fn node_ids_to_gr(node_ids: Vec<NodeId>) -> Vec<gr::NodeId> {
+    node_ids.into_iter().map(|x| x.into()).collect()
 }
 
 py_value!(
     /// An element UID / branch index pair, that together serve to identify a particular branch of a particular element.
-    ElemBranchId,
-    gr::ElemBranchId { pub e: String, pub b: usize }
+    BranchId,
+    gr::BranchId { pub e: String, pub b: usize }
 );
 
-py_value!(
-    /// Per-branch data of an element
-    ElemBranch,
-    gr::ElemBranch {
-        /// The voltage of the branch, v_term_0 - v_term_1.
-        pub v: c64,
-        /// The current of the branch, oriented from terminal 0 to terminal 1.
-        pub i: c64
+#[pyo3_stub_gen::derive::gen_stub_pyclass]
+#[pyclass(module = "griphos", unsendable)]
+pub struct Branch {
+    elem: gr::Element, // shared handle, same type as `Element.inner`
+    idx: usize,
+}
+
+impl Branch {
+    pub(crate) fn out_of_range() -> PyErr {
+        PyIndexError::new_err("branch index out of range")
     }
-);
+
+    fn with<R>(&self, f: impl FnOnce(gr::Branch<'_>) -> R) -> PyResult<R> {
+        let e = self.elem.borrow(); // placeholder: however gr::Element exposes shared access
+        let b = e.branch(self.idx).ok_or_else(Self::out_of_range)?;
+        Ok(f(b))
+    }
+
+    fn with_mut<R>(&self, f: impl FnOnce(gr::BranchMut<'_>) -> R) -> PyResult<R> {
+        let mut e = self.elem.borrow_mut(); // placeholder: exclusive access
+        let b = e.branch_mut(self.idx).ok_or_else(Self::out_of_range)?;
+        Ok(f(b))
+    }
+}
+
+#[pyo3_stub_gen::derive::gen_stub_pymethods]
+#[pymethods]
+impl Branch {
+    #[getter]
+    fn term_idxs(&self) -> PyResult<(usize, usize)> {
+        self.with(|b| b.term_idxs().clone())
+    }
+
+    #[getter]
+    fn node_ids(&self) -> PyResult<(NodeId, NodeId)> {
+        self.with(|b| (b.node_ids().0.clone().into(), b.node_ids().1.clone().into()))
+    }
+
+    #[getter]
+    fn v(&self) -> PyResult<c64> {
+        self.with(|b| b.v())
+    }
+
+    #[setter]
+    fn set_v(&self, v: c64) -> PyResult<()> {
+        self.with_mut(|mut b| b.set_v(v))
+    }
+
+    #[getter]
+    fn i(&self) -> PyResult<c64> {
+        self.with(|b| b.i())
+    }
+
+    #[setter]
+    fn set_i(&self, i: c64) -> PyResult<()> {
+        self.with_mut(|mut b| b.set_i(i))
+    }
+}
 
 py_wrapper!(
     /// A bus is a collection of one or more nodes, each distinguished by a different phase.
@@ -85,20 +134,20 @@ impl Bus {
     /// The phases of each bus node.
     #[getter]
     fn phases(&self) -> Vec<Phase> {
-        self.inner.borrow().terms.iter().map(|t| Phase::from(t.phase)).collect()
+        self.inner.borrow().nodes.iter().map(|nd| Phase::from(nd.phase())).collect()
     }
 
     /// The complex voltages of each bus node.
     #[getter]
     fn vs(&self) -> Vec<c64> {
-        self.inner.borrow().terms.iter().map(|t| t.v).collect()
+        self.inner.borrow().nodes.iter().map(|nd| nd.v()).collect()
     }
 
     /// Set the complex voltages of each bus node.
     #[setter]
     fn set_vs(&self, vs: Vec<c64>) {
-        for (term, v) in self.inner.borrow_mut().terms.iter_mut().zip(vs) {
-            term.v = v;
+        for (nd, v) in self.inner.borrow_mut().nodes.iter_mut().zip(vs) {
+            nd.set_v(v);
         }
     }
 
