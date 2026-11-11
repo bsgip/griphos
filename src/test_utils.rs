@@ -46,15 +46,6 @@ pub fn bus_uid(netw: &Network) -> String {
 
 // Creates the UID of the next element to be added.
 pub fn elem_uid<T: ElementSpec>(netw: &Network) -> String {
-    println!("\nT = {}", T::type_str_of());
-    println!("typed");
-    for e in netw.elements_of_type::<T>() {
-        println!("    {}", e.borrow().uid());
-    }
-    println!("untyped");
-    for e in netw.elements() {
-        println!("    {}", e.borrow().uid());
-    }
     format!("{}_{}", T::type_str_of(), netw.elements_of_type::<T>().count())
 }
 

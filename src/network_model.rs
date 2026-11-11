@@ -63,14 +63,14 @@ pub struct NmBranch {
     /// Voltage v_01 = v0 - v1
     pub v_01: Option<c64>,
 
-    /// Current i->j
+    /// Current 0->1
     pub i_01: Option<c64>,
 }
 
 impl NmBranch {
     /// Creates a new branch.
     fn new(nd_0_idx: usize, nd_1_idx: usize, v_nom: c64) -> NmBranch {
-        NmBranch {nd_0_idx, nd_1_idx, v_nom, v_01: None, i_01: None}
+        NmBranch { nd_0_idx, nd_1_idx, v_nom, v_01: None, i_01: None }
     }
 }
 

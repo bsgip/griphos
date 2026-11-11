@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 use log::{debug, info};
+use petgraph::prelude::NodeIndex;
+use petgraph::visit::EdgeRef;
 
 use crate::foundation::*;
 use crate::klu::solve_klu;
@@ -88,14 +90,6 @@ impl Vc {
     }
 }
 
-/// Voltage control type - either voltage controlled slack, voltage controlled PV, PQ (uncontrolled) or grounded.
-pub enum CtrlType {
-    Sl,
-    Pv,
-    Pq,
-    Gr,
-}
-
 /// Additional info all nodes.
 #[derive(Clone, Debug)]
 pub struct NodeInfo {
@@ -115,11 +109,18 @@ pub struct BranchSrcInfo {
     pub ieqn_vm_c: Option<usize>,
 }
 
-/// Additional info for PV sources at nodes.
-#[derive(Clone, Debug, Default)]
-pub struct NodeSrcInfo {
-    pub qs: Vc,
-    pub ieqn_vm_c: Option<usize>,
+/// Additional info for SL sources at nodes.
+#[derive(Clone, Debug)]
+pub struct SlNodeSrcInfo {
+    m_br: usize,
+}
+
+/// Additional info for Pv sources at nodes.
+#[derive(Clone, Debug)]
+pub struct PvNodeSrcInfo {
+    m_br: usize,
+    pub ivar_qs: usize,
+    pub ieqn_vm_c: usize,
 }
 
 /// Enum for different kinds of variables.
@@ -221,24 +222,31 @@ pub struct NodalRectSolver {
     /// The [`NodeInfo`]s.
     pub node_infos: Vec<NodeInfo>,
 
-    /// The [`NodeSrcInfo`]s.
-    pub node_src_infos: HashMap<usize, NodeSrcInfo>,
-    /// The [`BranchSrcInfo`]s.
+    /// The [`SlNodeSrcInfo`]s indexed by node index.
+    pub sl_node_src_infos: HashMap<usize, SlNodeSrcInfo>,
+
+    /// The [`PvNodeSrcInfo`]s indexed by node index.
+    pub pv_node_src_infos: HashMap<usize, PvNodeSrcInfo>,
+
+    /// The [`BranchSrcInfo`]s indexed by node index.
     pub branch_src_infos: HashMap<usize, BranchSrcInfo>,
 
     /// The variable infos.
     pub var_infos: Vec<VarInfo>,
+
     /// The equation kinds.
     pub eqn_kinds: Vec<EqnKind>,
 
     /// The variable values.
     pub vars: Vec<f64>,
+
     /// The RHS (equality constraint) values.
     pub rhs: Vec<f64>,
+
     /// CSC representation of the Jacobian matrix.
     pub jac_csc: CsMatI<f64, i32>, // i32 indexing for compatibility with KLU.
-    /// The ordered indices into the CSC storage, for more efficient re-creation of the Jacobian when re-using the
-    /// solver.
+
+    /// The ordered indices into the CSC storage, for more efficient re-creation of the Jacobian.
     pub jac_csc_idxs: Vec<usize>,
 }
 
@@ -249,7 +257,8 @@ impl NodalRectSolver {
             params: Params::default(),
             nmod,
             node_infos: vec![],
-            node_src_infos: HashMap::new(),
+            sl_node_src_infos: HashMap::new(),
+            pv_node_src_infos: HashMap::new(),
             branch_src_infos: HashMap::new(),
             var_infos: vec![],
             eqn_kinds: vec![],
@@ -272,7 +281,9 @@ impl NodalRectSolver {
     pub fn init(&mut self) {
         if self.nmod.nodes.is_empty() {return;}
 
-        let mut nd_src_info: Vec<[Option<f64>; 2]> = vec![[None, None]; self.nmod.nodes.len()];
+        let mut nd_src_info: Vec<(Option<usize>, [Option<f64>; 2])> = vec![
+            (None, [None, None]); self.nmod.nodes.len()
+        ];
         let mut br_src_info: Vec<[Option<f64>; 2]> = vec![[None, None]; self.nmod.branches.len()];
 
         let mut f = |v: &CsVec<f64>, i: usize| {
@@ -285,10 +296,14 @@ impl NodalRectSolver {
                         br_src_info[m_br][i] = Some(x);
                     },
                     (false, true) => {
-                        nd_src_info[br.nd_0_idx][i] = Some(x);
+                        nd_src_info[br.nd_0_idx].0 = Some(m_br);
+                        assert!(nd_src_info[br.nd_0_idx].1[i].is_none(), "two node sources for node {i}");
+                        nd_src_info[br.nd_0_idx].1[i] = Some(x);
                     },
                     (true, false) => {
-                        nd_src_info[br.nd_1_idx][i] = Some(-x);
+                        nd_src_info[br.nd_0_idx].0 = Some(m_br);
+                        assert!(nd_src_info[br.nd_1_idx].1[i].is_none(), "two node sources for node {i}");
+                        nd_src_info[br.nd_1_idx].1[i] = Some(-x);
                     },
                     (true, true) => {
                         panic!("Voltage controlled branch with both nodes grounded.");
@@ -300,8 +315,8 @@ impl NodalRectSolver {
         f(&self.nmod.vang_const, 1);
 
         let n_ground = self.nmod.nodes.iter().filter(|nd| nd.is_grounded).count();
-        let n_nd_sl = nd_src_info.iter().filter(|[vmc, vac]| vmc.is_some() && vac.is_some()).count();
-        let n_nd_pv = nd_src_info.iter().filter(|[vmc, vac]| vmc.is_some() && vac.is_none()).count();
+        let n_nd_sl = nd_src_info.iter().filter(|(_, [vmc, vac])| vmc.is_some() && vac.is_some()).count();
+        let n_nd_pv = nd_src_info.iter().filter(|(_, [vmc, vac])| vmc.is_some() && vac.is_none()).count();
         let n_br_sl = br_src_info.iter().filter(|[vmc, vac]| vmc.is_some() && vac.is_some()).count();
         let n_br_pv = br_src_info.iter().filter(|[vmc, vac]| vmc.is_some() && vac.is_none()).count();
         let n_not_const = self.nmod.nodes.len() - n_ground - n_nd_sl;
@@ -318,7 +333,8 @@ impl NodalRectSolver {
 
         self.node_infos.clear(); self.node_infos.reserve(self.nmod.nodes.len());
 
-        self.node_src_infos.clear();
+        self.sl_node_src_infos.clear();
+        self.pv_node_src_infos.clear();
         self.branch_src_infos.clear();
 
         self.var_infos.clear(); self.var_infos.reserve(ndim);
@@ -326,7 +342,7 @@ impl NodalRectSolver {
 
         let mut idim: usize = 0;
 
-        for (i_nd, (nd, ngi)) in self.nmod.nodes.iter().zip(nd_src_info.iter()).enumerate() {
+        for (i_nd, (nd, nsi)) in self.nmod.nodes.iter().zip(nd_src_info.iter()).enumerate() {
             if nd.is_grounded {
                 // Ground node
                 self.node_infos.push(
@@ -334,8 +350,8 @@ impl NodalRectSolver {
                 );
             }
             else {
-                match ngi {
-                    [Some(vmc), Some(vac)] => {
+                match nsi {
+                    (Some(m_br), [Some(vmc), Some(vac)]) => {
                         // Slack node
                         let c64 {re: vrc, im: vic} = p!(*vmc, *vac);
                         self.node_infos.push(
@@ -346,8 +362,15 @@ impl NodalRectSolver {
                                 ieqn_kcl_im: None,
                             }
                         );
+
+                        self.sl_node_src_infos.insert(
+                            i_nd,
+                            SlNodeSrcInfo {
+                                m_br: *m_br,
+                            }
+                        );
                     },
-                    [Some(vmc), None] => {
+                    (Some(m_br), [Some(vmc), None]) => {
                         // PV node
                         let x0 = vmc * nd.v_nom / nd.v_nom.abs();
                         self.node_infos.push(
@@ -359,11 +382,14 @@ impl NodalRectSolver {
                             }
                         );
 
-                        self.node_src_infos.insert(
+                        self.pv_node_src_infos.insert(
                             i_nd,
-                            NodeSrcInfo {qs: Vc::Var {i: idim + 2}, ieqn_vm_c: Some(idim + 2)}
+                            PvNodeSrcInfo {
+                                m_br: *m_br,
+                                ivar_qs: idim + 2,
+                                ieqn_vm_c: idim + 2,
+                            }
                         );
-                        // TODO
 
                         self.var_infos.push(VarInfo {kind:VarKind::Vr {nd_idx: i_nd}, x0: x0.re});
                         self.var_infos.push(VarInfo {kind: VarKind::Vi {nd_idx: i_nd}, x0: x0.im});
@@ -375,7 +401,7 @@ impl NodalRectSolver {
 
                         idim += 3;
                     },
-                    [None, None] => {
+                    (None, [None, None]) => {
                         // PQ Node
                         self.node_infos.push(
                             NodeInfo {
@@ -407,10 +433,10 @@ impl NodalRectSolver {
                     self.branch_src_infos.insert(
                         m_br,
                         BranchSrcInfo {
-                            ps: Vc::Var {i: idim},
-                            qs: Vc::Var {i: idim + 1},
+                            ps: Vc::Var { i: idim },
+                            qs: Vc::Var { i: idim + 1 },
                             ieqn_vr_c: Some(idim),
-                            ieqn_vi_c: Some(idim + 1),
+                            ieqn_vi_c: Some(idim),
                             ..Default::default()
                         }
                     );
@@ -428,7 +454,7 @@ impl NodalRectSolver {
                     self.branch_src_infos.insert(
                         m_br,
                         BranchSrcInfo {
-                            qs: Vc::Var{i: idim},
+                            qs: Vc::Var { i: idim },
                             ieqn_vm_c: Some(idim),
                             ..Default::default()
                         }
@@ -451,7 +477,8 @@ impl NodalRectSolver {
 
         assert!(idim == ndim);
         assert!(self.node_infos.len() == self.nmod.nodes.len());
-        assert!(self.node_src_infos.len() == n_nd_pv);
+        assert!(self.sl_node_src_infos.len() == n_nd_sl);
+        assert!(self.pv_node_src_infos.len() == n_nd_pv);
         assert!(self.branch_src_infos.len() == n_br_sl + n_br_pv);
         assert!(self.var_infos.len() == ndim);
         assert!(self.eqn_kinds.len() == ndim);
@@ -686,8 +713,10 @@ impl NodalRectSolver {
             }
         }
 
-        // Terms involving node ps and qs in KCL; constant voltage magnitude for nodes.
-        for (&i, ngi_i) in self.node_src_infos.iter() {
+        // Terms involving node qs in KCL; constant voltage magnitude for nodes.
+        // Note we're being a bit more general here to accommodate some possible small future design changes.
+        // It should make almost zero difference computationally.
+        for (&i, nsi_i) in self.pv_node_src_infos.iter() {
             let nd_info_i = &self.node_infos[i];
             let vr_i = nd_info_i.vr.val(&self.vars);
             let vi_i = nd_info_i.vi.val(&self.vars);
@@ -697,14 +726,12 @@ impl NodalRectSolver {
             let v2_i_diff = vr_i_2 - vi_i_2;
             let vm_i_n4 = vm_i_2.powi(-2);
 
-            let qs = ngi_i.qs.val(&self.vars);
+            let qs = self.vars[nsi_i.ivar_qs];
 
             if let Some(ieqn) = nd_info_i.ieqn_kcl_re {
                 self.rhs[ieqn] += -qs * vi_i / vm_i_2;
 
-                if let Vc::Var{i: ivar} = ngi_i.qs {
-                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -vi_i / vm_i_2);
-                }
+                jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, nsi_i.ivar_qs, -vi_i / vm_i_2);
 
                 if let Vc::Var {i: ivar} = nd_info_i.vr {
                     jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, 2.0 * qs * vi_i * vr_i * vm_i_n4);
@@ -713,15 +740,12 @@ impl NodalRectSolver {
                 if let Vc::Var {i: ivar} = nd_info_i.vi {
                     jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -qs * v2_i_diff * vm_i_n4);
                 }
-
             }
 
             if let Some(ieqn) = nd_info_i.ieqn_kcl_im {
                 self.rhs[ieqn] += qs * vr_i / vm_i_2;
 
-                if let Vc::Var{i: ivar} = ngi_i.qs {
-                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, vr_i / vm_i_2);
-                }
+                jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, nsi_i.ivar_qs, vr_i / vm_i_2);
 
                 if let Vc::Var {i: ivar} = nd_info_i.vr {
                     jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, -qs * v2_i_diff * vm_i_n4);
@@ -732,16 +756,17 @@ impl NodalRectSolver {
                 }
             }
 
-            if let Some(ieqn) = ngi_i.ieqn_vm_c && let EqnKind::VmConstNd{nd_idx: _, vm} = self.eqn_kinds[ieqn] {
-                self.rhs[ieqn] = vr_i.powi(2) + vi_i.powi(2) - vm.powi(2);
+            let EqnKind::VmConstNd { nd_idx: _, vm } = self.eqn_kinds[nsi_i.ieqn_vm_c] else {
+                unreachable!("expected VmCOnstNd");
+            };
+            self.rhs[nsi_i.ieqn_vm_c] = vr_i.powi(2) + vi_i.powi(2) - vm.powi(2);
 
-                if let Vc::Var {i: ivar} = nd_info_i.vr {
-                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, 2.0 * vr_i);
-                }
+            if let Vc::Var {i: ivar} = nd_info_i.vr {
+                jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, nsi_i.ieqn_vm_c, ivar, 2.0 * vr_i);
+            }
 
-                if let Vc::Var {i: ivar} = nd_info_i.vi {
-                    jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, ieqn, ivar, 2.0 * vi_i);
-                }
+            if let Vc::Var {i: ivar} = nd_info_i.vi {
+                jac_target.add(&mut self.jac_csc, &self.jac_csc_idxs, nsi_i.ieqn_vm_c, ivar, 2.0 * vi_i);
             }
         }
 
@@ -877,6 +902,16 @@ impl NodalRectSolver {
         }
     }
 
+    fn v_br(&self, m_br: usize) -> c64 {
+        let br_m = &self.nmod.branches[m_br];
+        let nd_info_im0 = &self.node_infos[br_m.nd_0_idx];
+        let nd_info_im1 = &self.node_infos[br_m.nd_1_idx];
+        c![
+            nd_info_im0.vr.val(&self.vars) - nd_info_im1.vr.val(&self.vars),
+            nd_info_im0.vi.val(&self.vars) - nd_info_im1.vi.val(&self.vars)
+        ]
+    }
+
     fn propagate_to_model(&mut self) {
         for (nd, nd_info) in self.nmod.nodes.iter_mut().zip(self.node_infos.iter()) {
             nd.v = Some(c!(nd_info.vr.val(&self.vars), nd_info.vi.val(&self.vars)))
@@ -886,6 +921,73 @@ impl NodalRectSolver {
             if let Some(v0) = self.nmod.nodes[br.nd_0_idx].v && let Some(v1) = self.nmod.nodes[br.nd_1_idx].v {
                 br.v_01 = Some(v0 - v1);
             }
+            br.i_01 = Some(C_ZERO);
+        }
+
+        // Terms involving y_const
+        for (&y_mn, (m, n)) in self.nmod.y_const.iter() {
+            let v_n = self.v_br(n);
+            let br_m = &mut self.nmod.branches[m];
+            let br_m_i = br_m.i_01.as_mut().expect("invariant violated for branch current");
+            *br_m_i += y_mn * v_n;
+        }
+
+        // Terms involving i_const
+        for (m, &i_m) in self.nmod.i_const.iter() {
+            let v_m = self.v_br(m);
+            let br_m_i = self.nmod.branches[m].i_01.as_mut().expect("invariant violated for branch current");
+            *br_m_i += i_m.conj() * v_m / v_m.conj();
+        }
+
+        // Terms involving s_const
+        for (m, &s_m) in self.nmod.s_const.iter() {
+            let v_m = self.v_br(m);
+            let br_m_i = self.nmod.branches[m].i_01.as_mut().expect("invariant violated for branch current");
+            *br_m_i += s_m.conj() / v_m.conj();
+        }
+
+        // Current from branch sources
+        for (&m, bsi) in self.branch_src_infos.iter() {
+            if let Vc::Var { i: ivar_ps } = bsi.ps {
+                let v_m = self.v_br(m);
+                let br_m_i = self.nmod.branches[m].i_01.as_mut().expect("invariant violated for branch current");
+                *br_m_i -= self.vars[ivar_ps] / v_m.conj();
+            }
+
+            if let Vc::Var { i: ivar_qs } = bsi.qs {
+                let v_m = self.v_br(m);
+                let br_m_i = self.nmod.branches[m].i_01.as_mut().expect("invariant violated for branch current");
+                *br_m_i += c!(0.0, self.vars[ivar_qs]) / v_m.conj();
+            }
+        }
+
+        // Current from PV nodes.
+        for nsi in self.pv_node_src_infos.values() {
+            let br = &mut self.nmod.branches[nsi.m_br];
+            let br_v_conj = br.i_01.as_ref().expect("invariant violated for branch voltage").conj();
+            let br_i = br.i_01.as_mut().expect("invariant violated for branch current");
+            let qs = self.vars[nsi.ivar_qs];
+            *br_i -= c!(0.0, qs) / br_v_conj;
+        }
+
+        // Current from SL nodes. These are special and the only way we have to calculate them is to work out the
+        // mismatch of the current entering the slack node from other branches.
+        // TODO: This is rather tricky and brittle. Another plan would be to just add the variables for i_r and i_i to
+        // the slack node.
+        for (&i_nd, nsi) in self.sl_node_src_infos.iter() {
+            let mut tot_i_in = C_ZERO;
+            for edge in self.nmod.structure_graph.edges(NodeIndex::new(i_nd)) {
+                let m = edge.id().index();
+                let br_m = &self.nmod.branches[m];
+                assert!(i_nd == br_m.nd_0_idx || i_nd == br_m.nd_1_idx);
+                let sgn = if i_nd == br_m.nd_0_idx {-1.0} else {1.0}; // Sign for injection into i_nd.
+                tot_i_in += sgn * br_m.i_01.expect("invariant violated for branch current");
+            }
+            let br_m = &mut self.nmod.branches[nsi.m_br];
+            assert!(i_nd == br_m.nd_0_idx || i_nd == br_m.nd_1_idx);
+            let sgn = if i_nd == br_m.nd_0_idx {1.0} else {-1.0}; // Sign for draw out of i_nd.
+            let br_i = br_m.i_01.as_mut().expect("invariant violated for branch current");
+            *br_i += sgn * tot_i_in;
         }
     }
 
@@ -917,9 +1019,9 @@ impl NodalRectSolver {
 
     fn log_node_src_infos(&self, log: impl Fn(std::fmt::Arguments)) {
         log(format_args!("Node Srcs:"));
-        for (i_ng, (i_nd, ng_info)) in self.node_src_infos.iter().enumerate() {
+        for (i_ns, (i_nd, ns_info)) in self.pv_node_src_infos.iter().enumerate() {
             log(format_args!(
-                "    {: <4}: nd = {: <4} qs = {: <24}", i_ng, i_nd, format!("{:?}", ng_info.qs)
+                "    {: <4}: nd = {: <4} qs = {: <24}", i_ns, i_nd, format!("{:?}", ns_info.ivar_qs)
             ));
         }
     }
@@ -1169,7 +1271,7 @@ mod tests {
         for nmod in islands.into_iter() {
             debug!("Solve network island");
             debug!("structure_graph:\n{:}", graph_dot(&nmod.structure_graph));
-            debug!("network:\n{:?}", &netw);
+            debug!("network:\n{:?}", netw);
             let mut solver = NodalRectSolver::new(nmod);
             let result = solver.solve();
             assert!(result.status.flags.contains(SolverStatusFlags::SUCCESS));
@@ -1240,7 +1342,7 @@ mod tests {
         for nmod in islands.into_iter() {
             debug!("Solve network island");
             debug!("structure_graph:\n{}", graph_dot(&nmod.structure_graph));
-            debug!("network:\n{:?}", &netw);
+            debug!("network:\n{:?}", netw);
 
             let mut solver = NodalRectSolver::new(nmod);
             solver.init_vars();
@@ -1266,7 +1368,7 @@ mod tests {
                     }
                 }
             }
-            assert!(bad.is_empty(), "Test failed for elements {:?}", &bad);
+            assert!(bad.is_empty(), "Test failed for elements {:?}", bad);
         }
     }
 

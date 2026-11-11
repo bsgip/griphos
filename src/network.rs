@@ -465,6 +465,7 @@ pub struct Element<S: ElementSpec + ?Sized = dyn ElementSpec> {
     _m: PhantomData<fn(&S)>,
 }
 
+// Implementation on a generic (dyn) element.
 impl Element {
     /// Returns true if the [`Element`]'s type ([`ElementSpec`]) is `S` or false otherwise.
     pub fn is<S: ElementSpec>(&self) -> bool {
@@ -493,6 +494,7 @@ impl Element {
     }
 }
 
+// Implementation on all elements, generic or specific.
 impl<S: ElementSpec + ?Sized> Element<S> {
     // Wrap an ElementInner in an Element.
     fn from_inner(inner: Shared<ElementInner>) -> Element<S> {
@@ -505,6 +507,15 @@ impl<S: ElementSpec + ?Sized> Element<S> {
     }
 }
 
+/// Convenience struct that gathers all the information about the branches of an [`Element`].
+#[derive(Debug)]
+pub struct ConnectedBranchItem<'a> {
+    pub term_idxs: (usize, usize),
+    pub bus_node_ids: (&'a BusNodeId, &'a BusNodeId),
+    pub state: &'a ElemBranch,
+}
+
+// Implementation on specific elements.
 impl<S: ElementSpec> Element<S> {
     /// Creates a new [`Element`], given the unique ID, the bus/phase connectivity, and the [`ElementSpec`] of type `S`.
     pub fn new(
@@ -592,6 +603,24 @@ where
     /// Returns a reference to the [`ElemBranch`]es of the element.
     pub fn branches(&self) -> &[ElemBranch] {
         &self.common.branches
+    }
+
+    /// Convenience function that returns a view into the branches that encodes all relevant data.
+    ///
+    /// Returns a `((`[`BusNodeId`]`, (`[`BusNodeId`]`), `[`ElemBranch`]`)` tuple.
+    pub fn branches_connected(&self) -> impl Iterator<Item = ConnectedBranchItem<'_>> {
+        let bnis = self.bus_node_ids();
+        self.branch_wiring()
+            .into_iter()
+            .zip(self.branches().iter())
+            .map(
+                move |((i, j), br)|
+                ConnectedBranchItem {
+                    term_idxs: (i, j),
+                    bus_node_ids: (&bnis[i], &bnis[j]),
+                    state: br
+                }
+            )
     }
 
     /// Type string of an element, corresponding to the dynamic type of its `spec`.
@@ -781,16 +810,6 @@ impl Network {
     /// Returns the [`Bus`]es as an iterator.
     pub fn buses(&self) -> impl Iterator<Item = Shared<Bus>> {
         self.buses.values().cloned()
-    }
-
-    /// Executes `f` for each bus in the network.
-    pub fn foreach_bus<F>(&self, mut f: F) where F: FnMut(&Bus) {
-        for b in self.buses.values() {f(&b.borrow());}
-    }
-
-    /// Executes `f` for each bus in the network, where `f` may mutate the buses.
-    pub fn foreach_bus_mut<F>(&self, mut f: F) where F: FnMut(&mut Bus) {
-        for b in self.buses.values() {f(&mut b.borrow_mut());}
     }
 
     /// Returns the bus with the given uid.

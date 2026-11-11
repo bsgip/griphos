@@ -1,10 +1,7 @@
 use clap::Parser;
 use griphos::*;
 
-fn run_network(mut netw: Network, solver_name: &str) {
-    solve_network(&mut netw, solver_name, None).unwrap();
-    netw.foreach_bus(|b| {println!("v {} = {:?}", b.uid, b.vs().map(|x| x.norm()).collect::<Vec<f64>>());});
-}
+mod common;
 
 #[derive(Parser)]
 struct Args {
@@ -40,7 +37,7 @@ fn main() {
     } else if args.netw_name == "test_netw_large_b" {
         test_netw_large_b()
     } else {
-        panic!("Bad network name");
+        panic!("Bad network name {}", args.netw_name);
     };
-    run_network(netw, &args.solver)
+    common::run_network(netw, &args.solver)
 }
