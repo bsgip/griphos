@@ -273,9 +273,19 @@ impl Bus {
         Bus {uid: uid.to_string(), v_base, nodes}
     }
 
-    /// Reterns the unique ID of the Bus.
+    /// Returns the unique ID of the Bus.
     pub fn uid(&self) -> &str {
         &self.uid
+    }
+
+    /// Returns an iterator over the bus's nodes.
+    pub fn nodes(&self) -> impl Iterator<Item = &Node> {
+        self.nodes.iter()
+    }
+
+    /// Returns a mutable iterator over the bus's nodes.
+    pub fn nodes_mut(&mut self) -> impl Iterator<Item = &mut Node> {
+        self.nodes.iter_mut()
     }
 
     /// Searches for the terminal of a bus that has phase `p`.
