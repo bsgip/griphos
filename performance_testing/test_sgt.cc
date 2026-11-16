@@ -2,6 +2,9 @@
 #include <sgt-e-json/EJson.h>
 #include <SgtCore.h>
 
+#include <format>
+#include <iostream>
+
 using namespace Sgt;
 using namespace std;
 
@@ -16,7 +19,7 @@ int main(int argc, char** argv)
     options.add_options()("t,solver_opts", "Solver options", cxxopts::value<string>());
     options.add_options()("w,warm_start", "Warm start");
     options.add_options()("d,debug", "Debug mode", cxxopts::value<string>());
-    options.parse_positional({"input"});
+    options.parse_positional({"input", "output"});
     auto args = options.parse(argc, argv);
 
     const string inputName = args["input"].as<string>();
@@ -99,7 +102,12 @@ int main(int argc, char** argv)
     {
         for (unsigned i = 0; i < b->phases().size(); ++i)
         {
-            outfile << b->id() << ":" << b->phases()[i] << ", " << abs(b->V()[i])/b->VBase() << std::endl;
+            auto v = b->V()[i];
+            outfile << b->id() << ":" << b->phases()[i] << ", "
+                << std::format("{: 9.5f}", abs(v/b->VBase()))
+                << " \u2220 "
+                << std::format("{: 9.5f}", arg(v))
+                << std::endl;
         };
     }
 }

@@ -33,7 +33,8 @@ fn main() {
         for b in netw.buses() {
             let b = b.borrow();
             for nd in b.nodes.iter() {
-                writeln!(outfile, "{}:{}, {}", b.uid, nd.phase(), nd.v().norm()/b.v_base).unwrap();
+                let v = nd.v();
+                writeln!(outfile, "{}:{}, {:9.5} \u{2220} {:9.5}", b.uid, nd.phase(), v.norm()/b.v_base, v.arg()).unwrap();
             }
         }
     }

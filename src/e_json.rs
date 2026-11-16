@@ -164,19 +164,20 @@ fn convert_to_network(schema: Root, ejson_phase_map: &HashMap<String, Phase>) ->
     // Make sure it's explicitly grounded.
     let _ = netw.add_element(Grounding::new(1).into_element("G", vec![nd_id!("G", Phase::N)])).unwrap();
 
-    let vt = schema.voltage_type; // TODO
+    let vt = schema.voltage_type;
+    let vt_factor = if vt == "ll" {SQRT_3_INV} else {1.0};
     let comps = &schema.components;
     for comp in comps {
         match comp {
             Component::Node(ejt::Node{
                 id, lat_long: _, phs, type_: _, user_data: _, v, v_base, xy: _
             }) => {
-                handle_node(&mut netw, ejson_phase_map, id, phs, v_base.0, v)?
+                handle_node(&mut netw, ejson_phase_map, vt_factor, id, phs, v_base.0, v)?
             },
             Component::Infeeder(ejt::Infeeder{
                 cons, i_max, id, in_service, type_, user_data, v_setpoint
             }) => {
-                handle_infeeder(&mut netw, ejson_phase_map, id, cons, in_service, v_setpoint)?
+                handle_infeeder(&mut netw, ejson_phase_map, vt_factor, id, cons, in_service, v_setpoint)?
             },
             Component::Gen(ejt::Gen{
                 cons, cost, fixed_voltage, id, in_service, is_reference, p_max, p_min, q_max, q_min, type_, user_data,
@@ -261,11 +262,11 @@ fn flatten_bns(bns: &[Vec<NodeId>]) -> Vec<NodeId> {
 }
 
 fn handle_node(
-    netw: &mut Network, ejson_phase_map: &HashMap<String, Phase>,
+    netw: &mut Network, ejson_phase_map: &HashMap<String, Phase>, vt_factor: f64,
     id: &str, phs: &ejt::Phs, v_base: f64, maybe_v: &Option<ejt::ComplexArray>,
 ) -> Result<(), String> {
     let phs = convert_phases(phs, ejson_phase_map);
-    let bus = netw.add_bus(Bus::new(id, phs, v_base * V_FACTOR))?;
+    let bus = netw.add_bus(Bus::new(id, phs, v_base * vt_factor * V_FACTOR))?;
     if let Some(v) = maybe_v {
         bus.borrow_mut().set_vs(convert_complexes(v.iter(), V_FACTOR).into_iter());
     }
@@ -273,7 +274,7 @@ fn handle_node(
 }
 
 fn handle_infeeder(
-    netw: &mut Network, ejson_phase_map: &HashMap<String, Phase>,
+    netw: &mut Network, ejson_phase_map: &HashMap<String, Phase>, vt_factor: f64,
     id: &str, cons: &ejt::OneConnection, in_service: &Option<ejt::InService>,
     v_setpoint: &ejt::PositiveNumber,
 ) -> Result<(), String> {
@@ -284,7 +285,7 @@ fn handle_infeeder(
     let mut bns: Vec<NodeId> = Vec::with_capacity(phs.len() + 1);
     phs.iter().filter(|p| !matches!(p, Phase::N)).for_each(|p| bns.push(nd_id!(bus_id, *p)));
     bns.push(nd_id!("G".to_string(), Phase::N));
-    let vmag = v_setpoint.0 * V_FACTOR;
+    let vmag = v_setpoint.0 * vt_factor * V_FACTOR;
     let elem = netw.add_element(Source::new_wye_slack(vmag, bns.len() - 1, true).into_element(id, bns, true)).unwrap();
     elem.borrow_mut().set_is_in_service(convert_in_service(in_service));
     Ok(())
