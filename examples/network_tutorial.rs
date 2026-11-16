@@ -59,7 +59,7 @@ fn main() {
     //
     // Note that each different element type (i.e. the implementors of
     // ElementSpec, like Line, Transformer, Load, etc.), normally have its own
-    // element(...) member function to conveniently connect it to the network.
+    // into_element(...) member function to conveniently connect it to the network.
     // The signatures of these element functions will typically vary depending
     // on the details of the element type.
     //
@@ -162,5 +162,41 @@ fn main() {
 
     // Take the load out of service.
     load.borrow_mut().set_is_in_service(false);
-    assert!(!load.borrow().is_in_service())
+    assert!(!load.borrow().is_in_service());
+
+    // Let's drill into the network nodes: individual phases of the buses.
+    for bus in netw.buses() {
+        println!("{}", bus.borrow().uid());
+        for nd in bus.borrow().nodes() {
+            println!("    {}, {}", nd.phase(), nd.v());
+        }
+    }
+
+    // Now let's drill into the network branches: individual conducting paths of
+    // elements. Note that there will be no branches for the load since we put
+    // it out of service.
+    for elem in netw.elements() {
+        println!("{}", elem.borrow().uid());
+        for br in elem.borrow().branches() {
+            println!("    {:?}, {}, {}", br.term_idxs(), br.v(), br.i());
+        }
+    }
+
+    // We can find a particular bus...
+    let src_bus_found = netw.bus("src_bus").unwrap();
+    println!("{}", src_bus_found.borrow().uid());
+
+    // ...or a particular element:
+    let ld_elem = netw.element("load").unwrap();
+    println!("{}", ld_elem.borrow().is_in_service());
+
+    // We can also downcast elements.
+    let tx_elem: Element<Transformer> = netw.element("transformer").unwrap().downcast::<Transformer>().unwrap();
+    // This lets us access members that are particular to that type of element.
+    println!("{:?}", tx_elem.borrow().z_series);
+
+    // We can iterate by element type (giving the downcast versions):
+    for elem in netw.elements_of_type::<Transformer>() {
+        println!("{}", elem.borrow().uid());
+    }
 }
