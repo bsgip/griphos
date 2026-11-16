@@ -34,7 +34,13 @@ fn main() {
             let b = b.borrow();
             for nd in b.nodes.iter() {
                 let v = nd.v();
-                writeln!(outfile, "{}:{}, {:9.5} \u{2220} {:9.5}", b.uid, nd.phase(), v.norm()/b.v_base, v.arg()).unwrap();
+                writeln!(
+                    outfile,
+                    "{:20}{:9.5},{:9.5}",
+                    format!("{}:{},", b.uid, nd.phase()),
+                    v.norm()/b.v_base,
+                    v.arg()
+                ).unwrap();
             }
         }
     }

@@ -4,6 +4,7 @@
 
 #include <format>
 #include <iostream>
+#include <sstream>
 
 using namespace Sgt;
 using namespace std;
@@ -103,10 +104,11 @@ int main(int argc, char** argv)
         for (unsigned i = 0; i < b->phases().size(); ++i)
         {
             auto v = b->V()[i];
-            outfile << b->id() << ":" << b->phases()[i] << ", "
-                << std::format("{: 9.5f}", abs(v/b->VBase()))
-                << " \u2220 "
-                << std::format("{: 9.5f}", arg(v))
+            std::ostringstream label;
+            label << b->id() << ":" << b->phases()[i] << ",";
+            outfile << std::format("{:<20}", label.str())
+                << std::format("{:9.5f}, ", abs(v/b->VBase()))
+                << std::format("{:9.5f}", arg(v))
                 << std::endl;
         };
     }
