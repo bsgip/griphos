@@ -60,9 +60,12 @@ mod tests {
             NodeId {b: "bus_1".to_string(), p: Phase::A},
             NodeId {b: "bus_1".to_string(), p: Phase::B},
             NodeId {b: "bus_1".to_string(), p: Phase::C},
+            NodeId {b: "bus_2".to_string(), p: Phase::A},
+            NodeId {b: "bus_2".to_string(), p: Phase::B},
+            NodeId {b: "bus_2".to_string(), p: Phase::C},
         ];
         let connector = Connector::new_raw("new_connector", bts, SwitchState::Closed);
         assert!(connector.elem.borrow().uid() == "new_connector");
-        assert!(connector.elem.borrow().copper_plate() == vec![vec![0, 1, 2]]);
+        assert!(connector.elem.borrow().copper_plate() == vec![vec![0, 3], vec![1, 4], vec![2, 5]]);
     }
 }

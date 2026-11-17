@@ -1,5 +1,6 @@
 //! Connector elements.
 
+use indexmap::IndexSet;
 use serde::Serialize;
 
 use crate::network::*;
@@ -12,13 +13,14 @@ use crate::TypeStrOf;
 #[derive(Debug, Serialize, TypeStrOf)]
 pub struct Connector {
     pub n_terms: usize,
+    pub term_groups: Vec<Vec<usize>>,
     pub switch_state: SwitchState,
 }
 
 impl Connector {
     /// Creates a `Connector` with the given terminal count and switch state.
     pub fn new(n_terms: usize, switch_state: SwitchState) -> Connector {
-        Connector {n_terms, switch_state}
+        Connector {n_terms, term_groups: vec![], switch_state}
     }
 
     /// Wraps this connector as an [`Element`], bound to the given bus node IDs.
@@ -32,8 +34,19 @@ impl Connector {
     /// let connector = Connector::new(2, SwitchState::Closed);
     /// let element = connector.into_element("c1", vec![nd_id!("bus_1", Phase::A), nd_id!("bus_2", Phase::A)]);
     /// ```
-    pub fn into_element(self, uid: &str, node_ids: Vec<NodeId>) -> Element<Self> {
-        assert!(node_ids.len() == self.n_terms, "connector {} expects {} bus nodes", uid, self.n_terms);
+    pub fn into_element(mut self, uid: &str, node_ids: Vec<NodeId>) -> Element<Self> {
+        assert!(
+            node_ids.len() == self.n_terms,
+            "connector {} expects {} bus nodes, input is {:?}", uid, self.n_terms, node_ids
+        );
+        let phs = node_ids.iter().map(|nd_id| nd_id.p).collect::<IndexSet<_>>();
+        self.term_groups = phs
+            .into_iter()
+            .map(
+                |p|
+                node_ids.iter().enumerate().filter(move |(_, nd_id)| nd_id.p == p).map(|(i, _)| i).collect::<Vec<_>>()
+            )
+            .collect::<Vec<_>>();
         Element::<Self>::new(uid.to_string(), node_ids, self)
     }
 }
@@ -58,7 +71,7 @@ impl ElementSpec for Connector {
 
     /// All terminals are shorted together when the switch is closed.
     fn copper_plate(&self) -> Vec<Vec<usize>> {
-        vec![{(0..self.n_terms).collect()}]
+        self.term_groups.clone()
     }
 }
 
