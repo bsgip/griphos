@@ -248,13 +248,19 @@ fn convert_in_service(in_service: &Option<ejt::InService>) -> bool {
 }
 
 fn get_nd_ids(
+    // TODO: We're ignoring *any* explicit neutrals, for the time being, since they seem to cause issues that are
+    // not yet fully understood.
     cons: &[ejt::Connection],
     ejson_phase_map: &HashMap<String, Phase>
 ) -> Vec<Vec<NodeId>> {
     let bus_ids: Vec<&String> = cons.iter().map(|x| {&x.node}).collect();
     let phs: Vec<Vec<Phase>> = cons.iter().map(|x| {convert_phases(&x.phs, ejson_phase_map)}).collect();
     bus_ids.iter().cloned().zip(phs.iter())
-        .map(|(b, ps)| ps.iter().cloned().map(|p| nd_id!(b.clone(), p)).collect()).collect()
+        .map(|(b, ps)| ps.iter()
+            .cloned()
+            .filter(|p| *p != Phase::N)
+            .map(|p| nd_id!(b.clone(), p)).collect())
+        .collect()
 }
 
 fn flatten_nd_ids(nd_ids: &[Vec<NodeId>]) -> Vec<NodeId> {
@@ -298,10 +304,6 @@ fn handle_line_variant_0(
     z: &ejt::ComplexNumber, z0: &ejt::ComplexNumber, b_chg: &Option<f64>, length: f64
 ) -> Result<(), String> {
     let nd_ids = get_nd_ids(&cons.0, ejson_phase_map);
-    // TODO: Ignoring neutral for now.
-    let nd_ids = nd_ids.into_iter().map(
-        |nd_ids_i| nd_ids_i.into_iter().filter(|nd_id| nd_id.p != Phase::N).collect::<Vec<_>>()
-    ).collect::<Vec<_>>();
     let [nd_ids_0, nd_ids_1] = nd_ids.as_slice() else {panic!("Expected 2 elements")};
     let n_phases = nd_ids_0.len();
     let z = length * convert_complex(z, Z_FACTOR);
