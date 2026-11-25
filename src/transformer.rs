@@ -482,15 +482,19 @@ fn terminal_mapping_from_vector_group(vg: &VectorGroup, n_phases: usize) -> Resu
 
     if n_phases == 1 {
         // Single phase: a winding is just two terminals, so the only freedom is polarity.
-        // Natural order gives clock 0; swapping the secondary terminals gives clock 6.
-        let flip = match target_clock {
-            0 => false,
-            6 => true,
-            _ => {
-                return Err(format!(
-                    "a single-phase transformer's clock must be 0 or 6 (got {target_clock})"
-                ));
-            }
+        // Natural order gives `base_clock` (0 for yy/dd, 11 for dy, 1 for yd);
+        // swapping the secondary terminals adds 6.
+        let flipped_clock = (base_clock + 6).rem_euclid(12);
+        let flip = if target_clock == base_clock {
+            false
+        } else if target_clock == flipped_clock {
+            true
+        } else {
+            return Err(format!(
+                "a single-phase {}{} transformer's clock must be {base_clock} or {flipped_clock} (got {target_clock})",
+                primary_type.as_char(),
+                secondary_type.as_char(),
+            ));
         };
 
         let mut secondary = natural_winding_terminals(secondary_type, 1, secondary_first);
@@ -589,6 +593,10 @@ mod tests {
         do_test("ynyn0", 1, &[&[(0, 1)], &[(2, 3)]]);
         do_test("ynyn6", 1, &[&[(0, 1)], &[(3, 2)]]);
         do_test("yy0", 1, &[&[(0, 1)], &[(2, 3)]]);
+        do_test("dyn11", 1, &[&[(0, 1)], &[(2, 3)]]);
+        do_test("dyn5", 1, &[&[(0, 1)], &[(3, 2)]]);
+        do_test("yd1", 1, &[&[(0, 1)], &[(2, 3)]]);
+        do_test("yd7", 1, &[&[(0, 1)], &[(3, 2)]]);
 
         do_test("ynyn0", 3, &[&[(0, 3), (1, 3), (2, 3)], &[(4, 7), (5, 7), (6, 7)]]);
         do_test("ynyn4", 3, &[&[(0, 3), (1, 3), (2, 3)], &[(6, 7), (4, 7), (5, 7)]]);
