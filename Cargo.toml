@@ -3,7 +3,7 @@ members = [".", "python", "griphos-proc-macros"]
 
 [package]
 name = "griphos"
-version = "0.1.5"
+version = "0.1.6"
 documentation = "https://bsgip.github.io/griphos/griphos/"
 edition = "2024"
 exclude = ["griphos_extras/src/"]
