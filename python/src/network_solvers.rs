@@ -48,37 +48,39 @@ impl From<&gr::SolverStatus> for SolverStatus {
     }
 }
 
-/// A [`NetworkSolver`] solver solves for the currents and voltages in the network, incluing solving and modifying the
-/// network based on the solution.
+/// The solvers for a network, one per island, as returned by `solve_network` for reuse in later calls.
+///
+/// Opaque: pass it back into `solve_network` to reuse the solvers. Each `NetworkSolvers` can only be passed in once,
+/// after which the solvers that were actually used are available from the new `SolveNetworkResult`.
 #[pyclass(unsendable)]
 #[gen_stub_pyclass]
-pub struct NetworkSolver(pub Option<Box<dyn gr::NetworkSolver>>);
+pub struct NetworkSolvers(pub Option<gr::NetworkSolvers>);
 
-impl<'a, 'py> FromPyObject<'a, 'py> for NetworkSolver {
+impl<'a, 'py> FromPyObject<'a, 'py> for NetworkSolvers {
     type Error = PyErr;
 
     fn extract(obj: Borrowed<'a, 'py, PyAny>) -> Result<Self, Self::Error> {
-        let cell: Borrowed<'a, 'py, NetworkSolver> = obj.cast()?;
+        let cell: Borrowed<'a, 'py, NetworkSolvers> = obj.cast()?;
         let mut guard = cell.borrow_mut();
         let inner = guard
             .0
             .take()
-            .ok_or_else(|| PyValueError::new_err("this solver has already been consumed"))?;
-        Ok(NetworkSolver(Some(inner)))
+            .ok_or_else(|| PyValueError::new_err("these solvers have already been consumed"))?;
+        Ok(NetworkSolvers(Some(inner)))
     }
 }
 
 /// Return value for solve_network.
 ///
 /// [`solve_network`] splits the problem into network into islands, and records results for each island. It also returns
-/// the solvers that were created by the [`solve_network`] call, for possible later reuse.
+/// the solvers that were used by the [`solve_network`] call, for possible later reuse.
 #[pyclass]
 #[gen_stub_pyclass]
 pub struct SolveNetworkResult {
     #[pyo3(get)]
     pub statuses: Vec<SolverStatus>,
     #[pyo3(get)]
-    pub solvers: Vec<Py<NetworkSolver>>,
+    pub solvers: Py<NetworkSolvers>,
 }
 
 fn solve_network_result_to_py(
@@ -91,11 +93,7 @@ fn solve_network_result_to_py(
         .map(|s| SolverStatus::from(&s))
         .collect::<Vec<SolverStatus>>();
 
-    let solvers = result
-        .solvers
-        .into_iter()
-        .map(|s| Py::new(py, NetworkSolver(Some(s))))
-        .collect::<PyResult<Vec<_>>>()?;
+    let solvers = Py::new(py, NetworkSolvers(Some(result.solvers)))?;
 
     Ok(SolveNetworkResult { statuses, solvers })
 }
@@ -106,14 +104,18 @@ fn unknown_solver_to_pyerr(err: gr::UnknownSolver) -> PyErr {
 
 /// Solves the network using the given solver (specified as a key).
 ///
-/// Accepts as the `solvers` argument an optional list of [`NetworkSolver`]s, which, if supplied, will be used for the
-/// new solve call, meaning that we don't need to do the work of creating solvers from scratch. This makes it much more
-/// efficient to perform multiple solve calls, e.g. solve the network every five minutes during a day long horizon.
+/// Accepts as the `solvers` argument optional `NetworkSolvers` from a previous call, which, if supplied, will be used
+/// for the new solve call, meaning that we don't need to do the work of creating solvers from scratch. This makes it
+/// much more efficient to perform multiple solve calls, e.g. solve the network every five minutes during a day long
+/// horizon.
+///
+/// Supplied solvers are only reused if the network's structure is unchanged since they were created. Otherwise (e.g. an
+/// element was added or taken out of service), new solvers are created instead.
 ///
 /// Args:
 ///     netw: The network to solve for.
 ///     solver_name: The solver selection key, such as "nodal_rect".
-///     solvers: Optional list of `NetworkSolver`s; if supplied will use these instead of creating new ones.
+///     solvers: Optional `NetworkSolvers` from a previous call; if supplied will reuse these if possible.
 #[pyfunction]
 #[pyo3(signature = (netw, solver_name, solvers=None))]
 #[gen_stub_pyfunction]
@@ -121,13 +123,9 @@ pub fn solve_network(
     py: Python,
     netw: &mut Network,
     solver_name: &str,
-    solvers: Option<Vec<NetworkSolver>>,
+    solvers: Option<NetworkSolvers>,
 ) -> PyResult<SolveNetworkResult> {
-    let solvers_rust: Option<Vec<Box<dyn gr::NetworkSolver>>> = solvers.map(|v| {
-        v.into_iter()
-            .map(|s| s.0.expect("FromPyObject guarantees Some here"))
-            .collect()
-    });
+    let solvers_rust = solvers.map(|s| s.0.expect("FromPyObject guarantees Some here"));
 
     let result = gr::solve_network(&mut netw.inner.borrow_mut(), solver_name, solvers_rust)
         .map_err(unknown_solver_to_pyerr)?;

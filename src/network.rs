@@ -46,7 +46,7 @@ use std::any::Any;
 use std::collections::HashSet;
 use std::fmt;
 use std::fmt::Display;
-use std::hash::{Hash};
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 use std::marker::PhantomData;
 use std::vec::Vec;
@@ -953,6 +953,46 @@ impl Network {
                 Ok(element.clone())
             }
         }
+    }
+
+    /// Returns a hash of the network's structure: everything that solvers depend on, other than values such as powers,
+    /// admittances and voltage setpoints.
+    ///
+    /// The structure consists of the buses (uid, phases and `v_base`) and, for each element, its uid, whether it is
+    /// live, its terminal connections, wiring, grounding and copperplating, and which branches have `y_const`,
+    /// `i_const`, `s_const`, `vmag_const` and `vang_const` entries. Solvers record the hash of the network they were
+    /// created from, so they can be reused only while it is unchanged. The hash is only meaningful within a single
+    /// process.
+    pub fn structure_hash(&self) -> u64 {
+        fn hash_idxs<T: Hash>(idxs: impl ExactSizeIterator<Item = T>, h: &mut DefaultHasher) {
+            idxs.len().hash(h);
+            idxs.for_each(|x| x.hash(h));
+        }
+
+        let mut h = DefaultHasher::new();
+        self.buses.len().hash(&mut h);
+        for bus in self.buses.values() {
+            let bus = bus.borrow();
+            bus.uid.hash(&mut h);
+            bus.v_base.to_bits().hash(&mut h);
+            hash_idxs(bus.nodes.iter().map(|nd| nd.phase), &mut h);
+        }
+        self.elements.len().hash(&mut h);
+        for elem in self.elements.values() {
+            let elem = elem.borrow();
+            elem.uid().hash(&mut h);
+            elem.is_live().hash(&mut h);
+            elem.node_ids().hash(&mut h);
+            elem.branch_wiring().hash(&mut h);
+            elem.grounding().hash(&mut h);
+            elem.copper_plate().hash(&mut h);
+            hash_idxs(elem.y_const().into_iter().map(|(ij, _)| ij), &mut h);
+            hash_idxs(elem.i_const().into_iter().map(|(i, _)| i), &mut h);
+            hash_idxs(elem.s_const().into_iter().map(|(i, _)| i), &mut h);
+            hash_idxs(elem.vmag_const().into_iter().map(|(i, _)| i), &mut h);
+            hash_idxs(elem.vang_const().into_iter().map(|(i, _)| i), &mut h);
+        }
+        h.finish()
     }
 }
 

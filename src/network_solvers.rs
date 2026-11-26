@@ -247,22 +247,64 @@ pub fn solver_constructor(key: &str) -> Result<SolverConstructor, UnknownSolver>
         .ok_or_else(|| UnknownSolver(key.to_owned()))
 }
 
+/// The solvers for a network, one per island, as returned by [`solve_network`] for reuse in later calls.
+///
+/// Records the [`Network::structure_hash`] of the network the solvers were created from, so that [`solve_network`] can
+/// tell whether they can be reused.
+pub struct NetworkSolvers {
+    structure_hash: u64,
+    solvers: Vec<Box<dyn NetworkSolver>>,
+}
+
+impl NetworkSolvers {
+    /// Creates new solvers for `netw`, one per island, using the solver with the given key.
+    pub fn new(netw: &Network, solver_name: &str) -> Result<NetworkSolvers, UnknownSolver> {
+        let ctor = solver_constructor(solver_name)?;
+        let structure_hash = netw.structure_hash();
+        let solvers = NetworkModels::new(netw).islands.into_iter().map(ctor).collect();
+        Ok(NetworkSolvers { structure_hash, solvers })
+    }
+
+    /// The [`Network::structure_hash`] of the network the solvers were created from.
+    pub fn structure_hash(&self) -> u64 {
+        self.structure_hash
+    }
+
+    /// The solvers, one per island.
+    pub fn solvers(&self) -> &[Box<dyn NetworkSolver>] {
+        &self.solvers
+    }
+
+    /// Mutable access to the solvers, one per island.
+    pub fn solvers_mut(&mut self) -> &mut [Box<dyn NetworkSolver>] {
+        &mut self.solvers
+    }
+}
+
 /// Return value for solve_network.
 ///
 /// [`solve_network`] splits the problem into network into islands, and records results for each island. It also returns
-/// the solvers that were created by the [`solve_network`] call, for possible later reuse.
+/// the solvers that were used by the [`solve_network`] call, for possible later reuse.
 pub struct SolveNetworkResult {
     /// The solve statuses, per island.
     pub statuses: Vec<SolverStatus>,
-    /// The solvers that were created by the call, one per island.
-    pub solvers: Vec<Box<dyn NetworkSolver>>,
+    /// The solvers that were used by the call.
+    ///
+    /// These are either the solvers passed into the call, or new ones if none were passed in or the network's
+    /// structure had changed.
+    pub solvers: NetworkSolvers,
 }
 
 /// Solves the network using the given solver (specified as a key).
 ///
-/// Accepts as the `solvers` argument an optional vector of [`NetworkSolver`]s, which, if supplied, will be used for the
-/// new solve call, meaning that we don't need to do the work of creating solvers from scratch. This makes it much more
-/// efficient to perform multiple solve calls, e.g. solve the network every five minutes during a day long horizon.
+/// Accepts as the `solvers` argument optional [`NetworkSolvers`] from a previous call, which, if supplied, will be used
+/// for the new solve call, meaning that we don't need to do the work of creating solvers from scratch. This makes it
+/// much more efficient to perform multiple solve calls, e.g. solve the network every five minutes during a day long
+/// horizon.
+///
+/// Supplied solvers are only reused if the network's [`Network::structure_hash`] matches the one they were created
+/// from. Otherwise, the structure has changed (e.g. an element was added or taken out of service), and new solvers are
+/// created instead.
 ///
 /// # Examples
 ///
@@ -276,17 +318,19 @@ pub struct SolveNetworkResult {
 pub fn solve_network(
     netw: &mut Network,
     solver_name: &str,
-    solvers: Option<Vec<Box<dyn NetworkSolver>>>,
+    solvers: Option<NetworkSolvers>,
 ) -> Result<SolveNetworkResult, UnknownSolver> {
     let mut solvers = match solvers {
-        None => {
-            let ctor = solver_constructor(solver_name)?;
-            NetworkModels::new(netw).islands.into_iter().map(ctor).collect()
+        Some(solvers) if solvers.structure_hash == netw.structure_hash() => solvers,
+        solvers => {
+            if solvers.is_some() {
+                info!("Network structure changed: creating new solvers.");
+            }
+            NetworkSolvers::new(netw, solver_name)?
         }
-        Some(solvers) => solvers,
     };
     let mut statuses: Vec<SolverStatus> = vec![];
-    for solver in solvers.iter_mut() {
+    for solver in solvers.solvers.iter_mut() {
         let results = solver.solve();
         if results.status.flags.contains(SolverStatusFlags::SUCCESS) {
             solver.propagate_to_network(netw);

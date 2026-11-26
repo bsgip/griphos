@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 
 use clap::Parser;
 use griphos::{
-    configure_logging, NetworkSolver, SolverPlugin, SolverStatusFlags,
+    configure_logging, NetworkSolvers, SolverPlugin, SolverStatusFlags,
     ejson_phase_map_abcng, parse_ejson_file, solve_network
 };
 use regex::Regex;
@@ -117,7 +117,7 @@ fn main() {
             let mut ls_time_ms: f64 = 0.0;
             let mut tot_time_ms: f64 = 0.0;
             for _ in 0..args.iters_outer {
-                let mut solvers: Option<Vec<Box<dyn NetworkSolver>>> = None;
+                let mut solvers: Option<NetworkSolvers> = None;
                 for _ in 0..args.iters_inner {
                     let result = std::hint::black_box(
                         solve_network(&mut netw, solver_name, solvers).unwrap()

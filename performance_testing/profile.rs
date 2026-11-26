@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use griphos::{ejson_phase_map_abcng, NetworkSolver, parse_ejson_file, solve_network};
+use griphos::{ejson_phase_map_abcng, NetworkSolvers, parse_ejson_file, solve_network};
 
 #[derive(Parser)]
 struct Args {
@@ -22,7 +22,7 @@ fn main() {
         .unwrap_or_else(|e| panic!("Error parsing ejson file {}: {}", args.infile, e));
 
     for _ in 0..args.iters_outer {
-        let mut solvers: Option<Vec<Box<dyn NetworkSolver>>> = None;
+        let mut solvers: Option<NetworkSolvers> = None;
         for _ in 0..args.iters_inner {
             let result = std::hint::black_box(solve_network(&mut netw, &args.solver, solvers).unwrap());
             solvers = Some(result.solvers);

@@ -44,7 +44,7 @@ mod griphos {
         nd_id, Bus, Element, Network, Phase, SwitchState,
     };
     #[pymodule_export] use super::network_solvers::{
-        SolveNetworkResult, NetworkSolver, solve_network,
+        SolveNetworkResult, NetworkSolvers, solve_network,
     };
     #[pymodule_export] use super::source::{
         Source, SourceControl

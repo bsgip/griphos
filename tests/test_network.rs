@@ -81,4 +81,47 @@ mod tests {
         test_solve_netw("netw-i2l2s2.json", "nodal_rect");
         test_solve_netw("netw-i3l3s3.json", "nodal_rect");
     }
+
+    #[test]
+    fn test_structure_hash() {
+        let netw = test_netw_ejson("netw-i3l3s3.json", None);
+        let hash = netw.structure_hash();
+        assert_eq!(hash, test_netw_ejson("netw-i3l3s3.json", None).structure_hash());
+
+        // Changing values doesn't change the structure.
+        let ld = netw.element("ld2").unwrap().downcast::<Load>().unwrap();
+        for s in ld.borrow_mut().ld_s_const_mut().unwrap() {
+            *s *= 3.0;
+        }
+        assert_eq!(netw.structure_hash(), hash);
+
+        // Taking an element out of service does.
+        ld.borrow_mut().set_is_in_service(false);
+        assert_ne!(netw.structure_hash(), hash);
+    }
+
+    #[test]
+    fn test_solvers_reused_or_rebuilt() {
+        fn ptrs(solvers: &NetworkSolvers) -> Vec<*const u8> {
+            solvers.solvers().iter().map(|s| &**s as *const dyn NetworkSolver as *const u8).collect()
+        }
+
+        let mut netw = test_netw_ejson("netw-i3l3s3.json", None);
+        let SolveNetworkResult {solvers, ..} = solve_network(&mut netw, "nodal_rect", None).unwrap();
+        let hash = netw.structure_hash();
+        assert_eq!(solvers.structure_hash(), hash);
+
+        // Unchanged structure: the same solvers are reused.
+        let ptrs_orig = ptrs(&solvers);
+        let SolveNetworkResult {solvers, ..} = solve_network(&mut netw, "nodal_rect", Some(solvers)).unwrap();
+        assert_eq!(ptrs(&solvers), ptrs_orig);
+
+        // Changed structure: new solvers are created and the solve still succeeds.
+        netw.element("ld2").unwrap().borrow_mut().set_is_in_service(false);
+        let SolveNetworkResult {statuses, solvers} = solve_network(&mut netw, "nodal_rect", Some(solvers)).unwrap();
+        assert!(statuses.iter().all(|s| s.status.flags.contains(SolverStatusFlags::SUCCESS)));
+        let new_hash = netw.structure_hash();
+        assert_ne!(new_hash, hash);
+        assert_eq!(solvers.structure_hash(), new_hash);
+    }
 }
