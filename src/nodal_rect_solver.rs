@@ -248,10 +248,16 @@ pub struct NodalRectSolver {
 
     /// The ordered indices into the CSC storage, for more efficient re-creation of the Jacobian.
     pub jac_csc_idxs: Vec<usize>,
+
+    /// True if `nmod`'s values are known to be current, so the next solve needn't update them from the network.
+    values_current: bool,
 }
 
 impl NodalRectSolver {
     /// Creates a new solver with the given [`NetworkModel`].
+    ///
+    /// The first solve uses the values in `nmod` as they are, rather than updating them from the network; later solves
+    /// update them first.
     pub fn new(nmod: NetworkModel) -> NodalRectSolver {
         let mut solver = NodalRectSolver {
             params: Params::default(),
@@ -266,6 +272,7 @@ impl NodalRectSolver {
             rhs: vec![],
             jac_csc: CsMatI::empty(CompressedStorage::CSC, 0),
             jac_csc_idxs: vec![],
+            values_current: true,
         };
 
         solver.init();
@@ -277,10 +284,12 @@ impl NodalRectSolver {
         self.vars.len()
     }
 
-    /// Initialize the solver to a starting state.
-    pub fn init(&mut self) {
-        if self.nmod.nm_nodes.is_empty() {return;}
-
+    /// Gathers the voltage source setpoints from `vmag_const` and `vang_const`.
+    ///
+    /// Returns, per node, the source branch and [vmag, vang] setpoints of any source between the node and ground, and,
+    /// per branch, the [vmag, vang] setpoints of any source on an ungrounded branch.
+    #[allow(clippy::type_complexity)]
+    fn src_setpoints(&self) -> (Vec<(Option<usize>, [Option<f64>; 2])>, Vec<[Option<f64>; 2]>) {
         let mut nd_src_info: Vec<(Option<usize>, [Option<f64>; 2])> = vec![
             (None, [None, None]); self.nmod.nm_nodes.len()
         ];
@@ -313,6 +322,15 @@ impl NodalRectSolver {
         };
         f(&self.nmod.vmag_const, 0);
         f(&self.nmod.vang_const, 1);
+
+        (nd_src_info, br_src_info)
+    }
+
+    /// Initialize the solver to a starting state.
+    pub fn init(&mut self) {
+        if self.nmod.nm_nodes.is_empty() {return;}
+
+        let (nd_src_info, br_src_info) = self.src_setpoints();
 
         let n_ground = self.nmod.nm_nodes.iter().filter(|nd| nd.is_grounded).count();
         let n_nd_sl = nd_src_info.iter().filter(|(_, [vmc, vac])| vmc.is_some() && vac.is_some()).count();
@@ -489,6 +507,56 @@ impl NodalRectSolver {
 
         for (var, var_info) in self.vars.iter_mut().zip(self.var_infos.iter()) {
             *var = var_info.x0;
+        }
+    }
+
+    /// Refreshes the voltage source setpoints that [`Self::init`] copied out of `vmag_const` and `vang_const`.
+    ///
+    /// Assumes that only setpoint values, not the structure, have changed since [`Self::init`]. Unlike calling
+    /// [`Self::init`] again, this preserves the Jacobian sparsity pattern and ordering.
+    fn update_setpoints(&mut self) {
+        debug!("update_setpoints");
+
+        let (nd_src_info, br_src_info) = self.src_setpoints();
+
+        for &i_nd in self.sl_node_src_infos.keys() {
+            let (_, [Some(vmc), Some(vac)]) = nd_src_info[i_nd] else {
+                unreachable!("slack node {i_nd} lost its setpoints");
+            };
+            let c64 {re: vrc, im: vic} = p!(vmc, vac);
+            self.node_infos[i_nd].vr = Vc::Const {x: vrc};
+            self.node_infos[i_nd].vi = Vc::Const {x: vic};
+        }
+
+        for var_info in self.var_infos.iter_mut() {
+            let (VarKind::Vr {nd_idx} | VarKind::Vi {nd_idx}) = var_info.kind else { continue };
+            if !self.pv_node_src_infos.contains_key(&nd_idx) { continue; }
+            let (_, [Some(vmc), None]) = nd_src_info[nd_idx] else {
+                unreachable!("PV node {nd_idx} lost its setpoint");
+            };
+            let v_nom = self.nmod.nm_nodes[nd_idx].v_nom;
+            let x0 = vmc * v_nom / v_nom.abs();
+            var_info.x0 = if matches!(var_info.kind, VarKind::Vr {..}) {x0.re} else {x0.im};
+        }
+
+        for eqn_kind in self.eqn_kinds.iter_mut() {
+            match eqn_kind {
+                EqnKind::KclRe {..} | EqnKind::KclIm {..} => {},
+                EqnKind::VmConstNd {nd_idx, vm} => {
+                    *vm = nd_src_info[*nd_idx].1[0].expect("PV node lost its setpoint");
+                },
+                EqnKind::VrConstBr {br_idx, vr} => {
+                    let [Some(vmc), Some(vac)] = br_src_info[*br_idx] else { unreachable!("slack branch lost setpoints") };
+                    *vr = p!(vmc, vac).re;
+                },
+                EqnKind::ViConstBr {br_idx, vi} => {
+                    let [Some(vmc), Some(vac)] = br_src_info[*br_idx] else { unreachable!("slack branch lost setpoints") };
+                    *vi = p!(vmc, vac).im;
+                },
+                EqnKind::VmConstBr {br_idx, vm} => {
+                    *vm = br_src_info[*br_idx][0].expect("PV branch lost its setpoint");
+                },
+            }
         }
     }
 
@@ -1142,12 +1210,18 @@ impl NodalRectSolver {
 }
 
 impl NetworkSolver for NodalRectSolver {
-    fn solve(&mut self) -> SolverStatus {
+    fn solve(&mut self, netw: &Network) -> SolverStatus {
         debug!("solve");
 
         let start = Instant::now();
 
         let mut status = SolverStatus::default();
+
+        if !self.values_current {
+            self.nmod.update_values(netw);
+            self.update_setpoints();
+        }
+        self.values_current = false;
 
         self.init_vars();
 
@@ -1273,7 +1347,7 @@ mod tests {
             debug!("structure_graph:\n{:}", graph_dot(&nmod.structure_graph));
             debug!("network:\n{:?}", netw);
             let mut solver = NodalRectSolver::new(nmod);
-            let result = solver.solve();
+            let result = solver.solve(&netw);
             assert!(result.status.flags.contains(SolverStatusFlags::SUCCESS));
         }
     }

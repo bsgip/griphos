@@ -16,13 +16,20 @@ fn main() {
         .as_str()
         .expect("Missing schema URL in Cargo.toml");
 
-    // Fetch the schema
-    let e_json_schema = ureq::get(e_json_schema_url)
-        .call()
-        .expect("Failed to fetch schema")
-        .body_mut()
-        .read_to_string()
-        .expect("Failed to read e_json_schema");
+    // Read the schema from E_JSON_SCHEMA_PATH if set (e.g. for offline builds), otherwise fetch it.
+    println!("cargo:rerun-if-env-changed=E_JSON_SCHEMA_PATH");
+    let e_json_schema = match std::env::var("E_JSON_SCHEMA_PATH") {
+        Ok(path) => {
+            println!("cargo:rerun-if-changed={path}");
+            fs::read_to_string(&path).unwrap_or_else(|e| panic!("Failed to read E_JSON_SCHEMA_PATH {path}: {e}"))
+        }
+        Err(_) => ureq::get(e_json_schema_url)
+            .call()
+            .expect("Failed to fetch schema")
+            .body_mut()
+            .read_to_string()
+            .expect("Failed to read e_json_schema"),
+    };
 
     // For debugging:
     // let mut file = fs::File::create("e-json-schema.json").expect("Failed to create file");

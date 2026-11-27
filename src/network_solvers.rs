@@ -181,8 +181,11 @@ pub(crate) fn info_csvec<T, IStorage, DStorage>(
 /// A [`NetworkSolver`] solver solves for the currents and voltages in the network, incluing solving and modifying the
 /// network based on the solution.
 pub trait NetworkSolver: Any {
-    /// Solves power flow (or whatever).
-    fn solve(&mut self) -> SolverStatus;
+    /// Solves power flow (or whatever), using the current values (powers, admittances, setpoints etc.) from `netw`.
+    ///
+    /// `netw` must have the same structure (see [`Network::structure_hash`]) as the network the solver was created
+    /// from; [`solve_network`] ensures this.
+    fn solve(&mut self, netw: &Network) -> SolverStatus;
     /// Propagates the solution to the network after solving.
     fn propagate_to_network(&self, netw: &mut Network);
 }
@@ -302,9 +305,10 @@ pub struct SolveNetworkResult {
 /// much more efficient to perform multiple solve calls, e.g. solve the network every five minutes during a day long
 /// horizon.
 ///
-/// Supplied solvers are only reused if the network's [`Network::structure_hash`] matches the one they were created
-/// from. Otherwise, the structure has changed (e.g. an element was added or taken out of service), and new solvers are
-/// created instead.
+/// Between calls, values in the network such as load powers and source setpoints may change, and reused solvers will
+/// pick up the changes. Supplied solvers are only reused if the network's [`Network::structure_hash`] matches the one
+/// they were created from. Otherwise, the structure has changed (e.g. an element was added or taken out of service),
+/// and new solvers are created instead.
 ///
 /// # Examples
 ///
@@ -331,7 +335,7 @@ pub fn solve_network(
     };
     let mut statuses: Vec<SolverStatus> = vec![];
     for solver in solvers.solvers.iter_mut() {
-        let results = solver.solve();
+        let results = solver.solve(netw);
         if results.status.flags.contains(SolverStatusFlags::SUCCESS) {
             solver.propagate_to_network(netw);
         }

@@ -2,7 +2,7 @@
 //!
 //! [`NetworkModel`]s provide a lower level bridge to the [`Network`] that are useful for writing solvers.
 
-use std::collections::{BTreeSet, HashSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashSet, HashMap};
 use std::ops::{Add, MulAssign};
 use std::vec::Vec;
 
@@ -96,6 +96,10 @@ pub struct NetworkModel {
     // ElemTerm to NmBranch map
     pub eb_to_br_idx: HashMap<BranchId, usize>,
 
+    /// For each element with branches in this model: its uid, and for each of its branches, the corresponding branch
+    /// index in this model, or `None` if the branch isn't in this model. Used by [`Self::update_values`].
+    pub elem_br_idxs: Vec<(String, Vec<Option<usize>>)>,
+
     // Structure graph: graph nodes are network nodes, graph edges are branches.
     // Labels are master node index, master branch index.
     pub structure_graph: UnGraph<(), ()>,
@@ -121,6 +125,7 @@ impl NetworkModel {
             nm_branches: vec![],
             nd_id_to_nd_idx: HashMap::new(),
             eb_to_br_idx: HashMap::new(),
+            elem_br_idxs: vec![],
             structure_graph: UnGraph::new_undirected(),
             y_const: CsMat::empty(sprs::CompressedStorage::CSC, 0),
             i_const: CsVec::empty(0),
@@ -138,6 +143,7 @@ impl NetworkModel {
         let mut nmod = NetworkModel::new();
         nmod.make_nodes(netw)?;
         nmod.make_branches(netw)?;
+        nmod.elem_br_idxs = make_elem_br_idxs(&nmod.eb_to_br_idx);
         nmod.make_structure_graph()?;
 
         nmod.y_const = nmod.elem_sparse_mat(netw, |x| x.y_const())?;
@@ -147,6 +153,51 @@ impl NetworkModel {
         nmod.vang_const = nmod.elem_sparse_vec(netw, |x| x.vang_const())?;
 
         Ok(nmod)
+    }
+
+    /// Updates the values of `y_const`, `i_const`, `s_const`, `vmag_const` and `vang_const` in place from `netw`.
+    ///
+    /// `netw` must have the same structure (see [`Network::structure_hash`]) as the network this model was created
+    /// from; only values may differ. Only this model's own elements are visited, so updating all the island models of
+    /// a network costs about one pass over the network.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the structure has changed, i.e. if an element of this model is missing from `netw`, or has a constant
+    /// entry that isn't in this model.
+    pub fn update_values(&mut self, netw: &Network) {
+        fn structure_changed(uid: &str, what: &str) -> ! {
+            panic!("network structure changed: element {uid}: {what}")
+        }
+
+        fn set_vec<T>(
+            v: &mut CsVec<T>, entries: Vec<(usize, T)>, idx: impl Fn(usize) -> Option<usize>, uid: &str, name: &str
+        ) {
+            for (i, x) in entries {
+                if let Some(m) = idx(i) {
+                    *v.get_mut(m).unwrap_or_else(|| structure_changed(uid, &format!("new {name} entry"))) = x;
+                }
+            }
+        }
+
+        // y_const entries are summed when the model is built, so accumulate them here too.
+        self.y_const.data_mut().fill(C_ZERO);
+
+        for (uid, br_idxs) in self.elem_br_idxs.iter() {
+            let elem = netw.element(uid).unwrap_or_else(|| structure_changed(uid, "missing from network"));
+            let elem = elem.borrow();
+            let idx = |i: usize| br_idxs.get(i).copied().flatten();
+
+            for ((i, j), y) in elem.y_const() {
+                if let (Some(m), Some(n)) = (idx(i), idx(j)) {
+                    *self.y_const.get_mut(m, n).unwrap_or_else(|| structure_changed(uid, "new y_const entry")) += y;
+                }
+            }
+            set_vec(&mut self.i_const, elem.i_const(), idx, uid, "i_const");
+            set_vec(&mut self.s_const, elem.s_const(), idx, uid, "s_const");
+            set_vec(&mut self.vmag_const, elem.vmag_const(), idx, uid, "vmag_const");
+            set_vec(&mut self.vang_const, elem.vang_const(), idx, uid, "vang_const");
+        }
     }
 
     /// Splits a master NetworkModel into islands.
@@ -245,12 +296,14 @@ impl NetworkModel {
             let s_const = map_spvec(&self.s_const, n_branches, &nm_br_map);
             let vmag_const = map_spvec(&self.vmag_const, n_branches, &nm_br_map);
             let vang_const = map_spvec(&self.vang_const, n_branches, &nm_br_map);
+            let elem_br_idxs = make_elem_br_idxs(&eb_to_br_idx);
 
             island_models.push(NetworkModel {
                 nm_nodes: island_nodes,
                 nm_branches: island_branches,
                 nd_id_to_nd_idx,
                 eb_to_br_idx,
+                elem_br_idxs,
                 y_const,
                 i_const,
                 s_const,
@@ -523,6 +576,19 @@ impl NetworkModel {
             }
         }
     }
+}
+
+/// Groups an element branch to model branch map by element, giving the [`NetworkModel::elem_br_idxs`] form.
+fn make_elem_br_idxs(eb_to_br_idx: &HashMap<BranchId, usize>) -> Vec<(String, Vec<Option<usize>>)> {
+    let mut by_elem: BTreeMap<&str, Vec<Option<usize>>> = BTreeMap::new();
+    for (BranchId {e, b}, &br_idx) in eb_to_br_idx {
+        let br_idxs = by_elem.entry(e).or_default();
+        if br_idxs.len() <= *b {
+            br_idxs.resize(b + 1, None);
+        }
+        br_idxs[*b] = Some(br_idx);
+    }
+    by_elem.into_iter().map(|(e, br_idxs)| (e.to_string(), br_idxs)).collect()
 }
 
 /// Convenience struct to store master and island [`NetworkModel`]s.

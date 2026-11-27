@@ -15,7 +15,7 @@ __all__ = [
     "Line",
     "Load",
     "Network",
-    "NetworkSolver",
+    "NetworkSolvers",
     "NodeId",
     "Phase",
     "SolveNetworkResult",
@@ -396,10 +396,12 @@ class Network:
     def __str__(self) -> builtins.str: ...
 
 @typing.final
-class NetworkSolver:
+class NetworkSolvers:
     r"""
-    A [`NetworkSolver`] solver solves for the currents and voltages in the network, incluing solving and modifying the
-    network based on the solution.
+    The solvers for a network, one per island, as returned by `solve_network` for reuse in later calls.
+    
+    Opaque: pass it back into `solve_network` to reuse the solvers. Each `NetworkSolvers` can only be passed in once,
+    after which the solvers that were actually used are available from the new `SolveNetworkResult`.
     """
     ...
 
@@ -421,7 +423,7 @@ class SolveNetworkResult:
     Return value for solve_network.
     
     [`solve_network`] splits the problem into network into islands, and records results for each island. It also returns
-    the solvers that were created by the [`solve_network`] call, for possible later reuse.
+    the solvers that were used by the [`solve_network`] call, for possible later reuse.
     """
     ...
 
@@ -747,17 +749,21 @@ def parse_ejson(file: typing.Any, phase_map: typing.Mapping[builtins.str, Phase]
     Parse an e-JSON file like object into a Network.
     """
 
-def solve_network(netw: Network, solver_name: builtins.str, solvers: typing.Optional[typing.Sequence[NetworkSolver]]) -> SolveNetworkResult:
+def solve_network(netw: Network, solver_name: builtins.str, solvers: typing.Optional[NetworkSolvers]) -> SolveNetworkResult:
     r"""
     Solves the network using the given solver (specified as a key).
     
-    Accepts as the `solvers` argument an optional list of [`NetworkSolver`]s, which, if supplied, will be used for the
-    new solve call, meaning that we don't need to do the work of creating solvers from scratch. This makes it much more
-    efficient to perform multiple solve calls, e.g. solve the network every five minutes during a day long horizon.
+    Accepts as the `solvers` argument optional `NetworkSolvers` from a previous call, which, if supplied, will be used
+    for the new solve call, meaning that we don't need to do the work of creating solvers from scratch. This makes it
+    much more efficient to perform multiple solve calls, e.g. solve the network every five minutes during a day long
+    horizon.
+    
+    Supplied solvers are only reused if the network's structure is unchanged since they were created. Otherwise (e.g. an
+    element was added or taken out of service), new solvers are created instead.
     
     Args:
         netw: The network to solve for.
         solver_name: The solver selection key, such as "nodal_rect".
-        solvers: Optional list of `NetworkSolver`s; if supplied will use these instead of creating new ones.
+        solvers: Optional `NetworkSolvers` from a previous call; if supplied will reuse these if possible.
     """
 
