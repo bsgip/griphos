@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::Write;
+use std::io::{BufWriter, Write};
 use std::time::{Duration, Instant};
 
 use clap::Parser;
@@ -13,9 +13,10 @@ struct Args {
     /// Reuse the solvers from the previous timestep.
     #[arg(short, long)]
     reuse_solvers: bool,
-    infile: String,
-    loads_file: String,
-    outfile: String,
+    #[arg(short, long)]
+    outfile: Option<String>,
+    netw_infile: String,
+    loads_infile: String,
 }
 
 const S_FACTOR: f64 = 1e-6; // Convert CSV W (as in e-JSON) to internal MW
@@ -45,9 +46,9 @@ fn main() {
     let args = Args::parse();
 
     let t_start = Instant::now();
-    let mut netw =
-        parse_ejson_file(&args.infile, &ejson_phase_map_abcng()).expect("Error parsing ejson file {netw_fname}");
-    let rows = read_csv(&args.loads_file).expect("Error reading loads file");
+    let mut netw = parse_ejson_file(&args.netw_infile, &ejson_phase_map_abcng())
+        .expect("Error parsing ejson file {netw_fname}");
+    let rows = read_csv(&args.loads_infile).expect("Error reading loads file");
 
     // Group consecutive rows by timestep.
     let mut timesteps: Vec<(&str, Vec<&Vec<String>>)> = Vec::new();
@@ -63,7 +64,7 @@ fn main() {
 
     let mut solve_time = Duration::ZERO;
     let mut write_time = Duration::ZERO;
-    let mut outfile = File::create(&args.outfile).unwrap();
+    let mut outfile = args.outfile.as_ref().map(|p| File::create(p).map(BufWriter::new)).transpose().unwrap();
     let mut solvers = None;
     let n_timesteps = timesteps.len();
     for (t, t_rows) in timesteps {
@@ -82,13 +83,13 @@ fn main() {
         for (status_i, status) in result.statuses.iter().enumerate() {
             println!("{t}: island {}:\n{:?}", status_i, status.status);
         }
-        if all_ok {
+        if all_ok && let Some(outfile_unwrapped) = &mut outfile {
             for b in netw.buses() {
                 let b = b.borrow();
                 for nd in b.nodes.iter() {
                     let v = nd.v();
                     writeln!(
-                        outfile,
+                        outfile_unwrapped,
                         "{t},{:20}{:9.5},{:9.5}",
                         format!("{}:{},", b.uid, nd.phase()),
                         v.norm() / b.v_base,
