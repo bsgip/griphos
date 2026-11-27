@@ -287,6 +287,15 @@ pub fn configure_logging() {
         .try_init();
 }
 
+/// Reads a simple CSV file into rows of trimmed fields. No quoting support; blank lines are skipped.
+pub fn read_csv(path: impl AsRef<std::path::Path>) -> std::io::Result<Vec<Vec<String>>> {
+    Ok(std::fs::read_to_string(path)?
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| l.split(',').map(|f| f.trim().to_string()).collect())
+        .collect())
+}
+
 // -----------------------------------------------------------------------------
 // Pretty Printer
 // -----------------------------------------------------------------------------
